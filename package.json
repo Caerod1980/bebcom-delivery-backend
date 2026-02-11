@@ -1,0 +1,17 @@
+{
+  "name": "bebcom-delivery-backend",
+  "version": "3.4.0",
+  "description": "Backend BebCom Delivery - Azure",
+  "main": "backend/server.js",
+  "scripts": {
+    "start": "node backend/server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "cors": "^2.8.5",
+    "mongodb": "^6.5.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

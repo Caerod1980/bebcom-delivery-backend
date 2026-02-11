@@ -1,0 +1,2744 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
+    <title>BebCom Delivery - Pedido Online</title>
+    
+    <!-- SEO -->
+    <meta name="description" content="BebCom Delivery - Bebidas, drinks e muito mais. Peça pelo WhatsApp!">
+    <meta name="keywords" content="delivery, bebidas, drinks, cerveja, whisky, gin, vodka, bauru">
+    <meta name="author" content="BebCom Delivery">
+    
+    <!-- PWA -->
+    <meta name="theme-color" content="#dc2626">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    
+    <!-- Open Graph -->
+    <meta property="og:title" content="BebCom Delivery">
+    <meta property="og:description" content="Seu delivery de bebidas em Bauru">
+    <meta property="og:type" content="website">
+    <meta property="og:image" content="https://seudominio.azurewebsites.net/og-image.jpg">
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🍹</text></svg>">
+    
+    <style>
+        /* ====== ESTILOS OTIMIZADOS PARA PRODUÇÃO ====== */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        :root {
+            --primary: #dc2626;
+            --primary-dark: #b91c1c;
+            --secondary: #4d96ff;
+            --secondary-dark: #3b82f6;
+            --success: #28a745;
+            --danger: #dc3545;
+            --warning: #ffc107;
+            --dark: #0a0a0a;
+            --darker: #1a1a1a;
+            --light: #f5f5f5;
+            --gray: #94a3b8;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        body {
+            font-family: 'Segoe UI', Roboto, system-ui, -apple-system, sans-serif;
+            background: linear-gradient(135deg, var(--dark) 0%, var(--darker) 100%);
+            color: var(--light);
+            min-height: 100vh;
+            padding-bottom: 30px;
+            line-height: 1.5;
+        }
+
+        /* Header */
+        .header {
+            background: linear-gradient(135deg, #000000 0%, var(--darker) 100%);
+            color: white;
+            text-align: center;
+            padding: 20px 15px;
+            font-size: clamp(24px, 5vw, 28px);
+            font-weight: 800;
+            letter-spacing: 1px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+            border-bottom: 3px solid var(--primary);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        /* Navegação */
+        .nav-container {
+            display: flex;
+            gap: 8px;
+            padding: 12px 15px;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(10px);
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: thin;
+            position: sticky;
+            top: 70px;
+            z-index: 99;
+            border-bottom: 1px solid #333;
+        }
+
+        .nav-button {
+            padding: 12px 18px;
+            background: rgba(26, 26, 26, 0.95);
+            border: 1px solid #444;
+            border-radius: 30px;
+            color: white;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            white-space: nowrap;
+            transition: all 0.2s ease;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        }
+
+        .nav-button:hover {
+            background: rgba(220, 38, 38, 0.9);
+            transform: translateY(-2px);
+            border-color: var(--primary);
+        }
+
+        /* Container principal */
+        .main-container {
+            display: grid;
+            grid-template-columns: 1.5fr 1fr;
+            gap: 20px;
+            padding: 20px;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        @media (max-width: 1024px) {
+            .main-container {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Seções */
+        .menu-section, .cart-section {
+            background: rgba(26, 26, 26, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 16px;
+            padding: 20px;
+            border: 1px solid #333;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.3);
+            animation: fadeIn 0.5s ease;
+        }
+
+        .cart-section {
+            position: sticky;
+            top: 140px;
+            max-height: calc(100vh - 160px);
+            overflow-y: auto;
+        }
+
+        @media (max-width: 1024px) {
+            .cart-section {
+                position: static;
+                max-height: none;
+            }
+        }
+
+        .section-title {
+            color: white;
+            text-align: center;
+            margin-bottom: 20px;
+            font-size: clamp(20px, 4vw, 24px);
+            font-weight: 700;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+            border-bottom: 2px solid var(--primary);
+            padding-bottom: 15px;
+        }
+
+        /* Categorias */
+        .categories-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+            gap: 12px;
+            margin-bottom: 30px;
+        }
+
+        .category-button {
+            background: linear-gradient(135deg, rgba(45, 45, 45, 0.95) 0%, rgba(60, 60, 60, 0.95) 100%);
+            border: 1px solid #444;
+            padding: 20px 12px;
+            border-radius: 12px;
+            cursor: pointer;
+            font-size: 15px;
+            font-weight: 600;
+            color: white;
+            transition: all 0.2s ease;
+            text-align: center;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        .category-button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 25px rgba(220, 38, 38, 0.2);
+            border-color: var(--primary);
+        }
+
+        /* Produtos */
+        .products-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+            gap: 16px;
+        }
+
+        .product-card {
+            background: rgba(45, 45, 45, 0.8);
+            border: 1px solid #444;
+            border-radius: 12px;
+            padding: 20px;
+            transition: all 0.2s ease;
+            cursor: pointer;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            backdrop-filter: blur(5px);
+        }
+
+        .product-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 25px rgba(220, 38, 38, 0.15);
+            border-color: var(--primary);
+        }
+
+        .product-card.unavailable {
+            opacity: 0.5;
+            pointer-events: none;
+            filter: grayscale(0.8);
+        }
+
+        .product-card.unavailable::after {
+            content: "INDISPONÍVEL";
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(220, 38, 38, 0.95);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 30px;
+            font-size: 13px;
+            font-weight: 700;
+            z-index: 2;
+            white-space: nowrap;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        }
+
+        .product-name {
+            font-size: 18px;
+            font-weight: 700;
+            margin-bottom: 8px;
+            color: white;
+            line-height: 1.3;
+        }
+
+        .product-info {
+            font-size: 13px;
+            color: var(--gray);
+            margin-bottom: 12px;
+            flex: 1;
+        }
+
+        .product-price {
+            font-size: 20px;
+            color: var(--primary);
+            font-weight: 800;
+            text-align: right;
+            margin-top: 10px;
+        }
+
+        .flavor-badge {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            background: rgba(77, 150, 255, 0.2);
+            border-radius: 50%;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            color: var(--secondary);
+            border: 1px solid var(--secondary);
+        }
+
+        /* Botões */
+        .add-to-cart-btn {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white;
+            border: none;
+            padding: 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            width: 100%;
+            margin-top: 15px;
+            font-weight: 700;
+            font-size: 14px;
+            transition: all 0.2s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .add-to-cart-btn.has-flavors {
+            background: linear-gradient(135deg, var(--secondary) 0%, var(--secondary-dark) 100%);
+        }
+
+        .add-to-cart-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(220, 38, 38, 0.3);
+        }
+
+        .add-to-cart-btn.added {
+            background: linear-gradient(135deg, var(--success) 0%, #218838 100%);
+        }
+
+        .add-to-cart-btn:disabled {
+            background: #666;
+            cursor: not-allowed;
+            opacity: 0.7;
+            transform: none !important;
+            box-shadow: none !important;
+        }
+
+        /* Carrinho */
+        .cart-items {
+            max-height: 350px;
+            overflow-y: auto;
+            margin-bottom: 20px;
+            padding: 10px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 12px;
+        }
+
+        .cart-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px;
+            background: rgba(45, 45, 45, 0.6);
+            border-radius: 10px;
+            margin-bottom: 10px;
+            border: 1px solid #444;
+        }
+
+        .quantity-controls {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .quantity-btn {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid #555;
+            color: white;
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 18px;
+            font-weight: 700;
+            transition: all 0.2s;
+        }
+
+        .quantity-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .remove-item-btn {
+            background: none;
+            border: none;
+            color: var(--danger);
+            cursor: pointer;
+            font-size: 16px;
+            padding: 6px 10px;
+            border-radius: 6px;
+            margin-left: 8px;
+        }
+
+        .remove-item-btn:hover {
+            background: rgba(220, 53, 69, 0.1);
+        }
+
+        /* Totais */
+        .totals-section {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 18px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+        }
+
+        .total-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 12px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid #444;
+            font-size: 15px;
+        }
+
+        .grand-total {
+            font-size: 20px;
+            font-weight: 800;
+            color: var(--warning);
+            border-bottom: none;
+            padding-top: 12px;
+            border-top: 2px solid #555;
+        }
+
+        /* Formulários */
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 6px;
+            color: #ddd;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 14px;
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid #444;
+            border-radius: 10px;
+            color: white;
+            font-size: 15px;
+            transition: all 0.2s;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: var(--secondary);
+            background: rgba(255, 255, 255, 0.12);
+            box-shadow: 0 0 0 3px rgba(77, 150, 255, 0.1);
+        }
+
+        /* Opções de entrega */
+        .delivery-options {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .delivery-option {
+            flex: 1;
+            padding: 15px;
+            text-align: center;
+            background: rgba(45, 45, 45, 0.6);
+            border: 2px solid transparent;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-weight: 600;
+        }
+
+        .delivery-option.selected {
+            border-color: var(--secondary);
+            background: rgba(77, 150, 255, 0.15);
+        }
+
+        /* Métodos de pagamento */
+        .payment-methods {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .payment-method {
+            padding: 15px;
+            background: rgba(45, 45, 45, 0.6);
+            border: 2px solid transparent;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: center;
+        }
+
+        .payment-method.selected {
+            border-color: var(--secondary);
+            background: rgba(77, 150, 255, 0.15);
+        }
+
+        .payment-icon {
+            font-size: 28px;
+            margin-bottom: 6px;
+        }
+
+        /* Botões principais */
+        .primary-button {
+            background: linear-gradient(135deg, var(--success) 0%, #218838 100%);
+            color: white;
+            border: none;
+            padding: 16px;
+            border-radius: 12px;
+            cursor: pointer;
+            font-size: 18px;
+            font-weight: 700;
+            width: 100%;
+            transition: all 0.2s ease;
+            margin: 12px 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .primary-button:hover:not(:disabled) {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 25px rgba(40, 167, 69, 0.4);
+        }
+
+        .secondary-button {
+            background: linear-gradient(135deg, #25D366 0%, #128C7E 100%);
+            color: white;
+            border: none;
+            padding: 16px;
+            border-radius: 12px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 700;
+            width: 100%;
+            transition: all 0.2s;
+            margin: 12px 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .secondary-button:hover:not(:disabled) {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 25px rgba(37, 211, 102, 0.4);
+        }
+
+        .clear-button {
+            background: linear-gradient(135deg, var(--danger) 0%, #c82333 100%);
+            color: white;
+            border: none;
+            padding: 14px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 15px;
+            width: 100%;
+            margin-top: 12px;
+            transition: all 0.2s;
+            font-weight: 600;
+        }
+
+        /* Status de pagamento */
+        .payment-status {
+            padding: 16px;
+            border-radius: 12px;
+            margin: 15px 0;
+            background: rgba(255, 217, 61, 0.1);
+            border-left: 5px solid var(--warning);
+            font-size: 15px;
+            text-align: center;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .payment-status.success {
+            background: rgba(40, 167, 69, 0.1);
+            border-left-color: var(--success);
+        }
+
+        .payment-status.error {
+            background: rgba(220, 53, 69, 0.1);
+            border-left-color: var(--danger);
+        }
+
+        /* Loading spinner */
+        .loading-spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 0.8s linear infinite;
+        }
+
+        /* MODAL DE SABORES */
+        .flavor-modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.95);
+            z-index: 20000;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(10px);
+        }
+
+        .flavor-modal-content {
+            background: linear-gradient(135deg, #1a1a1a 0%, #2a2a2a 100%);
+            border-radius: 20px;
+            padding: 30px;
+            width: 90%;
+            max-width: 550px;
+            max-height: 85vh;
+            overflow-y: auto;
+            border: 2px solid var(--secondary);
+            box-shadow: 0 20px 60px rgba(0,0,0,0.8);
+            animation: fadeIn 0.4s ease;
+        }
+
+        .flavor-modal-title {
+            color: var(--secondary);
+            text-align: center;
+            font-size: 24px;
+            margin-bottom: 15px;
+            font-weight: 800;
+        }
+
+        .flavors-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+            margin: 20px 0;
+        }
+
+        .flavor-option {
+            padding: 16px 12px;
+            background: rgba(45, 45, 45, 0.7);
+            border: 2px solid transparent;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: center;
+            font-size: 15px;
+            font-weight: 600;
+        }
+
+        .flavor-option:hover {
+            background: rgba(77, 150, 255, 0.2);
+            transform: translateY(-3px);
+        }
+
+        .flavor-option.selected {
+            border-color: var(--warning);
+            background: rgba(255, 217, 61, 0.15);
+        }
+
+        .flavor-option.unavailable {
+            opacity: 0.5;
+            pointer-events: none;
+            position: relative;
+        }
+
+        /* MODAL DE IDADE */
+        .age-verification-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.98);
+            z-index: 99999;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            backdrop-filter: blur(15px);
+        }
+
+        .age-modal-content {
+            background: linear-gradient(135deg, #1a1a1a 0%, #2a2a2a 100%);
+            border-radius: 24px;
+            max-width: 800px;
+            width: 100%;
+            max-height: 90vh;
+            overflow-y: auto;
+            border: 3px solid var(--primary);
+            box-shadow: 0 25px 70px rgba(0,0,0,0.9);
+        }
+
+        .age-modal-header {
+            background: linear-gradient(135deg, #000000 0%, #1a1a1a 100%);
+            padding: 25px 30px;
+            border-bottom: 2px solid var(--primary);
+            text-align: center;
+        }
+
+        .age-modal-header h2 {
+            color: white;
+            font-size: 28px;
+            margin: 0;
+            font-weight: 800;
+        }
+
+        .age-legal-text {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 25px;
+            border-radius: 16px;
+            border-left: 5px solid var(--secondary);
+            margin: 20px 0;
+        }
+
+        .age-checkbox-container {
+            background: rgba(220, 38, 38, 0.1);
+            padding: 20px;
+            border-radius: 12px;
+            border: 1px solid var(--primary);
+            margin-top: 20px;
+            display: flex;
+            align-items: flex-start;
+            gap: 15px;
+        }
+
+        .age-checkbox-container input[type="checkbox"] {
+            width: 22px;
+            height: 22px;
+            margin-top: 3px;
+            accent-color: var(--success);
+            cursor: pointer;
+        }
+
+        .age-modal-footer {
+            padding: 20px 30px;
+            display: flex;
+            gap: 20px;
+            border-top: 1px solid #444;
+        }
+
+        .age-btn {
+            flex: 1;
+            padding: 18px;
+            border: none;
+            border-radius: 12px;
+            font-size: 18px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .age-btn-exit {
+            background: linear-gradient(135deg, var(--danger) 0%, #b91c1c 100%);
+            color: white;
+        }
+
+        .age-btn-enter {
+            background: linear-gradient(135deg, var(--success) 0%, #218838 100%);
+            color: white;
+        }
+
+        /* ADMIN */
+        .admin-button {
+            position: fixed;
+            top: 15px;
+            right: 15px;
+            width: 50px;
+            height: 50px;
+            background: linear-gradient(135deg, var(--secondary) 0%, var(--secondary-dark) 100%);
+            border: none;
+            border-radius: 50%;
+            color: white;
+            font-size: 24px;
+            cursor: pointer;
+            z-index: 9999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 6px 20px rgba(59, 130, 246, 0.5);
+            transition: all 0.2s;
+        }
+
+        .admin-button:hover {
+            transform: scale(1.1);
+            box-shadow: 0 8px 25px rgba(59, 130, 246, 0.7);
+        }
+
+        .admin-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.98);
+            z-index: 10001;
+            overflow-y: auto;
+            padding: 20px;
+        }
+
+        .admin-content {
+            background: linear-gradient(135deg, #1a1a1a 0%, #2a2a2a 100%);
+            max-width: 1200px;
+            margin: 30px auto;
+            border-radius: 20px;
+            border: 2px solid var(--secondary);
+            overflow: hidden;
+        }
+
+        .admin-header {
+            background: linear-gradient(135deg, #000000 0%, #1a1a1a 100%);
+            padding: 20px 30px;
+            border-bottom: 2px solid #444;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .admin-title {
+            font-size: 24px;
+            font-weight: 800;
+            color: #60a5fa;
+        }
+
+        .admin-close {
+            background: var(--danger);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            font-size: 24px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Responsividade */
+        @media (max-width: 768px) {
+            .nav-container {
+                padding: 10px;
+            }
+            
+            .nav-button {
+                padding: 10px 16px;
+                font-size: 13px;
+            }
+            
+            .categories-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            
+            .products-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .payment-methods {
+                grid-template-columns: 1fr;
+            }
+            
+            .delivery-options {
+                flex-direction: column;
+            }
+            
+            .flavors-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .age-modal-footer {
+                flex-direction: column;
+            }
+            
+            .age-modal-header h2 {
+                font-size: 22px;
+            }
+            
+            .admin-header {
+                flex-direction: column;
+                gap: 15px;
+                text-align: center;
+            }
+            
+            .admin-actions {
+                flex-direction: column;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .header {
+                font-size: 20px;
+                padding: 15px;
+            }
+            
+            .section-title {
+                font-size: 20px;
+            }
+            
+            .product-card {
+                padding: 15px;
+            }
+            
+            .product-price {
+                font-size: 18px;
+            }
+            
+            .cart-item {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 12px;
+            }
+            
+            .flavor-modal-content {
+                padding: 20px;
+            }
+            
+            .admin-title {
+                font-size: 20px;
+            }
+        }
+
+        /* Utilitários */
+        .text-center { text-align: center; }
+        .text-right { text-align: right; }
+        .mt-20 { margin-top: 20px; }
+        .mb-20 { margin-bottom: 20px; }
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+    <!-- Botão Admin -->
+    <button class="admin-button" id="adminButton" title="Painel Administrativo">🔧</button>
+
+    <!-- MODAL DE VERIFICAÇÃO DE IDADE -->
+    <div class="age-verification-modal" id="ageVerificationModal">
+        <div class="age-modal-content">
+            <div class="age-modal-header">
+                <h2>🍹 Verificação de Idade</h2>
+            </div>
+            <div class="age-modal-body" style="padding: 30px;">
+                <div style="text-align: center; margin-bottom: 20px;">
+                    <span style="font-size: 60px;">⚠️</span>
+                </div>
+                <div class="age-legal-text">
+                    <p><strong>DECLARAÇÃO LEGAL</strong></p>
+                    <p>Conforme o <strong>Estatuto da Criança e do Adolescente (Lei 8.069/90)</strong>, a venda de bebidas alcoólicas a menores de 18 anos é proibida.</p>
+                    <p>Este site é destinado exclusivamente a maiores de 18 anos.</p>
+                    
+                    <div class="age-checkbox-container">
+                        <input type="checkbox" id="ageConfirmationCheckbox">
+                        <label for="ageConfirmationCheckbox">
+                            <strong>DECLARO</strong> que tenho 18 anos ou mais e assumo total responsabilidade por esta declaração.
+                        </label>
+                    </div>
+                </div>
+            </div>
+            <div class="age-modal-footer">
+                <button class="age-btn age-btn-exit" onclick="window.location.href='https://www.google.com'">
+                    ❌ Sair
+                    <small style="font-size: 12px;">Menor de 18 anos</small>
+                </button>
+                <button class="age-btn age-btn-enter" id="enterSiteButton" disabled>
+                    ✅ Entrar
+                    <small style="font-size: 12px;">Sou maior de 18 anos</small>
+                </button>
+            </div>
+            <div class="age-modal-disclaimer" style="padding: 15px 30px; background: rgba(0,0,0,0.3); text-align: center; color: #94a3b8; font-size: 12px;">
+                BebCom Delivery - Consumo moderado. Beba com responsabilidade.
+            </div>
+        </div>
+    </div>
+
+    <div class="header">
+        🍹 BEBCOM DELIVERY
+    </div>
+
+    <div class="nav-container">
+        <button class="nav-button" onclick="showCategory('drinks-whisky')">🥃 Drinks Whisky</button>
+        <button class="nav-button" onclick="showCategory('drinks-gin')">🍸 Drinks Gin</button>
+        <button class="nav-button" onclick="showCategory('drinks-vodka')">🍸 Drinks Vodka</button>
+        <button class="nav-button" onclick="showCategory('drinks-vinho')">🍷 Drinks Vinho</button>
+        <button class="nav-button" onclick="showCategory('cervejas')">🍺 Cervejas</button>
+        <button class="nav-button" onclick="showCategory('destilados')">🥃 Destilados</button>
+        <button class="nav-button" onclick="showCategory('aguas')">💧 Águas</button>
+        <button class="nav-button" onclick="showCategory('refri-latas')">🥤 Refri Latas</button>
+        <button class="nav-button" onclick="showCategory('refri-pet')">🥤 Refri PET</button>
+        <button class="nav-button" onclick="showCategory('sucos')">🧃 Sucos</button>
+        <button class="nav-button" onclick="showCategory('energeticos')">⚡ Energéticos</button>
+        <button class="nav-button" onclick="showCategory('gelo-carvao')">🧊 Gelo/Carvão</button>
+    </div>
+
+    <div class="main-container">
+        <!-- CARDÁPIO -->
+        <div class="menu-section">
+            <h2 class="section-title">📋 Cardápio</h2>
+            <div class="categories-grid" id="categoriesGrid"></div>
+            <div class="products-grid" id="productsGrid">
+                <div style="text-align: center; color: #aaa; padding: 50px; grid-column: 1/-1;">
+                    🍹 Selecione uma categoria para ver os produtos
+                </div>
+            </div>
+        </div>
+
+        <!-- CARRINHO -->
+        <div class="cart-section">
+            <h2 class="section-title">🛒 Carrinho</h2>
+            
+            <div class="cart-items" id="cartItems">
+                <div style="text-align: center; color: #aaa; padding: 40px;">
+                    Seu carrinho está vazio
+                </div>
+            </div>
+
+            <div class="totals-section">
+                <div class="total-row">
+                    <span>Subtotal:</span>
+                    <span>R$ <span id="subtotal">0.00</span></span>
+                </div>
+                <div class="total-row" id="deliveryRow" style="display: none;">
+                    <span>Taxa de Entrega:</span>
+                    <span>R$ <span id="deliveryFee">0.00</span></span>
+                </div>
+                <div class="total-row grand-total">
+                    <span>Total:</span>
+                    <span>R$ <span id="totalAmount">0.00</span></span>
+                </div>
+            </div>
+
+            <!-- Dados do Cliente -->
+            <div class="customer-section">
+                <div class="form-group">
+                    <label class="form-label">👤 Nome Completo *</label>
+                    <input type="text" class="form-input" id="customerName" placeholder="Digite seu nome" autocomplete="name">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">📱 WhatsApp *</label>
+                    <input type="tel" class="form-input" id="customerPhone" placeholder="(14) 99999-9999" autocomplete="tel">
+                </div>
+            </div>
+
+            <!-- Tipo de Pedido -->
+            <div class="delivery-section">
+                <label class="form-label">📦 Tipo de Pedido</label>
+                <div class="delivery-options">
+                    <div class="delivery-option selected" onclick="selectDeliveryType('pickup')">🏪 Retirada</div>
+                    <div class="delivery-option" onclick="selectDeliveryType('delivery')">🚚 Entrega</div>
+                </div>
+
+                <div id="addressFields" style="display: none;">
+                    <div class="form-group">
+                        <label class="form-label">📍 Endereço *</label>
+                        <div style="display: grid; grid-template-columns: 3fr 1fr; gap: 10px;">
+                            <input type="text" class="form-input" id="street" placeholder="Rua/Avenida">
+                            <input type="text" class="form-input" id="number" placeholder="Nº">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 10px;">
+                            <input type="text" class="form-input" id="neighborhood" placeholder="Bairro">
+                            <input type="text" class="form-input" id="city" placeholder="Cidade" value="Bauru">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">🏠 Complemento</label>
+                        <input type="text" class="form-input" id="addressComplement" placeholder="Apto, Bloco, Referência">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Pagamento -->
+            <div class="payment-section">
+                <label class="form-label" id="paymentLabel" style="display: none;">💳 Pagamento</label>
+                <div class="payment-methods" id="paymentMethods" style="display: none;">
+                    <div class="payment-method selected" onclick="selectPaymentMethod('pix')">
+                        <div class="payment-icon">🧾</div>
+                        <div>PIX</div>
+                    </div>
+                    <div class="payment-method" onclick="selectPaymentMethod('card_online')">
+                        <div class="payment-icon">💳</div>
+                        <div>Cartão</div>
+                    </div>
+                </div>
+
+                <div id="paymentStatus" class="payment-status" style="display: none;"></div>
+
+                <button class="primary-button" id="payButton" disabled onclick="processPayment()">
+                    💰 Realizar Pagamento
+                </button>
+
+                <button class="secondary-button" id="whatsappButton" disabled onclick="sendToWhatsApp()">
+                    📱 Enviar Pedido
+                </button>
+
+                <button class="clear-button" onclick="clearCart()">
+                    🗑️ Limpar Carrinho
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL DE SABORES -->
+    <div class="flavor-modal-overlay" id="flavorModal">
+        <div class="flavor-modal-content">
+            <h2 class="flavor-modal-title" id="flavorModalTitle">Escolha o sabor</h2>
+            <div style="text-align: center; color: #aaa; margin-bottom: 20px;" id="flavorModalInstruction">
+                Selecione uma opção
+            </div>
+            <div class="flavors-grid" id="flavorsGrid"></div>
+            <div style="display: flex; gap: 15px; margin-top: 25px;">
+                <button class="modal-button confirm" id="confirmFlavorButton" onclick="confirmFlavorSelection()" style="flex: 1; padding: 16px; background: linear-gradient(135deg, #28a745 0%, #218838 100%); color: white; border: none; border-radius: 10px; font-weight: bold; cursor: pointer;">
+                    ✅ Confirmar
+                </button>
+                <button class="modal-button cancel" onclick="cancelFlavorSelection()" style="flex: 1; padding: 16px; background: linear-gradient(135deg, #dc3545 0%, #c82333 100%); color: white; border: none; border-radius: 10px; font-weight: bold; cursor: pointer;">
+                    ❌ Cancelar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL ADMINISTRATIVO -->
+    <div class="admin-modal" id="adminModal">
+        <div class="admin-content">
+            <div class="admin-header">
+                <h2 class="admin-title">🔧 Gerenciamento</h2>
+                <button class="admin-close" id="adminClose">×</button>
+            </div>
+
+            <div class="admin-password" id="passwordSection" style="padding: 30px;">
+                <h3 style="color: #60a5fa; margin-bottom: 20px; text-align: center;">🔐 Acesso Administrativo</h3>
+                <input type="password" class="password-input" id="adminPassword" placeholder="Digite a senha" style="width: 100%; padding: 15px; background: rgba(255,255,255,0.1); border: 1px solid #444; border-radius: 8px; color: white; margin-bottom: 15px;">
+                <button class="password-button" onclick="checkAdminPassword()" style="width: 100%; padding: 15px; background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer;">
+                    Entrar
+                </button>
+            </div>
+
+            <div class="admin-main" id="adminMain" style="display: none; padding: 20px 30px; max-height: 60vh; overflow-y: auto;">
+                <!-- Categorias serão carregadas dinamicamente -->
+            </div>
+
+            <div class="admin-actions" id="adminActions" style="display: none; padding: 20px 30px; background: rgba(26, 26, 26, 0.8); border-top: 1px solid #333; display: flex; gap: 15px; flex-wrap: wrap;">
+                <button class="admin-action-btn all-btn" onclick="setAllAvailable(true)" style="flex: 1; min-width: 150px; padding: 15px; background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer;">
+                    ✅ Todos Disponível
+                </button>
+                <button class="admin-action-btn none-btn" onclick="setAllAvailable(false)" style="flex: 1; min-width: 150px; padding: 15px; background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer;">
+                    ❌ Todos Indisponível
+                </button>
+                <button class="admin-action-btn save-btn" onclick="saveAvailability()" style="flex: 1; min-width: 150px; padding: 15px; background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer;">
+                    💾 Salvar
+                </button>
+                <button class="admin-action-btn reset-btn" onclick="resetAvailability()" style="flex: 1; min-width: 150px; padding: 15px; background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer;">
+                    🔄 Restaurar
+                </button>
+                <button class="admin-action-btn" onclick="openFlavorManagement()" style="flex: 1; min-width: 150px; padding: 15px; background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%); color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer;">
+                    🍹 Gerenciar Sabores
+                </button>
+                <button class="admin-action-btn" onclick="syncAllFromServer()" style="flex: 1; min-width: 150px; padding: 15px; background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%); color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer;">
+                    🔄 Sincronizar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ============================================
+        // CONFIGURAÇÃO PRINCIPAL - AZURE PRODUCTION
+        // ============================================
+        const CONFIG = {
+            // 🔥 URL DO BACKEND NO AZURE (ALTERE PARA SEU DOMÍNIO)
+            backendUrl: 'https://bebcom-delivery.azurewebsites.net',
+            
+            // 🔥 NÚMERO DO WHATSAPP
+            whatsappNumber: '5514996130369',
+            
+            // 🔥 SENHA ADMINISTRATIVA (DEVE SER IGUAL AO .env DO BACKEND)
+            adminPassword: 'Bebcom25*',
+            
+            // Localização da loja
+            storeLocation: {
+                lat: -22.35892,
+                lng: -49.0987233,
+                address: "R. José Henrique Ferraz, 18-10 - Centro, Bauru - SP"
+            },
+            
+            // Taxas de entrega
+            deliveryRates: {
+                baseFee: 5.00,
+                perKm: 2.65,
+                maxDistance: 15,
+                minDistance: 0.5,
+                freeDeliveryMin: 100.00
+            },
+            
+            // Versão do sistema
+            version: '3.4.0-azure',
+            environment: 'production'
+        };
+
+        // ============================================
+        // DADOS DOS PRODUTOS (OTIMIZADO)
+        // ============================================
+        const products = {
+            'drinks-whisky': [
+                { id: 'old-star', name: 'Copão Old Star', description: 'Drink clássico de whisky', price: 11.00, requiresFlavorSelection: true, flavorType: 'whisky_oldstar', nextStep: 'ice' },
+                { id: 'passport', name: 'Copão Passport', description: 'Whisky importado', price: 18.00, requiresFlavorSelection: false },
+                { id: 'natu-nobilis', name: 'Copão Natu Nobilis', description: 'Whisky premium', price: 17.00, requiresFlavorSelection: false },
+                { id: 'white-horse', name: 'Copão White Horse', description: 'Whisky escocês', price: 22.00, requiresFlavorSelection: false },
+                { id: 'red-label', name: 'Copão Red Label', description: 'Johnnie Walker', price: 25.00, requiresFlavorSelection: false },
+                { id: 'ballantines', name: 'Copão Ballantines', description: 'Whisky escocês', price: 28.00, requiresFlavorSelection: false },
+                { id: 'jack-daniels', name: 'Copão Jack Daniels', description: 'Whisky americano', price: 35.00, requiresFlavorSelection: true, flavorType: 'whisky_jack', nextStep: 'ice' }
+            ],
+            'drinks-gin': [
+                { id: 'danoninho-gin', name: 'Danoninho de Gin', description: 'Batida com Gin', price: 18.00, requiresFlavorSelection: true, flavorType: 'gin_sabores', nextStep: 'ice' },
+                { id: 'copa-gin', name: 'Copão de Gin', description: 'Drink com Gin Askov', price: 18.00, requiresFlavorSelection: true, flavorType: 'gin_sabores', nextStep: 'ice' }
+            ],
+            'drinks-vodka': [
+                { id: 'danoninho-corote', name: 'Danoninho Corote', description: 'Batida com Corote', price: 15.00, requiresFlavorSelection: true, flavorType: 'corote_sabores' },
+                { id: 'danoninho-askov', name: 'Danoninho Askov', description: 'Askov de frutas', price: 18.00, requiresFlavorSelection: true, flavorType: 'vodka_sabores' }
+            ],
+            'drinks-vinho': [
+                { id: 'danoninho-vinho', name: 'Danoninho de Vinho', description: 'Batida de vinho', price: 18.00, requiresFlavorSelection: false }
+            ],
+            'cervejas': [
+                { id: 'brahma', name: 'Brahma', description: 'Cerveja pilsen', price: 4.25 },
+                { id: 'skol', name: 'Skol', description: 'Cerveja pilsen', price: 4.25 },
+                { id: 'antarctica', name: 'Antarctica', description: 'Cerveja pilsen', price: 4.25 },
+                { id: 'heineken', name: 'Heineken', description: 'Cerveja premium', price: 6.50 },
+                { id: 'corona-long', name: 'Corona Long', description: 'Cerveja mexicana', price: 8.50 },
+                { id: 'stella-long', name: 'Stella Long', description: 'Cerveja belga', price: 7.50 },
+                { id: 'spaten', name: 'Spaten', description: 'Cerveja alemã', price: 5.50 },
+                { id: 'budweiser', name: 'Budweiser', description: 'Cerveja americana', price: 5.50 },
+                { id: 'original', name: 'Original', description: 'Cerveja premium', price: 5.50 },
+                { id: 'amstel', name: 'Amstel', description: 'Cerveja holandesa', price: 4.00 }
+            ],
+            'destilados': [
+                { id: 'tequila', name: 'Tequila', description: 'Destilado mexicano', price: 23.00 },
+                { id: 'pinga-51', name: 'Pinga 51', description: 'Cachaça', price: 19.00 },
+                { id: 'conhaque', name: 'Conhaque', description: 'Destilado', price: 19.00 },
+                { id: 'gin-askov', name: 'Gin Askov', description: 'Gin brasileiro', price: 20.00, requiresFlavorSelection: true, flavorType: 'gin_sabores' },
+                { id: 'askov-ice', name: 'Askov Ice', description: 'Ready to drink', price: 8.00, requiresFlavorSelection: true, flavorType: 'ice_askov' },
+                { id: 'ice-leev', name: 'Ice Leev', description: 'Ready to drink', price: 8.00, requiresFlavorSelection: true, flavorType: 'ice_leev' },
+                { id: 'beats-lata', name: 'Beats Lata', description: 'Bebida em lata', price: 7.50, requiresFlavorSelection: true, flavorType: 'beats' },
+                { id: 'smirnoff-1l', name: 'Smirnoff 1L', description: 'Vodka premium', price: 56.00 }
+            ],
+            'aguas': [
+                { id: 'agua-500ml', name: 'Água 500ml', description: 'Água mineral', price: 3.00 },
+                { id: 'agua-1.5l', name: 'Água 1,5L', description: 'Água família', price: 6.00 },
+                { id: 'agua-gas-500ml', name: 'Água Gás 500ml', description: 'Água com gás', price: 3.50 },
+                { id: 'h2o-500ml', name: 'H2O 500ml', description: 'Água premium', price: 5.00, requiresFlavorSelection: true, flavorType: 'h2o_sabores' },
+                { id: 'gatorade', name: 'Gatorade', description: 'Isotônico', price: 8.00 }
+            ],
+            'refri-latas': [
+                { id: 'coca-cola-lata', name: 'Coca Cola', description: 'Refrigerante', price: 4.50 },
+                { id: 'guarana-antarctica', name: 'Guaraná Antarctica', description: 'Refrigerante', price: 4.50 },
+                { id: 'fanta-laranja', name: 'Fanta Laranja', description: 'Refrigerante', price: 4.50 },
+                { id: 'pepsi-black', name: 'Pepsi Black', description: 'Refrigerante', price: 4.50 },
+                { id: 'coca-zero-lata', name: 'Coca Cola Zero', description: 'Refrigerante zero', price: 4.50 }
+            ],
+            'refri-pet': [
+                { id: 'coca-2l', name: 'Coca-Cola 2L', description: 'Refrigerante', price: 13.00 },
+                { id: 'coca-1l', name: 'Coca-Cola 1L', description: 'Refrigerante', price: 9.00 },
+                { id: 'sprite-2l', name: 'Sprite 2L', description: 'Refrigerante', price: 11.00 },
+                { id: 'guarana-2l', name: 'Antárctica 2L', description: 'Guaraná', price: 12.00 },
+                { id: 'coca-600ml', name: 'Coca 600ml', description: 'Refrigerante', price: 7.00 }
+            ],
+            'sucos': [
+                { id: 'del-valle-1l', name: 'Del Valle 1L', description: 'Suco de caixinha', price: 12.00, requiresFlavorSelection: true, flavorType: 'suco_delvalle' },
+                { id: 'prats-300ml-laranja', name: 'Prats 300ml', description: 'Suco de laranja', price: 6.00 },
+                { id: 'kapo', name: 'Kapo', description: 'Suco em pó', price: 4.00, requiresFlavorSelection: true, flavorType: 'suco_kapo' },
+                { id: 'life-900ml', name: 'Life 900ml', description: 'Suco premium', price: 14.00, requiresFlavorSelection: true, flavorType: 'suco_life' }
+            ],
+            'energeticos': [
+                { id: 'big-power-2l', name: 'Big Power 2L', description: 'Energético', price: 13.00 },
+                { id: 'monster-473ml', name: 'Monster 473ml', description: 'Energético', price: 12.00, requiresFlavorSelection: true, flavorType: 'energetico_monster' },
+                { id: 'red-bull-250ml', name: 'Red Bull', description: 'Energético', price: 14.00 },
+                { id: 'bally-2l', name: 'Bally 2L', description: 'Energético', price: 15.00, requiresFlavorSelection: true, flavorType: 'energetico_bally' }
+            ],
+            'gelo-carvao': [
+                { id: 'gelo-saborizado', name: 'Gelo Saborizado', description: 'Gelo com sabor', price: 3.00, requiresFlavorSelection: true, flavorType: 'gelo_sabores' },
+                { id: 'carvao-3kg', name: 'Carvão 3kg', description: 'Carvão', price: 20.00 },
+                { id: 'gelo-4.5kg', name: 'Gelo 4,5Kg', description: 'Gelo', price: 11.00 }
+            ]
+        };
+
+        // ============================================
+        // CATÁLOGO DE SABORES
+        // ============================================
+        const FLAVOR_CATALOG = {
+            'whisky_oldstar': ['Old Star Tradicional', 'Old Star Maçã-Verde'],
+            'whisky_jack': ['Jack Tradicional', 'Jack Mel', 'Jack Maçã-Verde'],
+            'gin_sabores': ['Tropical', 'Melancia', 'Morango', 'Maçã-Verde'],
+            'corote_sabores': ['Morango', 'Melância', 'Maracujá', 'Pêssego', 'Blueberry', 'Limão', 'Canelinha'],
+            'vodka_sabores': ['Frutas Vermelhas', 'Maracujá', 'Frutas Roxas', 'Kiwi', 'Pêssego', 'Limão', 'Blueberry'],
+            'ice_askov': ['Maracujá', 'Limão', 'Frutas Vermelhas', 'Pina Colada'],
+            'ice_leev': ['Morango', 'Limão', 'Melância', 'Maracujá', 'Abacaxi com Hortelã', 'Maçã-Verde'],
+            'beats': ['Sense', 'GT', 'Red Mix', 'Green Mix'],
+            'h2o_sabores': ['Limão', 'Limoneto'],
+            'suco_delvalle': ['Laranja', 'Manga', 'Maracujá', 'Caju', 'Uva', 'Pêssego'],
+            'suco_kapo': ['Uva', 'Morango', 'Maracujá', 'Laranja'],
+            'suco_life': ['Uva', 'Laranja'],
+            'energetico_monster': ['Tradicional', 'Zero', 'Uva', 'Mango Loco', 'Melancia', 'Cereja', 'Pêssego'],
+            'energetico_bally': ['Tradicional', 'Morango/Pêssego', 'Melancia', 'Tropical'],
+            'gelo_sabores': ['Melancia', 'Morango', 'Limão', 'Côco', 'Maçã-Verde', 'Abacaxi/Hortelã', 'Maracujá', 'Laranja']
+        };
+
+        const FLAVOR_TYPES = {
+            'whisky_oldstar': 'Old Star',
+            'whisky_jack': 'Jack Daniels',
+            'gin_sabores': 'Gin',
+            'corote_sabores': 'Corote',
+            'vodka_sabores': 'Vodka',
+            'ice_askov': 'Askov Ice',
+            'ice_leev': 'Ice Leev',
+            'beats': 'Beats',
+            'h2o_sabores': 'H2O',
+            'suco_delvalle': 'Suco Del Valle',
+            'suco_kapo': 'Kapo',
+            'suco_life': 'Life',
+            'energetico_monster': 'Monster',
+            'energetico_bally': 'Bally',
+            'gelo_sabores': 'Gelo'
+        };
+
+        // ============================================
+        // ESTADO GLOBAL
+        // ============================================
+        const state = {
+            cart: [],
+            currentCategory: 'drinks-whisky',
+            deliveryType: 'pickup',
+            paymentMethod: null,
+            paymentConfirmed: false,
+            paymentProcessing: false,
+            currentOrderId: null,
+            pendingProduct: null,
+            pendingFlavors: {},
+            currentFlavorStep: null,
+            currentButton: null,
+            adminAuthenticated: false,
+            productAvailability: {},
+            flavorAvailability: {},
+            ageVerified: false,
+            backendOnline: null,
+            offlineSince: null,
+            syncQueue: []
+        };
+
+        // ============================================
+        // INICIALIZAÇÃO
+        // ============================================
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('🚀 BebCom Delivery - Azure Production');
+            console.log(`📦 Versão: ${CONFIG.version}`);
+            console.log(`🌍 Backend: ${CONFIG.backendUrl}`);
+            
+            initAdminSystem();
+            initAgeVerification();
+            initStorage();
+            
+            setTimeout(() => {
+                checkBackendHealth();
+            }, 2000);
+        });
+
+        // ============================================
+        // VERIFICAÇÃO DE IDADE
+        // ============================================
+        function initAgeVerification() {
+            const hasConfirmed = localStorage.getItem('bebcom_age_verified');
+            
+            if (hasConfirmed === 'true') {
+                state.ageVerified = true;
+                document.getElementById('ageVerificationModal').style.display = 'none';
+                document.body.style.overflow = 'auto';
+                initUserInterface();
+                return;
+            }
+            
+            const modal = document.getElementById('ageVerificationModal');
+            modal.style.display = 'flex';
+            document.body.style.overflow = 'hidden';
+            
+            const checkbox = document.getElementById('ageConfirmationCheckbox');
+            const enterBtn = document.getElementById('enterSiteButton');
+            
+            checkbox.addEventListener('change', function() {
+                enterBtn.disabled = !this.checked;
+            });
+            
+            enterBtn.addEventListener('click', function() {
+                if (!checkbox.checked) return;
+                
+                state.ageVerified = true;
+                localStorage.setItem('bebcom_age_verified', 'true');
+                modal.style.display = 'none';
+                document.body.style.overflow = 'auto';
+                
+                initUserInterface();
+            });
+        }
+
+        // ============================================
+        // INICIALIZAÇÃO DA INTERFACE
+        // ============================================
+        async function initUserInterface() {
+            if (!state.ageVerified) return;
+            
+            console.log('✅ Inicializando interface...');
+            
+            loadCart();
+            await loadAvailability();
+            
+            showCategory('drinks-whisky');
+            setupEventListeners();
+            setupPhoneMask();
+            
+            selectDeliveryType('pickup');
+        }
+
+        // ============================================
+        // STORAGE MANAGEMENT
+        // ============================================
+        function initStorage() {
+            if (!localStorage.getItem('bebcom_product_availability')) {
+                const defaultAvailability = {};
+                Object.keys(products).forEach(cat => {
+                    products[cat].forEach(p => {
+                        defaultAvailability[p.id] = true;
+                    });
+                });
+                localStorage.setItem('bebcom_product_availability', JSON.stringify(defaultAvailability));
+                state.productAvailability = defaultAvailability;
+            } else {
+                state.productAvailability = JSON.parse(localStorage.getItem('bebcom_product_availability'));
+            }
+            
+            if (!localStorage.getItem('bebcom_flavor_availability')) {
+                const defaultFlavors = {};
+                Object.keys(FLAVOR_CATALOG).forEach(type => {
+                    FLAVOR_CATALOG[type].forEach(flavor => {
+                        defaultFlavors[`${type}_${flavor}`] = true;
+                    });
+                });
+                localStorage.setItem('bebcom_flavor_availability', JSON.stringify(defaultFlavors));
+                state.flavorAvailability = defaultFlavors;
+            } else {
+                state.flavorAvailability = JSON.parse(localStorage.getItem('bebcom_flavor_availability'));
+            }
+        }
+
+        // ============================================
+        // BACKEND HEALTH CHECK
+        // ============================================
+        async function checkBackendHealth() {
+            try {
+                const response = await fetch(`${CONFIG.backendUrl}/health`, {
+                    method: 'GET',
+                    headers: { 'Cache-Control': 'no-cache' },
+                    timeout: 5000
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    state.backendOnline = true;
+                    state.offlineSince = null;
+                    console.log('✅ Backend Azure online');
+                    
+                    // Tentar sincronizar dados pendentes
+                    syncPendingData();
+                    
+                    return true;
+                } else {
+                    throw new Error('Backend offline');
+                }
+            } catch (error) {
+                state.backendOnline = false;
+                state.offlineSince = state.offlineSince || Date.now();
+                console.warn('⚠️ Backend offline - Modo local');
+                return false;
+            }
+        }
+
+        // ============================================
+        // CARREGAR DISPONIBILIDADE
+        // ============================================
+        async function loadAvailability() {
+            try {
+                if (state.backendOnline) {
+                    const [productsRes, flavorsRes] = await Promise.all([
+                        fetch(`${CONFIG.backendUrl}/api/product-availability`),
+                        fetch(`${CONFIG.backendUrl}/api/flavor-availability`)
+                    ]);
+                    
+                    if (productsRes.ok) {
+                        const productData = await productsRes.json();
+                        if (productData.success && productData.productAvailability) {
+                            state.productAvailability = productData.productAvailability;
+                            localStorage.setItem('bebcom_product_availability', JSON.stringify(state.productAvailability));
+                        }
+                    }
+                    
+                    if (flavorsRes.ok) {
+                        const flavorData = await flavorsRes.json();
+                        if (flavorData.success && flavorData.flavorAvailability) {
+                            state.flavorAvailability = flavorData.flavorAvailability;
+                            localStorage.setItem('bebcom_flavor_availability', JSON.stringify(state.flavorAvailability));
+                        }
+                    }
+                }
+            } catch (error) {
+                console.log('⚠️ Usando dados locais');
+            }
+        }
+
+        // ============================================
+        // FUNÇÕES DE PRODUTO
+        // ============================================
+        function isProductAvailable(productId) {
+            return state.productAvailability[productId] !== false;
+        }
+
+        function isFlavorAvailable(flavorType, flavorName) {
+            const key = `${flavorType}_${flavorName}`;
+            return state.flavorAvailability[key] !== false;
+        }
+
+        function findProductById(productId) {
+            for (const cat in products) {
+                const found = products[cat].find(p => p.id === productId);
+                if (found) return found;
+            }
+            return null;
+        }
+
+        // ============================================
+        // EXIBIR CATEGORIA
+        // ============================================
+        function showCategory(categoryId) {
+            state.currentCategory = categoryId;
+            const grid = document.getElementById('productsGrid');
+            grid.innerHTML = '';
+            
+            const categoryProducts = products[categoryId] || [];
+            
+            if (categoryProducts.length === 0) {
+                grid.innerHTML = '<div style="text-align: center; color: #aaa; padding: 50px; grid-column: 1/-1;">Nenhum produto nesta categoria</div>';
+                return;
+            }
+            
+            categoryProducts.forEach(product => {
+                const available = isProductAvailable(product.id);
+                const hasFlavors = product.requiresFlavorSelection || false;
+                
+                const card = document.createElement('div');
+                card.className = `product-card ${!available ? 'unavailable' : ''} ${hasFlavors ? 'with-flavors' : ''}`;
+                card.setAttribute('data-product-id', product.id);
+                
+                let btnText = '🛒 Adicionar';
+                let btnClass = 'add-to-cart-btn';
+                
+                if (!available) {
+                    btnText = '❌ Indisponível';
+                } else if (hasFlavors) {
+                    btnText = '⚡ Escolher Sabores';
+                    btnClass += ' has-flavors';
+                }
+                
+                card.innerHTML = `
+                    ${hasFlavors ? '<div class="flavor-badge">⚡</div>' : ''}
+                    <div class="product-name">${product.name}</div>
+                    <div class="product-info">${product.description}</div>
+                    <div class="product-price">R$ ${product.price.toFixed(2)}</div>
+                    <button class="${btnClass}" onclick="handleAddToCart('${product.id}', this)" ${!available ? 'disabled' : ''}>
+                        ${btnText}
+                    </button>
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        // ============================================
+        // ADICIONAR AO CARRINHO
+        // ============================================
+        function handleAddToCart(productId, button) {
+            const product = findProductById(productId);
+            if (!product) return;
+            
+            if (!isProductAvailable(productId)) {
+                showNotification('❌ Produto indisponível', 'error');
+                return;
+            }
+            
+            if (product.requiresFlavorSelection) {
+                state.pendingProduct = product;
+                state.pendingFlavors = {};
+                state.currentFlavorStep = 'primary';
+                state.currentButton = button;
+                
+                if (product.flavorType && FLAVOR_CATALOG[product.flavorType]) {
+                    const flavors = FLAVOR_CATALOG[product.flavorType];
+                    const hasAvailable = flavors.some(f => isFlavorAvailable(product.flavorType, f));
+                    
+                    if (!hasAvailable) {
+                        showNotification('❌ Todos os sabores estão indisponíveis', 'error');
+                        return;
+                    }
+                    
+                    openFlavorModal(product, 'primary');
+                } else {
+                    addToCartDirect(product, button);
+                }
+            } else {
+                addToCartDirect(product, button);
+            }
+        }
+
+        // ============================================
+        // MODAL DE SABORES
+        // ============================================
+        function openFlavorModal(product, step) {
+            const modal = document.getElementById('flavorModal');
+            const title = document.getElementById('flavorModalTitle');
+            const instruction = document.getElementById('flavorModalInstruction');
+            const grid = document.getElementById('flavorsGrid');
+            const confirmBtn = document.getElementById('confirmFlavorButton');
+            
+            grid.innerHTML = '<div style="text-align: center; padding: 30px;">Carregando...</div>';
+            
+            setTimeout(() => {
+                grid.innerHTML = '';
+                
+                let flavorType = product.flavorType;
+                let flavors = FLAVOR_CATALOG[flavorType] || [];
+                
+                if (step === 'ice' && product.nextStep === 'ice') {
+                    flavorType = 'gelo_sabores';
+                    flavors = FLAVOR_CATALOG.gelo_sabores || [];
+                    title.textContent = '🧊 Escolha o sabor do gelo';
+                    instruction.textContent = 'Selecione o sabor do gelo (sem custo)';
+                } else {
+                    title.textContent = `Escolha o sabor do ${FLAVOR_TYPES[flavorType] || 'produto'}`;
+                    instruction.textContent = `Selecione o sabor para ${product.name}`;
+                }
+                
+                if (flavors.length === 0) {
+                    grid.innerHTML = '<div style="text-align: center; padding: 30px; color: #dc2626;">Nenhum sabor disponível</div>';
+                    confirmBtn.disabled = true;
+                    return;
+                }
+                
+                let hasAvailable = false;
+                
+                flavors.forEach(flavor => {
+                    const available = isFlavorAvailable(flavorType, flavor);
+                    if (available) hasAvailable = true;
+                    
+                    const option = document.createElement('div');
+                    option.className = `flavor-option ${!available ? 'unavailable' : ''}`;
+                    option.textContent = flavor;
+                    option.dataset.flavor = flavor;
+                    
+                    if (available) {
+                        option.onclick = function() {
+                            document.querySelectorAll('.flavor-option').forEach(el => {
+                                el.classList.remove('selected');
+                            });
+                            this.classList.add('selected');
+                            
+                            if (step === 'primary') {
+                                state.pendingFlavors.primary = flavor;
+                            } else if (step === 'ice') {
+                                state.pendingFlavors.ice = flavor;
+                            }
+                            
+                            confirmBtn.disabled = false;
+                        };
+                    }
+                    
+                    grid.appendChild(option);
+                });
+                
+                if (!hasAvailable) {
+                    instruction.textContent = '⚠️ Todos os sabores estão indisponíveis';
+                    instruction.style.color = '#dc2626';
+                }
+                
+                confirmBtn.disabled = true;
+                modal.style.display = 'flex';
+            }, 100);
+        }
+
+        function confirmFlavorSelection() {
+            if (state.currentFlavorStep === 'primary' && !state.pendingFlavors.primary) {
+                alert('Selecione um sabor');
+                return;
+            }
+            
+            if (state.currentFlavorStep === 'ice' && !state.pendingFlavors.ice) {
+                alert('Selecione um sabor de gelo');
+                return;
+            }
+            
+            document.getElementById('flavorModal').style.display = 'none';
+            
+            if (state.currentFlavorStep === 'primary' && state.pendingProduct.nextStep === 'ice') {
+                openFlavorModal(state.pendingProduct, 'ice');
+            } else {
+                addToCartWithFlavors();
+            }
+        }
+
+        function cancelFlavorSelection() {
+            document.getElementById('flavorModal').style.display = 'none';
+            state.pendingProduct = null;
+            state.pendingFlavors = {};
+            state.currentFlavorStep = null;
+            state.currentButton = null;
+        }
+
+        function addToCartWithFlavors() {
+            if (!state.pendingProduct) return;
+            
+            const product = state.pendingProduct;
+            const flavors = state.pendingFlavors;
+            
+            const existing = state.cart.find(item => 
+                item.name === product.name && 
+                JSON.stringify(item.flavors) === JSON.stringify(flavors)
+            );
+            
+            if (existing) {
+                existing.quantity += 1;
+            } else {
+                state.cart.push({
+                    name: product.name,
+                    price: product.price,
+                    quantity: 1,
+                    productId: product.id,
+                    flavors: { ...flavors }
+                });
+            }
+            
+            updateCart();
+            saveCart();
+            
+            if (state.currentButton) {
+                const original = state.currentButton.innerHTML;
+                state.currentButton.innerHTML = '✓ Adicionado!';
+                state.currentButton.classList.add('added');
+                setTimeout(() => {
+                    state.currentButton.innerHTML = original;
+                    state.currentButton.classList.remove('added');
+                }, 1000);
+            }
+            
+            state.pendingProduct = null;
+            state.pendingFlavors = {};
+            state.currentFlavorStep = null;
+            state.currentButton = null;
+            
+            showNotification(`✅ ${product.name} adicionado`);
+        }
+
+        function addToCartDirect(product, button) {
+            const existing = state.cart.find(item => 
+                item.name === product.name && !item.flavors
+            );
+            
+            if (existing) {
+                existing.quantity += 1;
+            } else {
+                state.cart.push({
+                    name: product.name,
+                    price: product.price,
+                    quantity: 1,
+                    productId: product.id
+                });
+            }
+            
+            updateCart();
+            saveCart();
+            
+            if (button) {
+                const original = button.innerHTML;
+                button.innerHTML = '✓ Adicionado!';
+                button.classList.add('added');
+                setTimeout(() => {
+                    button.innerHTML = original;
+                    button.classList.remove('added');
+                }, 1000);
+            }
+            
+            showNotification(`✅ ${product.name} adicionado`);
+        }
+
+        // ============================================
+        // FUNÇÕES DO CARRINHO
+        // ============================================
+        function updateCart() {
+            const cartEl = document.getElementById('cartItems');
+            const subtotalEl = document.getElementById('subtotal');
+            const totalEl = document.getElementById('totalAmount');
+            const deliveryRow = document.getElementById('deliveryRow');
+            const deliveryFeeEl = document.getElementById('deliveryFee');
+            
+            let subtotal = 0;
+            
+            if (state.cart.length === 0) {
+                cartEl.innerHTML = '<div style="text-align: center; color: #aaa; padding: 40px;">Seu carrinho está vazio</div>';
+                subtotalEl.textContent = '0.00';
+                totalEl.textContent = '0.00';
+                validateForm();
+                return;
+            }
+            
+            cartEl.innerHTML = '';
+            
+            state.cart.forEach((item, idx) => {
+                const itemTotal = item.price * item.quantity;
+                subtotal += itemTotal;
+                
+                let itemName = item.name;
+                if (item.flavors) {
+                    if (item.flavors.primary) itemName += ` (${item.flavors.primary})`;
+                    if (item.flavors.ice) itemName += ` - Gelo: ${item.flavors.ice}`;
+                }
+                
+                const cartItem = document.createElement('div');
+                cartItem.className = 'cart-item';
+                cartItem.innerHTML = `
+                    <div>
+                        <strong>${itemName}</strong><br>
+                        <small>R$ ${item.price.toFixed(2)}</small>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <button onclick="updateQuantity(${idx}, -1)" class="quantity-btn">-</button>
+                        <span style="min-width: 30px; text-align: center; font-weight: bold;">${item.quantity}</span>
+                        <button onclick="updateQuantity(${idx}, 1)" class="quantity-btn">+</button>
+                        <span style="margin-left: 10px; font-weight: bold; color: #4d96ff;">R$ ${itemTotal.toFixed(2)}</span>
+                        <button onclick="removeFromCart(${idx})" class="remove-item-btn" style="background: none; border: none; color: #dc3545; font-size: 20px; cursor: pointer;">×</button>
+                    </div>
+                `;
+                cartEl.appendChild(cartItem);
+            });
+            
+            let deliveryFee = 0;
+            if (state.deliveryType === 'delivery') {
+                deliveryFee = CONFIG.deliveryRates.baseFee;
+                if (subtotal >= CONFIG.deliveryRates.freeDeliveryMin) {
+                    deliveryFee = 0;
+                }
+                deliveryRow.style.display = 'flex';
+                deliveryFeeEl.textContent = deliveryFee.toFixed(2);
+            } else {
+                deliveryRow.style.display = 'none';
+            }
+            
+            const total = subtotal + deliveryFee;
+            
+            subtotalEl.textContent = subtotal.toFixed(2);
+            totalEl.textContent = total.toFixed(2);
+            
+            validateForm();
+        }
+
+        function updateQuantity(index, change) {
+            if (state.cart[index]) {
+                const newQty = state.cart[index].quantity + change;
+                
+                if (newQty < 1) {
+                    removeFromCart(index);
+                } else if (newQty > 50) {
+                    showNotification('❌ Máximo 50 unidades', 'error');
+                } else {
+                    state.cart[index].quantity = newQty;
+                    updateCart();
+                    saveCart();
+                }
+            }
+        }
+
+        function removeFromCart(index) {
+            if (state.cart[index]) {
+                const name = state.cart[index].name;
+                state.cart.splice(index, 1);
+                updateCart();
+                saveCart();
+                showNotification(`🗑️ ${name} removido`);
+            }
+        }
+
+        function clearCart() {
+            if (state.cart.length === 0) return;
+            
+            if (confirm('Limpar carrinho?')) {
+                state.cart = [];
+                updateCart();
+                saveCart();
+                showNotification('🗑️ Carrinho limpo');
+            }
+        }
+
+        function saveCart() {
+            localStorage.setItem('bebcom_cart', JSON.stringify({
+                items: state.cart,
+                timestamp: Date.now()
+            }));
+        }
+
+        function loadCart() {
+            const saved = localStorage.getItem('bebcom_cart');
+            if (saved) {
+                try {
+                    const data = JSON.parse(saved);
+                    state.cart = data.items || [];
+                    updateCart();
+                } catch (e) {
+                    state.cart = [];
+                }
+            }
+        }
+
+        // ============================================
+        // ENTREGA E PAGAMENTO
+        // ============================================
+        function selectDeliveryType(type) {
+            state.deliveryType = type;
+            
+            const pickupBtn = document.querySelectorAll('.delivery-option')[0];
+            const deliveryBtn = document.querySelectorAll('.delivery-option')[1];
+            const addressFields = document.getElementById('addressFields');
+            const paymentLabel = document.getElementById('paymentLabel');
+            const paymentMethods = document.getElementById('paymentMethods');
+            const payButton = document.getElementById('payButton');
+            
+            if (type === 'pickup') {
+                pickupBtn.classList.add('selected');
+                deliveryBtn.classList.remove('selected');
+                addressFields.style.display = 'none';
+                paymentLabel.style.display = 'none';
+                paymentMethods.style.display = 'none';
+                payButton.disabled = true;
+                payButton.innerHTML = '🏪 Retirada no Local';
+                state.paymentMethod = null;
+                state.paymentConfirmed = false;
+            } else {
+                pickupBtn.classList.remove('selected');
+                deliveryBtn.classList.add('selected');
+                addressFields.style.display = 'block';
+                paymentLabel.style.display = 'block';
+                paymentMethods.style.display = 'grid';
+                payButton.disabled = false;
+                selectPaymentMethod('pix');
+            }
+            
+            updateCart();
+            validateForm();
+        }
+
+        function selectPaymentMethod(method) {
+            if (state.deliveryType !== 'delivery') return;
+            
+            state.paymentMethod = method;
+            
+            document.querySelectorAll('.payment-method').forEach(el => {
+                el.classList.remove('selected');
+            });
+            
+            const selected = document.querySelector(`.payment-method:nth-child(${method === 'pix' ? 1 : 2})`);
+            if (selected) selected.classList.add('selected');
+            
+            const payBtn = document.getElementById('payButton');
+            payBtn.innerHTML = method === 'pix' ? '🧾 Pagar com PIX' : '💳 Pagar com Cartão';
+        }
+
+        function validateForm() {
+            const name = document.getElementById('customerName').value.trim();
+            const phone = document.getElementById('customerPhone').value.trim();
+            const whatsappBtn = document.getElementById('whatsappButton');
+            
+            let isValid = true;
+            
+            if (name.length < 3) isValid = false;
+            
+            const phoneClean = phone.replace(/\D/g, '');
+            if (phoneClean.length < 10 || phoneClean.length > 11) isValid = false;
+            
+            if (state.cart.length === 0) isValid = false;
+            
+            if (state.deliveryType === 'delivery') {
+                const street = document.getElementById('street').value.trim();
+                const number = document.getElementById('number').value.trim();
+                const neighborhood = document.getElementById('neighborhood').value.trim();
+                
+                if (!street || street.length < 3) isValid = false;
+                if (!number) isValid = false;
+                if (!neighborhood || neighborhood.length < 3) isValid = false;
+                if (!state.paymentMethod) isValid = false;
+                if (!state.paymentConfirmed) isValid = false;
+            }
+            
+            whatsappBtn.disabled = !isValid;
+            return isValid;
+        }
+
+        async function processPayment() {
+            if (state.deliveryType === 'pickup') {
+                alert('Pagamento será realizado na retirada.');
+                return;
+            }
+            
+            if (state.paymentProcessing) return;
+            
+            const errors = validateOrder();
+            if (errors.length > 0) {
+                alert(errors.join('\n'));
+                return;
+            }
+            
+            state.paymentProcessing = true;
+            const button = document.getElementById('payButton');
+            const original = button.innerHTML;
+            const statusDiv = document.getElementById('paymentStatus');
+            
+            button.innerHTML = '<span class="loading-spinner"></span> Processando...';
+            button.disabled = true;
+            statusDiv.style.display = 'block';
+            statusDiv.innerHTML = '🔄 Processando pagamento...';
+            
+            try {
+                const orderData = prepareOrderData();
+                state.currentOrderId = 'BEB' + Date.now().toString().slice(-8);
+                
+                const response = await fetch(`${CONFIG.backendUrl}/api/create-payment`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        orderId: state.currentOrderId,
+                        customer: {
+                            name: document.getElementById('customerName').value.trim(),
+                            phone: document.getElementById('customerPhone').value.trim()
+                        },
+                        items: orderData.items,
+                        total: orderData.total,
+                        deliveryType: state.deliveryType,
+                        paymentMethod: state.paymentMethod
+                    })
+                });
+                
+                if (!response.ok) throw new Error('Erro no pagamento');
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    if (data.qrCode) {
+                        showPixPayment(data.qrCode, data.copyPasteKey);
+                    } else if (data.paymentUrl) {
+                        window.open(data.paymentUrl, '_blank');
+                        setTimeout(() => confirmPayment(), 3000);
+                    } else {
+                        confirmPayment();
+                    }
+                } else {
+                    throw new Error(data.error || 'Erro no pagamento');
+                }
+                
+            } catch (error) {
+                console.error('Erro:', error);
+                showManualPixPayment();
+            } finally {
+                button.innerHTML = original;
+                button.disabled = false;
+                state.paymentProcessing = false;
+            }
+        }
+
+        function showPixPayment(qrCode, copyKey) {
+            const statusDiv = document.getElementById('paymentStatus');
+            const total = prepareOrderData().total;
+            
+            statusDiv.className = 'payment-status';
+            statusDiv.innerHTML = `
+                <div style="text-align: center;">
+                    <h4 style="margin-bottom: 15px; color: #ffd93d;">🧾 PIX</h4>
+                    <p>Valor: <strong style="font-size: 22px;">R$ ${total.toFixed(2)}</strong></p>
+                    <div style="margin: 20px 0;">
+                        <img src="${qrCode}" alt="QR Code" style="width: 200px; height: 200px; border-radius: 12px; border: 2px solid #28a745;">
+                    </div>
+                    <div style="background: rgba(0,0,0,0.5); padding: 15px; border-radius: 10px; margin: 15px 0;">
+                        <small style="color: #aaa;">Chave PIX:</small><br>
+                        <span style="font-family: monospace; word-break: break-all; color: white;">${copyKey}</span>
+                        <button onclick="navigator.clipboard.writeText('${copyKey}'); alert('Chave copiada!');" style="margin-top: 10px; background: #3b82f6; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer;">
+                            📋 Copiar
+                        </button>
+                    </div>
+                    <button onclick="confirmPayment()" style="background: #28a745; color: white; border: none; padding: 14px 28px; border-radius: 10px; margin: 10px; font-weight: bold; cursor: pointer;">
+                        ✅ Já Paguei
+                    </button>
+                    <button onclick="cancelPayment()" style="background: #dc3545; color: white; border: none; padding: 14px 28px; border-radius: 10px; margin: 10px; font-weight: bold; cursor: pointer;">
+                        ❌ Cancelar
+                    </button>
+                </div>
+            `;
+            
+            document.getElementById('payButton').style.display = 'none';
+        }
+
+        function showManualPixPayment() {
+            const statusDiv = document.getElementById('paymentStatus');
+            const total = prepareOrderData().total;
+            
+            statusDiv.className = 'payment-status';
+            statusDiv.innerHTML = `
+                <div style="text-align: center;">
+                    <h4 style="margin-bottom: 15px; color: #ffd93d;">🧾 PIX Manual</h4>
+                    <p>Valor: <strong style="font-size: 22px;">R$ ${total.toFixed(2)}</strong></p>
+                    <div style="background: rgba(0,0,0,0.5); padding: 20px; border-radius: 10px; margin: 20px 0;">
+                        <strong>Chave PIX (CNPJ):</strong><br>
+                        <span style="font-family: monospace; font-size: 18px; color: #4d96ff;">12.345.678/0001-90</span>
+                    </div>
+                    <p style="color: #aaa;">Após pagar, envie o comprovante pelo WhatsApp</p>
+                    <button onclick="confirmPayment()" style="background: #28a745; color: white; border: none; padding: 14px 28px; border-radius: 10px; margin: 10px; font-weight: bold; cursor: pointer;">
+                        ✅ Já Paguei
+                    </button>
+                    <button onclick="cancelPayment()" style="background: #dc3545; color: white; border: none; padding: 14px 28px; border-radius: 10px; margin: 10px; font-weight: bold; cursor: pointer;">
+                        ❌ Cancelar
+                    </button>
+                </div>
+            `;
+            
+            document.getElementById('payButton').style.display = 'none';
+        }
+
+        function cancelPayment() {
+            state.paymentConfirmed = false;
+            document.getElementById('paymentStatus').style.display = 'none';
+            document.getElementById('payButton').style.display = 'block';
+        }
+
+        function confirmPayment() {
+            state.paymentConfirmed = true;
+            
+            const statusDiv = document.getElementById('paymentStatus');
+            statusDiv.className = 'payment-status success';
+            statusDiv.innerHTML = '✅ Pagamento confirmado!';
+            
+            document.getElementById('payButton').innerHTML = '✅ Pagamento Confirmado';
+            document.getElementById('payButton').disabled = true;
+            document.getElementById('whatsappButton').disabled = false;
+            
+            showNotification('✅ Pagamento confirmado! Envie o pedido.');
+        }
+
+        function prepareOrderData() {
+            const items = state.cart.map(item => ({
+                name: item.name,
+                quantity: item.quantity,
+                price: item.price,
+                flavors: item.flavors || null
+            }));
+            
+            const subtotal = items.reduce((sum, i) => sum + (i.quantity * i.price), 0);
+            
+            let deliveryFee = 0;
+            if (state.deliveryType === 'delivery') {
+                deliveryFee = CONFIG.deliveryRates.baseFee;
+                if (subtotal >= CONFIG.deliveryRates.freeDeliveryMin) deliveryFee = 0;
+            }
+            
+            return {
+                items,
+                subtotal,
+                deliveryFee,
+                total: subtotal + deliveryFee
+            };
+        }
+
+        function validateOrder() {
+            const errors = [];
+            const name = document.getElementById('customerName').value.trim();
+            const phone = document.getElementById('customerPhone').value.trim();
+            
+            if (!name) errors.push('• Nome obrigatório');
+            if (!phone || phone.replace(/\D/g, '').length < 10) errors.push('• WhatsApp inválido');
+            if (state.cart.length === 0) errors.push('• Carrinho vazio');
+            
+            if (state.deliveryType === 'delivery') {
+                if (!document.getElementById('street').value.trim()) errors.push('• Rua obrigatória');
+                if (!document.getElementById('number').value.trim()) errors.push('• Número obrigatório');
+                if (!document.getElementById('neighborhood').value.trim()) errors.push('• Bairro obrigatório');
+                if (!state.paymentMethod) errors.push('• Selecione pagamento');
+                if (!state.paymentConfirmed) errors.push('• Confirme o pagamento');
+            }
+            
+            return errors;
+        }
+
+        // ============================================
+        // WHATSAPP
+        // ============================================
+        function sendToWhatsApp() {
+            if (!validateForm()) {
+                alert('Complete todas as informações');
+                return;
+            }
+            
+            const name = document.getElementById('customerName').value.trim();
+            const phone = document.getElementById('customerPhone').value.trim();
+            const street = document.getElementById('street').value.trim();
+            const number = document.getElementById('number').value.trim();
+            const neighborhood = document.getElementById('neighborhood').value.trim();
+            const complement = document.getElementById('addressComplement').value.trim();
+            
+            const order = prepareOrderData();
+            const orderId = state.currentOrderId || 'BEB' + Date.now().toString().slice(-8);
+            
+            let msg = `*🍹 PEDIDO BEBCOM DELIVERY*\n`;
+            msg += `━━━━━━━━━━━━━━━━\n`;
+            msg += `📋 *Pedido:* ${orderId}\n`;
+            msg += `👤 *Cliente:* ${name}\n`;
+            msg += `📱 *WhatsApp:* ${phone}\n`;
+            msg += `📦 *Tipo:* ${state.deliveryType === 'delivery' ? 'ENTREGA' : 'RETIRADA'}\n`;
+            
+            if (state.deliveryType === 'delivery') {
+                msg += `📍 *Endereço:* ${street}, ${number} - ${neighborhood}, Bauru\n`;
+                if (complement) msg += `🏠 *Complemento:* ${complement}\n`;
+                msg += `💳 *Pagamento:* ${state.paymentMethod === 'pix' ? 'PIX' : 'Cartão'} ${state.paymentConfirmed ? '✅ PAGO' : ''}\n`;
+            }
+            
+            msg += `🕒 *Data:* ${new Date().toLocaleString('pt-BR')}\n`;
+            msg += `━━━━━━━━━━━━━━━━\n`;
+            msg += `\n*🛒 ITENS:*\n`;
+            
+            order.items.forEach((item, i) => {
+                const total = item.price * item.quantity;
+                msg += `\n${i+1}. ${item.name}\n`;
+                if (item.flavors) {
+                    if (item.flavors.primary) msg += `   🍹 Sabor: ${item.flavors.primary}\n`;
+                    if (item.flavors.ice) msg += `   🧊 Gelo: ${item.flavors.ice}\n`;
+                }
+                msg += `   ${item.quantity}x R$ ${item.price.toFixed(2)} = R$ ${total.toFixed(2)}\n`;
+            });
+            
+            msg += `\n━━━━━━━━━━━━━━━━\n`;
+            msg += `💰 *Subtotal:* R$ ${order.subtotal.toFixed(2)}\n`;
+            if (state.deliveryType === 'delivery') {
+                msg += `🚚 *Entrega:* R$ ${order.deliveryFee.toFixed(2)}\n`;
+            }
+            msg += `💵 *TOTAL:* R$ ${order.total.toFixed(2)}\n`;
+            msg += `━━━━━━━━━━━━━━━━\n`;
+            msg += `✅ *Pedido confirmado!*\n`;
+            msg += `🎉 Obrigado pela preferência!`;
+            
+            const url = `https://wa.me/${CONFIG.whatsappNumber}?text=${encodeURIComponent(msg)}`;
+            window.open(url, '_blank');
+            
+            showNotification('✅ Pedido enviado!');
+            
+            state.paymentConfirmed = false;
+            document.getElementById('paymentStatus').style.display = 'none';
+            document.getElementById('payButton').style.display = 'block';
+        }
+
+        // ============================================
+        // ADMINISTRAÇÃO
+        // ============================================
+        function initAdminSystem() {
+            const adminBtn = document.getElementById('adminButton');
+            const adminClose = document.getElementById('adminClose');
+            const adminModal = document.getElementById('adminModal');
+            
+            adminBtn.addEventListener('click', openAdminPanel);
+            adminClose.addEventListener('click', closeAdminPanel);
+            adminModal.addEventListener('click', function(e) {
+                if (e.target === this) closeAdminPanel();
+            });
+            
+            document.addEventListener('keydown', function(e) {
+                if (e.ctrlKey && e.altKey && e.key === 'a') {
+                    e.preventDefault();
+                    openAdminPanel();
+                }
+                if (e.key === 'Escape') closeAdminPanel();
+            });
+        }
+
+        function openAdminPanel() {
+            document.getElementById('adminModal').style.display = 'block';
+            
+            if (!state.adminAuthenticated) {
+                document.getElementById('passwordSection').style.display = 'block';
+                document.getElementById('adminMain').style.display = 'none';
+                document.getElementById('adminActions').style.display = 'none';
+                document.getElementById('adminPassword').focus();
+            } else {
+                document.getElementById('passwordSection').style.display = 'none';
+                document.getElementById('adminMain').style.display = 'block';
+                document.getElementById('adminActions').style.display = 'flex';
+                loadAdminProducts();
+            }
+        }
+
+        function closeAdminPanel() {
+            document.getElementById('adminModal').style.display = 'none';
+            state.adminAuthenticated = false;
+        }
+
+        async function checkAdminPassword() {
+            const password = document.getElementById('adminPassword').value;
+            const btn = document.querySelector('.password-button');
+            const original = btn.innerHTML;
+            
+            btn.innerHTML = '<span class="loading-spinner"></span> Verificando...';
+            btn.disabled = true;
+            
+            try {
+                if (password === CONFIG.adminPassword) {
+                    state.adminAuthenticated = true;
+                    document.getElementById('passwordSection').style.display = 'none';
+                    document.getElementById('adminMain').style.display = 'block';
+                    document.getElementById('adminActions').style.display = 'flex';
+                    loadAdminProducts();
+                    showNotification('✅ Acesso concedido');
+                } else {
+                    throw new Error('Senha incorreta');
+                }
+            } catch (error) {
+                alert('❌ ' + error.message);
+                document.getElementById('adminPassword').value = '';
+            } finally {
+                btn.innerHTML = original;
+                btn.disabled = false;
+            }
+        }
+
+        function loadAdminProducts() {
+            const container = document.getElementById('adminMain');
+            container.innerHTML = '';
+            
+            const categories = [
+                { id: 'drinks-whisky', name: '🥃 Drinks Whisky' },
+                { id: 'drinks-gin', name: '🍸 Drinks Gin' },
+                { id: 'drinks-vodka', name: '🍸 Drinks Vodka' },
+                { id: 'drinks-vinho', name: '🍷 Drinks Vinho' },
+                { id: 'cervejas', name: '🍺 Cervejas' },
+                { id: 'destilados', name: '🥃 Destilados' },
+                { id: 'aguas', name: '💧 Águas' },
+                { id: 'refri-latas', name: '🥤 Refri Latas' },
+                { id: 'refri-pet', name: '🥤 Refri PET' },
+                { id: 'sucos', name: '🧃 Sucos' },
+                { id: 'energeticos', name: '⚡ Energéticos' },
+                { id: 'gelo-carvao', name: '🧊 Gelo/Carvão' }
+            ];
+            
+            categories.forEach(cat => {
+                const section = document.createElement('div');
+                section.className = 'admin-category-section';
+                section.style.marginBottom = '30px';
+                section.style.background = 'rgba(0,0,0,0.2)';
+                section.style.padding = '20px';
+                section.style.borderRadius = '12px';
+                
+                section.innerHTML = `<h3 style="color: #60a5fa; margin-bottom: 15px; border-bottom: 2px solid #3b82f6; padding-bottom: 10px;">${cat.name}</h3>`;
+                
+                const grid = document.createElement('div');
+                grid.style.display = 'grid';
+                grid.style.gridTemplateColumns = 'repeat(auto-fill, minmax(280px, 1fr))';
+                grid.style.gap = '12px';
+                
+                const catProducts = products[cat.id] || [];
+                catProducts.forEach(product => {
+                    const available = isProductAvailable(product.id);
+                    
+                    const item = document.createElement('div');
+                    item.style.display = 'flex';
+                    item.style.justifyContent = 'space-between';
+                    item.style.alignItems = 'center';
+                    item.style.padding = '15px';
+                    item.style.background = available ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)';
+                    item.style.borderRadius = '10px';
+                    item.style.border = `1px solid ${available ? '#10b981' : '#ef4444'}`;
+                    
+                    item.innerHTML = `
+                        <div>
+                            <div style="font-weight: bold; color: white;">${product.name}</div>
+                            <div style="font-size: 13px; color: #94a3b8;">R$ ${product.price.toFixed(2)}</div>
+                            ${product.requiresFlavorSelection ? '<div style="font-size: 12px; color: #60a5fa; margin-top: 4px;">⚡ Com sabores</div>' : ''}
+                        </div>
+                        <label style="position: relative; display: inline-block; width: 60px; height: 30px;">
+                            <input type="checkbox" style="opacity: 0; width: 0; height: 0;" 
+                                   id="admin_toggle_${product.id}"
+                                   ${available ? 'checked' : ''}
+                                   onchange="adminToggleProductAvailability('${product.id}', this.checked)">
+                            <span style="position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: ${available ? '#10b981' : '#dc2626'}; transition: .4s; border-radius: 30px;"></span>
+                            <span style="position: absolute; content: ''; height: 22px; width: 22px; left: 4px; bottom: 4px; background-color: white; transition: .4s; border-radius: 50%; transform: ${available ? 'translateX(30px)' : 'none'};"></span>
+                        </label>
+                    `;
+                    
+                    grid.appendChild(item);
+                });
+                
+                section.appendChild(grid);
+                container.appendChild(section);
+            });
+        }
+
+        function adminToggleProductAvailability(productId, isAvailable) {
+            state.productAvailability[productId] = isAvailable;
+            localStorage.setItem('bebcom_product_availability', JSON.stringify(state.productAvailability));
+            
+            const product = findProductById(productId);
+            const elements = document.querySelectorAll(`[data-product-id="${productId}"]`);
+            
+            elements.forEach(el => {
+                if (isAvailable) {
+                    el.classList.remove('unavailable');
+                    const btn = el.querySelector('button');
+                    if (btn) {
+                        btn.disabled = false;
+                        btn.innerHTML = product?.requiresFlavorSelection ? '⚡ Escolher Sabores' : '🛒 Adicionar';
+                    }
+                } else {
+                    el.classList.add('unavailable');
+                    const btn = el.querySelector('button');
+                    if (btn) {
+                        btn.disabled = true;
+                        btn.innerHTML = '❌ Indisponível';
+                    }
+                }
+            });
+        }
+
+        function setAllAvailable(isAvailable) {
+            Object.keys(products).forEach(cat => {
+                products[cat].forEach(p => {
+                    state.productAvailability[p.id] = isAvailable;
+                    
+                    const toggle = document.getElementById(`admin_toggle_${p.id}`);
+                    if (toggle) toggle.checked = isAvailable;
+                    
+                    const elements = document.querySelectorAll(`[data-product-id="${p.id}"]`);
+                    elements.forEach(el => {
+                        if (isAvailable) {
+                            el.classList.remove('unavailable');
+                            const btn = el.querySelector('button');
+                            if (btn) {
+                                btn.disabled = false;
+                                btn.innerHTML = p.requiresFlavorSelection ? '⚡ Escolher Sabores' : '🛒 Adicionar';
+                            }
+                        } else {
+                            el.classList.add('unavailable');
+                            const btn = el.querySelector('button');
+                            if (btn) {
+                                btn.disabled = true;
+                                btn.innerHTML = '❌ Indisponível';
+                            }
+                        }
+                    });
+                });
+            });
+            
+            localStorage.setItem('bebcom_product_availability', JSON.stringify(state.productAvailability));
+            showNotification(isAvailable ? '✅ Todos disponíveis' : '❌ Todos indisponíveis');
+        }
+
+        async function saveAvailability() {
+            const btn = document.querySelector('.save-btn');
+            const original = btn.innerHTML;
+            
+            btn.innerHTML = '<span class="loading-spinner"></span> Salvando...';
+            btn.disabled = true;
+            
+            try {
+                localStorage.setItem('bebcom_product_availability', JSON.stringify(state.productAvailability));
+                localStorage.setItem('bebcom_flavor_availability', JSON.stringify(state.flavorAvailability));
+                
+                if (state.backendOnline) {
+                    const [prodRes, flavRes] = await Promise.all([
+                        fetch(`${CONFIG.backendUrl}/api/admin/product-availability/bulk`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'x-admin-password': CONFIG.adminPassword
+                            },
+                            body: JSON.stringify({ productAvailability: state.productAvailability })
+                        }),
+                        fetch(`${CONFIG.backendUrl}/api/admin/flavor-availability/bulk`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'x-admin-password': CONFIG.adminPassword
+                            },
+                            body: JSON.stringify({ flavorAvailability: state.flavorAvailability })
+                        })
+                    ]);
+                    
+                    if (prodRes.ok && flavRes.ok) {
+                        showNotification('✅ Dados salvos no servidor!');
+                    } else {
+                        showNotification('⚠️ Salvos localmente. Pendente de sincronização.', 'warning');
+                    }
+                } else {
+                    showNotification('⚠️ Salvos localmente. Backend offline.', 'warning');
+                }
+                
+                setTimeout(() => closeAdminPanel(), 1500);
+                
+            } catch (error) {
+                showNotification('❌ Erro ao salvar', 'error');
+            } finally {
+                btn.innerHTML = original;
+                btn.disabled = false;
+            }
+        }
+
+        function resetAvailability() {
+            if (confirm('Restaurar todos os produtos como disponíveis?')) {
+                Object.keys(products).forEach(cat => {
+                    products[cat].forEach(p => {
+                        state.productAvailability[p.id] = true;
+                    });
+                });
+                
+                Object.keys(FLAVOR_CATALOG).forEach(type => {
+                    FLAVOR_CATALOG[type].forEach(flavor => {
+                        state.flavorAvailability[`${type}_${flavor}`] = true;
+                    });
+                });
+                
+                localStorage.setItem('bebcom_product_availability', JSON.stringify(state.productAvailability));
+                localStorage.setItem('bebcom_flavor_availability', JSON.stringify(state.flavorAvailability));
+                
+                loadAdminProducts();
+                updateMenuAvailability();
+                
+                showNotification('🔄 Disponibilidade restaurada');
+            }
+        }
+
+        function openFlavorManagement() {
+            const container = document.getElementById('adminMain');
+            container.innerHTML = `
+                <div style="margin-bottom: 30px;">
+                    <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 25px;">
+                        <button onclick="loadAdminProducts()" style="background: #3b82f6; color: white; border: none; border-radius: 8px; padding: 10px 15px; cursor: pointer;">
+                            ↩️ Voltar
+                        </button>
+                        <h3 style="color: #60a5fa; margin: 0;">🍹 Gerenciar Sabores</h3>
+                    </div>
+                    
+                    <select id="flavorTypeSelect" style="width: 100%; padding: 15px; background: rgba(255,255,255,0.1); border: 1px solid #444; border-radius: 8px; color: white; margin-bottom: 20px;" onchange="loadFlavorsForType(this.value)">
+                        <option value="">-- Selecione um tipo --</option>
+                        ${Object.entries(FLAVOR_TYPES).map(([key, name]) => `<option value="${key}">${name}</option>`).join('')}
+                    </select>
+                    
+                    <div id="flavorManagementSection" style="display: none;"></div>
+                </div>
+            `;
+        }
+
+        function loadFlavorsForType(flavorType) {
+            const section = document.getElementById('flavorManagementSection');
+            
+            if (!flavorType) {
+                section.style.display = 'none';
+                return;
+            }
+            
+            const flavors = FLAVOR_CATALOG[flavorType] || [];
+            const typeName = FLAVOR_TYPES[flavorType] || flavorType;
+            
+            let html = `
+                <div style="background: rgba(0,0,0,0.3); padding: 20px; border-radius: 12px;">
+                    <h4 style="color: #94a3b8; margin-bottom: 15px;">Gerenciando: ${typeName}</h4>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 10px;">
+            `;
+            
+            flavors.forEach(flavor => {
+                const key = `${flavorType}_${flavor}`;
+                const available = state.flavorAvailability[key] !== false;
+                
+                html += `
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 15px; background: ${available ? 'rgba(16,185,129,0.1)' : 'rgba(239,68,68,0.1)'}; border-radius: 8px; border: 1px solid ${available ? '#10b981' : '#ef4444'};">
+                        <span style="color: white; font-weight: 500;">${flavor}</span>
+                        <label style="position: relative; display: inline-block; width: 50px; height: 24px;">
+                            <input type="checkbox" style="opacity: 0; width: 0; height: 0;" 
+                                   ${available ? 'checked' : ''}
+                                   onchange="toggleFlavorAvailability('${flavorType}', '${flavor}', this.checked)">
+                            <span style="position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: ${available ? '#10b981' : '#dc2626'}; transition: .4s; border-radius: 24px;"></span>
+                            <span style="position: absolute; content: ''; height: 18px; width: 18px; left: 3px; bottom: 3px; background-color: white; transition: .4s; border-radius: 50%; transform: ${available ? 'translateX(26px)' : 'none'};"></span>
+                        </label>
+                    </div>
+                `;
+            });
+            
+            html += `
+                    </div>
+                    <div style="display: flex; gap: 10px; margin-top: 20px;">
+                        <button onclick="setAllFlavorsAvailable('${flavorType}', true)" style="flex: 1; padding: 12px; background: #10b981; color: white; border: none; border-radius: 8px; cursor: pointer;">✅ Todos</button>
+                        <button onclick="setAllFlavorsAvailable('${flavorType}', false)" style="flex: 1; padding: 12px; background: #ef4444; color: white; border: none; border-radius: 8px; cursor: pointer;">❌ Nenhum</button>
+                    </div>
+                </div>
+            `;
+            
+            section.innerHTML = html;
+            section.style.display = 'block';
+        }
+
+        function toggleFlavorAvailability(flavorType, flavorName, isAvailable) {
+            const key = `${flavorType}_${flavorName}`;
+            state.flavorAvailability[key] = isAvailable;
+            localStorage.setItem('bebcom_flavor_availability', JSON.stringify(state.flavorAvailability));
+            loadFlavorsForType(flavorType);
+        }
+
+        function setAllFlavorsAvailable(flavorType, makeAvailable) {
+            const flavors = FLAVOR_CATALOG[flavorType] || [];
+            flavors.forEach(flavor => {
+                const key = `${flavorType}_${flavor}`;
+                state.flavorAvailability[key] = makeAvailable;
+            });
+            localStorage.setItem('bebcom_flavor_availability', JSON.stringify(state.flavorAvailability));
+            loadFlavorsForType(flavorType);
+        }
+
+        async function syncAllFromServer() {
+            const btn = document.querySelector('[onclick*="syncAllFromServer"]');
+            const original = btn.innerHTML;
+            
+            btn.innerHTML = '<span class="loading-spinner"></span> Sincronizando...';
+            btn.disabled = true;
+            
+            try {
+                await checkBackendHealth();
+                
+                if (state.backendOnline) {
+                    await loadAvailability();
+                    updateMenuAvailability();
+                    
+                    if (document.getElementById('adminModal').style.display === 'block') {
+                        loadAdminProducts();
+                    }
+                    
+                    showNotification('✅ Sincronizado com servidor');
+                } else {
+                    showNotification('⚠️ Backend offline. Dados locais.', 'warning');
+                }
+            } catch (error) {
+                showNotification('❌ Erro na sincronização', 'error');
+            } finally {
+                btn.innerHTML = original;
+                btn.disabled = false;
+            }
+        }
+
+        function syncPendingData() {
+            // Implementar sincronização de dados pendentes
+        }
+
+        function updateMenuAvailability() {
+            Object.keys(products).forEach(cat => {
+                products[cat].forEach(p => {
+                    const elements = document.querySelectorAll(`[data-product-id="${p.id}"]`);
+                    const available = isProductAvailable(p.id);
+                    const hasFlavors = p.requiresFlavorSelection || false;
+                    
+                    elements.forEach(el => {
+                        if (available) {
+                            el.classList.remove('unavailable');
+                            const btn = el.querySelector('button');
+                            if (btn) {
+                                btn.disabled = false;
+                                btn.innerHTML = hasFlavors ? '⚡ Escolher Sabores' : '🛒 Adicionar';
+                            }
+                        } else {
+                            el.classList.add('unavailable');
+                            const btn = el.querySelector('button');
+                            if (btn) {
+                                btn.disabled = true;
+                                btn.innerHTML = '❌ Indisponível';
+                            }
+                        }
+                    });
+                });
+            });
+        }
+
+        // ============================================
+        // UTILITÁRIOS
+        // ============================================
+        function setupEventListeners() {
+            const inputs = ['customerName', 'customerPhone', 'street', 'number', 'neighborhood'];
+            inputs.forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.addEventListener('input', validateForm);
+            });
+        }
+
+        function setupPhoneMask() {
+            const phone = document.getElementById('customerPhone');
+            phone.addEventListener('input', function(e) {
+                let v = e.target.value.replace(/\D/g, '');
+                if (v.length > 11) v = v.substring(0, 11);
+                if (v.length > 0) v = '(' + v.substring(0, 2) + ') ' + v.substring(2);
+                if (v.length > 9) v = v.substring(0, 10) + '-' + v.substring(10);
+                e.target.value = v;
+                validateForm();
+            });
+        }
+
+        function showNotification(msg, type = 'success') {
+            const colors = {
+                success: '#28a745',
+                error: '#dc3545',
+                warning: '#ffc107',
+                info: '#17a2b8'
+            };
+            
+            const notif = document.createElement('div');
+            notif.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                background: ${colors[type]};
+                color: white;
+                padding: 16px 24px;
+                border-radius: 10px;
+                box-shadow: 0 8px 25px rgba(0,0,0,0.3);
+                z-index: 10000;
+                animation: fadeIn 0.3s;
+                font-weight: bold;
+                max-width: 350px;
+            `;
+            notif.innerHTML = msg;
+            document.body.appendChild(notif);
+            
+            setTimeout(() => {
+                notif.style.animation = 'fadeIn 0.3s reverse';
+                setTimeout(() => notif.remove(), 300);
+            }, 3000);
+        }
+    </script>
+</body>
+</html>
