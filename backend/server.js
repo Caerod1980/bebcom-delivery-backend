@@ -43,12 +43,16 @@ const adminLimiter = rateLimit({
 });
 
 // Middleware - CORS
+// ✅ CORS CORRETO - Aceita qualquer origem e permite credenciais
 app.use(cors({
-    origin: process.env.CORS_ORIGIN || '*',
+    origin: true,  // ✅ Permite qualquer origem (GitHub Pages, Vercel, localhost)
+    credentials: true,  // ✅ Permite envio de cookies/tokens
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'x-admin-password', 'x-admin-key']
 }));
 
+// ✅ IMPORTANTE: Responde preflight requests corretamente
+app.options('*', cors());
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
