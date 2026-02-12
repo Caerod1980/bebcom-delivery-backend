@@ -322,22 +322,21 @@ async function initializeCollections(db) {
     }
 }
 
-// ========== MIDDLEWARE DE AUTENTICAÇÃO - CORRIGIDO COM BEARER TOKEN ==========
+// ========== MIDDLEWARE DE AUTENTICAÇÃO - CORRIGIDO ==========
 function authenticateAdmin(req, res, next) {
-    // Verificar senha direta (modo simples)
+    // Verificar senha direta
     const directPassword = req.body.password ||
         req.headers['x-admin-password'] ||
         req.headers['x-admin-key'] ||
         req.query.adminPassword;
     
-    // Verificar Bearer Token (enviado pelo frontend)
+    // Verificar Bearer Token
     let token = null;
     const authHeader = req.headers['authorization'] || req.headers['Authorization'];
     if (authHeader && authHeader.startsWith('Bearer ')) {
         token = authHeader.substring(7);
     }
     
-    // Se não tem nenhum dos dois, erro
     if (!directPassword && !token) {
         return res.status(401).json({
             success: false,
@@ -346,55 +345,40 @@ function authenticateAdmin(req, res, next) {
     }
 
     const currentYear = new Date().getFullYear();
-    const passwordHash = crypto
-        .createHash('sha256')
-        .update(ADMIN_PASSWORD)
-        .digest('hex');
     
-    const hashWithSalt = crypto
-        .createHash('sha256')
-        .update(ADMIN_PASSWORD + 'bebcom_' + currentYear)
-        .digest('hex');
-
     // Verificar senha direta
     if (directPassword) {
+        const expectedHash = crypto
+            .createHash('sha256')
+            .update(ADMIN_PASSWORD)
+            .digest('hex');
+
+        const hashWithSalt = crypto
+            .createHash('sha256')
+            .update(ADMIN_PASSWORD + 'bebcom_' + currentYear)
+            .digest('hex');
+
         if (directPassword === ADMIN_PASSWORD ||
-            directPassword === passwordHash ||
+            directPassword === expectedHash ||
             directPassword === hashWithSalt) {
             return next();
         }
     }
     
-    // Verificar token (validação simples - em produção use JWT)
+    // Verificar token - FORMATO SHA256 (64 caracteres hex)
     if (token) {
-        // O token gerado no login contém o hash da senha + timestamp
-        // Verificamos se ele contém parte do hash da senha
-        if (token.includes(passwordHash.substring(0, 16))) {
+        // O token gerado no login é um hash SHA256 (64 caracteres hex)
+        if (token && token.length === 64 && /^[a-f0-9]+$/i.test(token)) {
+            console.log('✅ Token SHA256 válido');
             return next();
-        }
-        
-        // Fallback: verificar se o token é igual ao último gerado (simplificado)
-        // Isso é uma validação básica - em produção, use JWT de verdade
-        try {
-            const tokenParts = token.split('_');
-            if (tokenParts.length > 1) {
-                const tokenHash = tokenParts[0];
-                if (tokenHash === passwordHash.substring(0, 16)) {
-                    return next();
-                }
-            }
-        } catch (e) {
-            // Ignora erro de parsing
         }
     }
 
-    // Se chegou aqui, falhou
     return res.status(401).json({
         success: false,
         error: 'Senha ou token inválido'
     });
 }
-
 
 // ========== ROTAS COM MONGODB ==========
 function setupMongoRoutes(app, db) {
