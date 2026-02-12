@@ -28,7 +28,7 @@
     <script src="https://sdk.mercadopago.com/js/v2"></script>
     
     <style>
-        /* SEUS ESTILOS EXATAMENTE IGUAIS - MANTIDO INTACTO */
+        /* ====== SEUS ESTILOS EXATAMENTE IGUAIS - NADA MUDOU ====== */
         * {
             margin: 0;
             padding: 0;
@@ -73,7 +73,6 @@
             line-height: 1.5;
         }
 
-        /* Header */
         .header {
             background: linear-gradient(135deg, #000000 0%, var(--darker) 100%);
             color: white;
@@ -89,7 +88,6 @@
             z-index: 100;
         }
 
-        /* Navegação */
         .nav-container {
             display: flex;
             gap: 8px;
@@ -134,7 +132,6 @@
             border-color: var(--primary);
         }
 
-        /* Container principal */
         .main-container {
             display: grid;
             grid-template-columns: 1.5fr 1fr;
@@ -150,7 +147,6 @@
             }
         }
 
-        /* Seções */
         .menu-section, .cart-section {
             background: rgba(26, 26, 26, 0.95);
             backdrop-filter: blur(10px);
@@ -186,7 +182,6 @@
             padding-bottom: 15px;
         }
 
-        /* Categorias */
         .categories-grid {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
@@ -214,7 +209,6 @@
             border-color: var(--primary);
         }
 
-        /* Produtos */
         .products-grid {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
@@ -303,7 +297,6 @@
             border: 1px solid var(--secondary);
         }
 
-        /* Botões */
         .add-to-cart-btn {
             background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
             color: white;
@@ -341,7 +334,6 @@
             box-shadow: none !important;
         }
 
-        /* Carrinho */
         .cart-items {
             max-height: 350px;
             overflow-y: auto;
@@ -412,7 +404,6 @@
             background: rgba(220, 53, 69, 0.1);
         }
 
-        /* Totais */
         .totals-section {
             background: rgba(0, 0, 0, 0.3);
             padding: 18px;
@@ -438,7 +429,6 @@
             border-top: 2px solid #555;
         }
 
-        /* Formulários */
         .form-group {
             margin-bottom: 16px;
         }
@@ -473,7 +463,6 @@
             color: #666;
         }
 
-        /* Opções de entrega */
         .delivery-options {
             display: flex;
             gap: 12px;
@@ -497,7 +486,6 @@
             background: rgba(77, 150, 255, 0.15);
         }
 
-        /* Métodos de pagamento */
         .payment-methods {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
@@ -525,7 +513,6 @@
             margin-bottom: 6px;
         }
 
-        /* Botões principais */
         .primary-button {
             background: linear-gradient(135deg, var(--success) 0%, #218838 100%);
             color: white;
@@ -603,7 +590,6 @@
             box-shadow: 0 8px 20px rgba(220, 53, 69, 0.3);
         }
 
-        /* Status de pagamento */
         .payment-status {
             padding: 16px;
             border-radius: 12px;
@@ -625,7 +611,6 @@
             border-left-color: var(--danger);
         }
 
-        /* Loading spinner */
         .loading-spinner {
             display: inline-block;
             width: 20px;
@@ -636,7 +621,6 @@
             animation: spin 0.8s linear infinite;
         }
 
-        /* MODAL DE SABORES */
         .flavor-modal-overlay {
             display: none;
             position: fixed;
@@ -707,7 +691,6 @@
             position: relative;
         }
 
-        /* MODAL DE IDADE */
         .age-verification-modal {
             position: fixed;
             top: 0;
@@ -813,7 +796,6 @@
             opacity: 0.5;
         }
 
-        /* ADMIN */
         .admin-button {
             position: fixed;
             top: 15px;
@@ -966,7 +948,6 @@
         .save-btn { background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); }
         .reset-btn { background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); }
 
-        /* Notification */
         .notification {
             position: fixed;
             top: 20px;
@@ -981,94 +962,31 @@
             box-shadow: 0 8px 25px rgba(0,0,0,0.3);
         }
 
-        /* Responsividade */
         @media (max-width: 768px) {
-            .nav-container {
-                padding: 10px;
-            }
-            
-            .nav-button {
-                padding: 10px 16px;
-                font-size: 13px;
-            }
-            
-            .categories-grid {
-                grid-template-columns: repeat(2, 1fr);
-            }
-            
-            .products-grid {
-                grid-template-columns: 1fr;
-            }
-            
-            .payment-methods {
-                grid-template-columns: 1fr;
-            }
-            
-            .delivery-options {
-                flex-direction: column;
-            }
-            
-            .flavors-grid {
-                grid-template-columns: 1fr;
-            }
-            
-            .age-modal-footer {
-                flex-direction: column;
-            }
-            
-            .age-modal-header h2 {
-                font-size: 22px;
-            }
-            
-            .admin-header {
-                flex-direction: column;
-                gap: 15px;
-                text-align: center;
-            }
-            
-            .admin-actions {
-                flex-direction: column;
-            }
-            
-            .admin-action-btn {
-                width: 100%;
-            }
+            .nav-container { padding: 10px; }
+            .nav-button { padding: 10px 16px; font-size: 13px; }
+            .categories-grid { grid-template-columns: repeat(2, 1fr); }
+            .products-grid { grid-template-columns: 1fr; }
+            .payment-methods { grid-template-columns: 1fr; }
+            .delivery-options { flex-direction: column; }
+            .flavors-grid { grid-template-columns: 1fr; }
+            .age-modal-footer { flex-direction: column; }
+            .age-modal-header h2 { font-size: 22px; }
+            .admin-header { flex-direction: column; gap: 15px; text-align: center; }
+            .admin-actions { flex-direction: column; }
+            .admin-action-btn { width: 100%; }
         }
 
         @media (max-width: 480px) {
-            .header {
-                font-size: 20px;
-                padding: 15px;
-            }
-            
-            .section-title {
-                font-size: 20px;
-            }
-            
-            .product-card {
-                padding: 15px;
-            }
-            
-            .product-price {
-                font-size: 18px;
-            }
-            
-            .cart-item {
-                flex-direction: column;
-                align-items: flex-start;
-                gap: 12px;
-            }
-            
-            .flavor-modal-content {
-                padding: 20px;
-            }
-            
-            .admin-title {
-                font-size: 20px;
-            }
+            .header { font-size: 20px; padding: 15px; }
+            .section-title { font-size: 20px; }
+            .product-card { padding: 15px; }
+            .product-price { font-size: 18px; }
+            .cart-item { flex-direction: column; align-items: flex-start; gap: 12px; }
+            .flavor-modal-content { padding: 20px; }
+            .admin-title { font-size: 20px; }
         }
 
-        /* Utilitários */
         .text-center { text-align: center; }
         .text-right { text-align: right; }
         .mt-20 { margin-top: 20px; }
@@ -1289,10 +1207,10 @@
             <div class="admin-actions" id="adminActions" style="display: none;">
                 <button class="admin-action-btn all-btn" onclick="setAllAvailable(true)">✅ Todos Disponível</button>
                 <button class="admin-action-btn none-btn" onclick="setAllAvailable(false)">❌ Todos Indisponível</button>
-                <button class="admin-action-btn save-btn" onclick="saveAvailability()">💾 Salvar</button>
-                <button class="admin-action-btn reset-btn" onclick="resetAvailability()">🔄 Restaurar</button>
+                <button class="admin-action-btn save-btn" onclick="saveAvailability()">💾 Salvar no Servidor</button>
+                <button class="admin-action-btn reset-btn" onclick="resetAvailability()">🔄 Restaurar Padrão</button>
                 <button class="admin-action-btn" onclick="openFlavorManagement()" style="background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);">🍹 Gerenciar Sabores</button>
-                <button class="admin-action-btn" onclick="syncAllFromServer()" style="background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);">🔄 Sincronizar</button>
+                <button class="admin-action-btn" onclick="syncAllFromServer()" style="background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);">🔄 Sincronizar do Servidor</button>
             </div>
         </div>
     </div>
@@ -1480,7 +1398,6 @@
         // ============================================
         async function loadSecureConfig() {
             try {
-                // Tentar carregar do backend primeiro
                 const response = await fetch('/api/config', {
                     method: 'GET',
                     headers: { 'Cache-Control': 'no-cache' }
@@ -1488,36 +1405,16 @@
                 
                 if (response.ok) {
                     const config = await response.json();
-                    
-                    // Atualizar configuração (NUNCA recebe senha admin!)
-                    CONFIG = {
-                        ...CONFIG,
-                        ...config,
-                        adminPassword: null // Garantia de segurança
-                    };
-                    
+                    CONFIG = { ...CONFIG, ...config, adminPassword: null };
                     console.log('✅ Configuração carregada do backend');
-                    
-                    // Inicializar Mercado Pago se tiver public key
-                    if (CONFIG.mercadoPago?.publicKey) {
-                        initMercadoPago();
-                    }
-                    
+                    if (CONFIG.mercadoPago?.publicKey) initMercadoPago();
                     return true;
-                } else {
-                    throw new Error('Falha ao carregar configuração');
                 }
             } catch (error) {
                 console.warn('⚠️ Backend offline, usando URL fixa do Azure');
-                
-                // URL do Azure configurada
                 CONFIG.backendUrl = 'https://bebcom-delivery-api-1980-bchkauhjf0djajag.brazilsouth-01.azurewebsites.net';
                 CONFIG.whatsappNumber = '5514996130369';
-                CONFIG.mercadoPago = {
-                    publicKey: null,
-                    testMode: true
-                };
-                
+                CONFIG.mercadoPago = { publicKey: null, testMode: true };
                 showNotification('✅ Conectado ao servidor Azure', 'info');
                 return false;
             }
@@ -1529,9 +1426,7 @@
         function initMercadoPago() {
             try {
                 if (window.MercadoPago && CONFIG.mercadoPago?.publicKey) {
-                    state.mpInstance = new MercadoPago(CONFIG.mercadoPago.publicKey, {
-                        locale: 'pt-BR'
-                    });
+                    state.mpInstance = new MercadoPago(CONFIG.mercadoPago.publicKey, { locale: 'pt-BR' });
                     console.log('✅ Mercado Pago SDK inicializado');
                 }
             } catch (error) {
@@ -1540,20 +1435,16 @@
         }
 
         // ============================================
-        // VERIFICAÇÃO DE IDADE - ✅ CORRIGIDO: Admin NÃO depende mais disso
+        // VERIFICAÇÃO DE IDADE
         // ============================================
         function initAgeVerification() {
-            // ✅ ADMIN: Sempre liberado, não precisa de verificação de idade
             state.ageVerified = true;
             
             const hasConfirmed = localStorage.getItem('bebcom_age_verified');
             const verifiedTime = localStorage.getItem('bebcom_age_verified_time');
             
-            // Verificar se a verificação expirou (24 horas) - APENAS para clientes
             if (hasConfirmed === 'true' && verifiedTime) {
-                const timeSinceVerification = Date.now() - parseInt(verifiedTime);
-                const hoursSinceVerification = timeSinceVerification / (1000 * 60 * 60);
-                
+                const hoursSinceVerification = (Date.now() - parseInt(verifiedTime)) / (1000 * 60 * 60);
                 if (hoursSinceVerification < 24) {
                     document.getElementById('ageVerificationModal').style.display = 'none';
                     document.body.style.overflow = 'auto';
@@ -1562,7 +1453,6 @@
                 }
             }
             
-            // Mostrar modal de idade APENAS para clientes, NÃO BLOQUEIA o admin
             const modal = document.getElementById('ageVerificationModal');
             modal.style.display = 'flex';
             document.body.style.overflow = 'hidden';
@@ -1570,28 +1460,19 @@
             const checkbox = document.getElementById('ageConfirmationCheckbox');
             const enterBtn = document.getElementById('enterSiteButton');
             
-            checkbox.addEventListener('change', function() {
-                enterBtn.disabled = !this.checked;
-            });
+            checkbox.addEventListener('change', function() { enterBtn.disabled = !this.checked; });
             
             enterBtn.addEventListener('click', async function() {
                 if (!checkbox.checked) return;
-                
-                // Salvar verificação com timestamp
                 localStorage.setItem('bebcom_age_verified', 'true');
                 localStorage.setItem('bebcom_age_verified_time', Date.now().toString());
-                
                 modal.style.display = 'none';
                 document.body.style.overflow = 'auto';
-                
                 initAfterAgeVerification();
             });
             
-            // ✅ INICIAR MESMO SEM VERIFICAÇÃO (admin já está liberado)
             setTimeout(() => {
-                if (document.getElementById('ageVerificationModal').style.display === 'flex') {
-                    // Não inicializa ainda, aguarda cliente
-                } else {
+                if (document.getElementById('ageVerificationModal').style.display !== 'flex') {
                     initAfterAgeVerification();
                 }
             }, 100);
@@ -1602,15 +1483,12 @@
         // ============================================
         async function initAfterAgeVerification() {
             console.log('✅ Inicializando interface...');
-            
             await loadAvailability();
             loadCart();
             showCategory('drinks-whisky');
             setupEventListeners();
             setupPhoneMask();
             selectDeliveryType('pickup');
-            
-            // Verificar saúde do backend a cada 5 minutos
             setInterval(checkBackendHealth, 300000);
         }
 
@@ -1618,13 +1496,10 @@
         // STORAGE MANAGEMENT
         // ============================================
         function initStorage() {
-            // Carregar disponibilidade de produtos
             if (!localStorage.getItem('bebcom_product_availability')) {
                 const defaultAvailability = {};
                 Object.keys(products).forEach(cat => {
-                    products[cat].forEach(p => {
-                        defaultAvailability[p.id] = true;
-                    });
+                    products[cat].forEach(p => { defaultAvailability[p.id] = true; });
                 });
                 localStorage.setItem('bebcom_product_availability', JSON.stringify(defaultAvailability));
                 state.productAvailability = defaultAvailability;
@@ -1632,7 +1507,6 @@
                 state.productAvailability = JSON.parse(localStorage.getItem('bebcom_product_availability'));
             }
             
-            // Carregar disponibilidade de sabores
             if (!localStorage.getItem('bebcom_flavor_availability')) {
                 const defaultFlavors = {};
                 Object.keys(FLAVOR_CATALOG).forEach(type => {
@@ -1652,25 +1526,17 @@
         // ============================================
         async function checkBackendHealth() {
             if (!CONFIG.backendUrl) return false;
-            
             try {
                 const response = await fetch(`${CONFIG.backendUrl}/health`, {
                     method: 'GET',
                     headers: { 'Cache-Control': 'no-cache' }
                 });
-                
                 if (response.ok) {
-                    const data = await response.json();
                     state.backendOnline = true;
                     state.offlineSince = null;
                     console.log('✅ Backend online');
-                    
-                    // Tentar sincronizar dados pendentes
                     syncPendingData();
-                    
                     return true;
-                } else {
-                    throw new Error('Backend offline');
                 }
             } catch (error) {
                 state.backendOnline = false;
@@ -1742,23 +1608,20 @@
             grid.innerHTML = '';
             
             const categoryProducts = products[categoryId] || [];
-            
             if (categoryProducts.length === 0) {
-                grid.innerHTML = '<div style="text-align: center; color: #aaa; padding: 50px; grid-column: 1/-1;">Nenhum produto nesta categoria</div>';
+                grid.innerHTML = '<div style="text-align: center; color: #aaa; padding: 50px;">Nenhum produto nesta categoria</div>';
                 return;
             }
             
             categoryProducts.forEach(product => {
                 const available = isProductAvailable(product.id);
                 const hasFlavors = product.requiresFlavorSelection || false;
-                
                 const card = document.createElement('div');
                 card.className = `product-card ${!available ? 'unavailable' : ''} ${hasFlavors ? 'with-flavors' : ''}`;
                 card.setAttribute('data-product-id', product.id);
                 
                 let btnText = '🛒 Adicionar';
                 let btnClass = 'add-to-cart-btn';
-                
                 if (!available) {
                     btnText = '❌ Indisponível';
                 } else if (hasFlavors) {
@@ -1785,27 +1648,22 @@
         function handleAddToCart(productId, button) {
             const product = findProductById(productId);
             if (!product) return;
-            
             if (!isProductAvailable(productId)) {
                 showNotification('❌ Produto indisponível', 'error');
                 return;
             }
-            
             if (product.requiresFlavorSelection) {
                 state.pendingProduct = product;
                 state.pendingFlavors = {};
                 state.currentFlavorStep = 'primary';
                 state.currentButton = button;
-                
                 if (product.flavorType && FLAVOR_CATALOG[product.flavorType]) {
                     const flavors = FLAVOR_CATALOG[product.flavorType];
                     const hasAvailable = flavors.some(f => isFlavorAvailable(product.flavorType, f));
-                    
                     if (!hasAvailable) {
                         showNotification('❌ Todos os sabores estão indisponíveis', 'error');
                         return;
                     }
-                    
                     openFlavorModal(product, 'primary');
                 } else {
                     addToCartDirect(product, button);
@@ -1829,7 +1687,6 @@
             
             setTimeout(() => {
                 grid.innerHTML = '';
-                
                 let flavorType = product.flavorType;
                 let flavors = FLAVOR_CATALOG[flavorType] || [];
                 
@@ -1850,33 +1707,22 @@
                 }
                 
                 let hasAvailable = false;
-                
                 flavors.forEach(flavor => {
                     const available = isFlavorAvailable(flavorType, flavor);
                     if (available) hasAvailable = true;
-                    
                     const option = document.createElement('div');
                     option.className = `flavor-option ${!available ? 'unavailable' : ''}`;
                     option.textContent = flavor;
                     option.dataset.flavor = flavor;
-                    
                     if (available) {
                         option.onclick = function() {
-                            document.querySelectorAll('.flavor-option').forEach(el => {
-                                el.classList.remove('selected');
-                            });
+                            document.querySelectorAll('.flavor-option').forEach(el => el.classList.remove('selected'));
                             this.classList.add('selected');
-                            
-                            if (step === 'primary') {
-                                state.pendingFlavors.primary = flavor;
-                            } else if (step === 'ice') {
-                                state.pendingFlavors.ice = flavor;
-                            }
-                            
+                            if (step === 'primary') state.pendingFlavors.primary = flavor;
+                            else if (step === 'ice') state.pendingFlavors.ice = flavor;
                             confirmBtn.disabled = false;
                         };
                     }
-                    
                     grid.appendChild(option);
                 });
                 
@@ -1884,7 +1730,6 @@
                     instruction.textContent = '⚠️ Todos os sabores estão indisponíveis';
                     instruction.style.color = '#dc2626';
                 }
-                
                 confirmBtn.disabled = true;
                 modal.style.display = 'flex';
             }, 100);
@@ -1895,14 +1740,11 @@
                 showNotification('❌ Selecione um sabor', 'error');
                 return;
             }
-            
             if (state.currentFlavorStep === 'ice' && !state.pendingFlavors.ice) {
                 showNotification('❌ Selecione um sabor de gelo', 'error');
                 return;
             }
-            
             document.getElementById('flavorModal').style.display = 'none';
-            
             if (state.currentFlavorStep === 'primary' && state.pendingProduct.nextStep === 'ice') {
                 openFlavorModal(state.pendingProduct, 'ice');
             } else {
@@ -1920,77 +1762,36 @@
 
         function addToCartWithFlavors() {
             if (!state.pendingProduct) return;
-            
             const product = state.pendingProduct;
             const flavors = state.pendingFlavors;
-            
-            const existing = state.cart.find(item => 
-                item.name === product.name && 
-                JSON.stringify(item.flavors) === JSON.stringify(flavors)
-            );
-            
+            const existing = state.cart.find(item => item.name === product.name && JSON.stringify(item.flavors) === JSON.stringify(flavors));
             if (existing) {
                 existing.quantity += 1;
             } else {
-                state.cart.push({
-                    name: product.name,
-                    price: product.price,
-                    quantity: 1,
-                    productId: product.id,
-                    flavors: { ...flavors }
-                });
+                state.cart.push({ name: product.name, price: product.price, quantity: 1, productId: product.id, flavors: { ...flavors } });
             }
-            
-            updateCart();
-            saveCart();
-            
+            updateCart(); saveCart();
             if (state.currentButton) {
                 const original = state.currentButton.innerHTML;
                 state.currentButton.innerHTML = '✓ Adicionado!';
                 state.currentButton.classList.add('added');
-                setTimeout(() => {
-                    state.currentButton.innerHTML = original;
-                    state.currentButton.classList.remove('added');
-                }, 1000);
+                setTimeout(() => { state.currentButton.innerHTML = original; state.currentButton.classList.remove('added'); }, 1000);
             }
-            
-            state.pendingProduct = null;
-            state.pendingFlavors = {};
-            state.currentFlavorStep = null;
-            state.currentButton = null;
-            
+            state.pendingProduct = null; state.pendingFlavors = {}; state.currentFlavorStep = null; state.currentButton = null;
             showNotification(`✅ ${product.name} adicionado`);
         }
 
         function addToCartDirect(product, button) {
-            const existing = state.cart.find(item => 
-                item.name === product.name && !item.flavors
-            );
-            
-            if (existing) {
-                existing.quantity += 1;
-            } else {
-                state.cart.push({
-                    name: product.name,
-                    price: product.price,
-                    quantity: 1,
-                    productId: product.id
-                });
-            }
-            
-            updateCart();
-            saveCart();
-            
+            const existing = state.cart.find(item => item.name === product.name && !item.flavors);
+            if (existing) existing.quantity += 1;
+            else state.cart.push({ name: product.name, price: product.price, quantity: 1, productId: product.id });
+            updateCart(); saveCart();
             if (button) {
                 const original = button.innerHTML;
                 button.innerHTML = '✓ Adicionado!';
                 button.classList.add('added');
-                setTimeout(() => {
-                    button.innerHTML = original;
-                    button.classList.remove('added');
-                }, 1000);
+                setTimeout(() => { button.innerHTML = original; button.classList.remove('added'); }, 1000);
             }
-            
             showNotification(`✅ ${product.name} adicionado`);
         }
 
@@ -2005,34 +1806,24 @@
             const deliveryFeeEl = document.getElementById('deliveryFee');
             
             let subtotal = 0;
-            
             if (state.cart.length === 0) {
                 cartEl.innerHTML = '<div style="text-align: center; color: #aaa; padding: 40px;">Seu carrinho está vazio</div>';
-                subtotalEl.textContent = '0.00';
-                totalEl.textContent = '0.00';
-                validateForm();
-                return;
+                subtotalEl.textContent = '0.00'; totalEl.textContent = '0.00'; validateForm(); return;
             }
             
             cartEl.innerHTML = '';
-            
             state.cart.forEach((item, idx) => {
                 const itemTotal = item.price * item.quantity;
                 subtotal += itemTotal;
-                
                 let itemName = item.name;
                 if (item.flavors) {
                     if (item.flavors.primary) itemName += ` (${item.flavors.primary})`;
                     if (item.flavors.ice) itemName += ` - Gelo: ${item.flavors.ice}`;
                 }
-                
                 const cartItem = document.createElement('div');
                 cartItem.className = 'cart-item';
                 cartItem.innerHTML = `
-                    <div>
-                        <strong>${itemName}</strong><br>
-                        <small>R$ ${item.price.toFixed(2)}</small>
-                    </div>
+                    <div><strong>${itemName}</strong><br><small>R$ ${item.price.toFixed(2)}</small></div>
                     <div style="display: flex; align-items: center; gap: 12px;">
                         <button onclick="updateQuantity(${idx}, -1)" class="quantity-btn">-</button>
                         <span style="min-width: 30px; text-align: center; font-weight: bold;">${item.quantity}</span>
@@ -2047,36 +1838,23 @@
             let deliveryFee = 0;
             if (state.deliveryType === 'delivery') {
                 deliveryFee = CONFIG.deliveryRates.baseFee;
-                if (subtotal >= CONFIG.deliveryRates.freeDeliveryMin) {
-                    deliveryFee = 0;
-                }
+                if (subtotal >= CONFIG.deliveryRates.freeDeliveryMin) deliveryFee = 0;
                 deliveryRow.style.display = 'flex';
                 deliveryFeeEl.textContent = deliveryFee.toFixed(2);
-            } else {
-                deliveryRow.style.display = 'none';
-            }
+            } else deliveryRow.style.display = 'none';
             
             const total = subtotal + deliveryFee;
-            
             subtotalEl.textContent = subtotal.toFixed(2);
             totalEl.textContent = total.toFixed(2);
-            
             validateForm();
         }
 
         function updateQuantity(index, change) {
             if (state.cart[index]) {
                 const newQty = state.cart[index].quantity + change;
-                
-                if (newQty < 1) {
-                    removeFromCart(index);
-                } else if (newQty > 50) {
-                    showNotification('❌ Máximo 50 unidades', 'error');
-                } else {
-                    state.cart[index].quantity = newQty;
-                    updateCart();
-                    saveCart();
-                }
+                if (newQty < 1) removeFromCart(index);
+                else if (newQty > 50) showNotification('❌ Máximo 50 unidades', 'error');
+                else { state.cart[index].quantity = newQty; updateCart(); saveCart(); }
             }
         }
 
@@ -2084,28 +1862,22 @@
             if (state.cart[index]) {
                 const name = state.cart[index].name;
                 state.cart.splice(index, 1);
-                updateCart();
-                saveCart();
+                updateCart(); saveCart();
                 showNotification(`🗑️ ${name} removido`);
             }
         }
 
         function clearCart() {
             if (state.cart.length === 0) return;
-            
             if (confirm('Limpar carrinho?')) {
                 state.cart = [];
-                updateCart();
-                saveCart();
+                updateCart(); saveCart();
                 showNotification('🗑️ Carrinho limpo');
             }
         }
 
         function saveCart() {
-            localStorage.setItem('bebcom_cart', JSON.stringify({
-                items: state.cart,
-                timestamp: Date.now()
-            }));
+            localStorage.setItem('bebcom_cart', JSON.stringify({ items: state.cart, timestamp: Date.now() }));
         }
 
         function loadCart() {
@@ -2113,18 +1885,10 @@
             if (saved) {
                 try {
                     const data = JSON.parse(saved);
-                    // Verificar se o carrinho não é muito antigo (24 horas)
-                    const age = Date.now() - (data.timestamp || 0);
-                    if (age < 24 * 60 * 60 * 1000) {
-                        state.cart = data.items || [];
-                    } else {
-                        localStorage.removeItem('bebcom_cart');
-                        state.cart = [];
-                    }
+                    if (Date.now() - (data.timestamp || 0) < 24 * 60 * 60 * 1000) state.cart = data.items || [];
+                    else { localStorage.removeItem('bebcom_cart'); state.cart = []; }
                     updateCart();
-                } catch (e) {
-                    state.cart = [];
-                }
+                } catch (e) { state.cart = []; }
             }
         }
 
@@ -2133,7 +1897,6 @@
         // ============================================
         function selectDeliveryType(type) {
             state.deliveryType = type;
-            
             const pickupBtn = document.querySelectorAll('.delivery-option')[0];
             const deliveryBtn = document.querySelectorAll('.delivery-option')[1];
             const addressFields = document.getElementById('addressFields');
@@ -2142,41 +1905,26 @@
             const payButton = document.getElementById('payButton');
             
             if (type === 'pickup') {
-                pickupBtn.classList.add('selected');
-                deliveryBtn.classList.remove('selected');
-                addressFields.style.display = 'none';
-                paymentLabel.style.display = 'none';
-                paymentMethods.style.display = 'none';
-                payButton.disabled = true;
+                pickupBtn.classList.add('selected'); deliveryBtn.classList.remove('selected');
+                addressFields.style.display = 'none'; paymentLabel.style.display = 'none';
+                paymentMethods.style.display = 'none'; payButton.disabled = true;
                 payButton.innerHTML = '🏪 Retirada no Local';
-                state.paymentMethod = null;
-                state.paymentConfirmed = false;
+                state.paymentMethod = null; state.paymentConfirmed = false;
             } else {
-                pickupBtn.classList.remove('selected');
-                deliveryBtn.classList.add('selected');
-                addressFields.style.display = 'block';
-                paymentLabel.style.display = 'block';
-                paymentMethods.style.display = 'grid';
-                payButton.disabled = false;
+                pickupBtn.classList.remove('selected'); deliveryBtn.classList.add('selected');
+                addressFields.style.display = 'block'; paymentLabel.style.display = 'block';
+                paymentMethods.style.display = 'grid'; payButton.disabled = false;
                 selectPaymentMethod('pix');
             }
-            
-            updateCart();
-            validateForm();
+            updateCart(); validateForm();
         }
 
         function selectPaymentMethod(method) {
             if (state.deliveryType !== 'delivery') return;
-            
             state.paymentMethod = method;
-            
-            document.querySelectorAll('.payment-method').forEach(el => {
-                el.classList.remove('selected');
-            });
-            
+            document.querySelectorAll('.payment-method').forEach(el => el.classList.remove('selected'));
             const selected = document.querySelector(`.payment-method:nth-child(${method === 'pix' ? 1 : 2})`);
             if (selected) selected.classList.add('selected');
-            
             const payBtn = document.getElementById('payButton');
             payBtn.innerHTML = method === 'pix' ? '🧾 Pagar com PIX' : '💳 Pagar com Cartão';
         }
@@ -2185,28 +1933,21 @@
             const name = document.getElementById('customerName').value.trim();
             const phone = document.getElementById('customerPhone').value.trim();
             const whatsappBtn = document.getElementById('whatsappButton');
-            
             let isValid = true;
-            
             if (name.length < 3) isValid = false;
-            
             const phoneClean = phone.replace(/\D/g, '');
             if (phoneClean.length < 10 || phoneClean.length > 11) isValid = false;
-            
             if (state.cart.length === 0) isValid = false;
-            
             if (state.deliveryType === 'delivery') {
                 const street = document.getElementById('street').value.trim();
                 const number = document.getElementById('number').value.trim();
                 const neighborhood = document.getElementById('neighborhood').value.trim();
-                
                 if (!street || street.length < 3) isValid = false;
                 if (!number) isValid = false;
                 if (!neighborhood || neighborhood.length < 3) isValid = false;
                 if (!state.paymentMethod) isValid = false;
                 if (!state.paymentConfirmed) isValid = false;
             }
-            
             whatsappBtn.disabled = !isValid;
             return isValid;
         }
@@ -2215,11 +1956,9 @@
             const errors = [];
             const name = document.getElementById('customerName').value.trim();
             const phone = document.getElementById('customerPhone').value.trim();
-            
             if (!name) errors.push('• Nome obrigatório');
             if (!phone || phone.replace(/\D/g, '').length < 10) errors.push('• WhatsApp inválido');
             if (state.cart.length === 0) errors.push('• Carrinho vazio');
-            
             if (state.deliveryType === 'delivery') {
                 if (!document.getElementById('street').value.trim()) errors.push('• Rua obrigatória');
                 if (!document.getElementById('number').value.trim()) errors.push('• Número obrigatório');
@@ -2227,32 +1966,18 @@
                 if (!state.paymentMethod) errors.push('• Selecione pagamento');
                 if (!state.paymentConfirmed) errors.push('• Confirme o pagamento');
             }
-            
             return errors;
         }
 
         function prepareOrderData() {
-            const items = state.cart.map(item => ({
-                name: item.name,
-                quantity: item.quantity,
-                price: item.price,
-                flavors: item.flavors || null
-            }));
-            
+            const items = state.cart.map(item => ({ name: item.name, quantity: item.quantity, price: item.price, flavors: item.flavors || null }));
             const subtotal = items.reduce((sum, i) => sum + (i.quantity * i.price), 0);
-            
             let deliveryFee = 0;
             if (state.deliveryType === 'delivery') {
                 deliveryFee = CONFIG.deliveryRates.baseFee;
                 if (subtotal >= CONFIG.deliveryRates.freeDeliveryMin) deliveryFee = 0;
             }
-            
-            return {
-                items,
-                subtotal,
-                deliveryFee,
-                total: subtotal + deliveryFee
-            };
+            return { items, subtotal, deliveryFee, total: subtotal + deliveryFee };
         }
 
         // ============================================
@@ -2263,20 +1988,14 @@
                 showNotification('✅ Pagamento será realizado na retirada', 'info');
                 return;
             }
-            
             if (state.paymentProcessing) return;
-            
             const errors = validateOrder();
-            if (errors.length > 0) {
-                showNotification(errors.join('\n'), 'error');
-                return;
-            }
+            if (errors.length > 0) { showNotification(errors.join('\n'), 'error'); return; }
             
             state.paymentProcessing = true;
             const button = document.getElementById('payButton');
             const original = button.innerHTML;
             const statusDiv = document.getElementById('paymentStatus');
-            
             button.innerHTML = '<span class="loading-spinner"></span> Processando...';
             button.disabled = true;
             statusDiv.style.display = 'block';
@@ -2286,45 +2005,27 @@
             try {
                 const orderData = prepareOrderData();
                 state.currentOrderId = 'BEB' + Date.now().toString().slice(-8);
-                
-                // Tentar processar pagamento online
                 if (state.backendOnline && CONFIG.backendUrl) {
                     const response = await fetch(`${CONFIG.backendUrl}/api/create-payment`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
+                        method: 'POST', headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
                             orderId: state.currentOrderId,
-                            customer: {
-                                name: document.getElementById('customerName').value.trim(),
-                                phone: document.getElementById('customerPhone').value.trim()
-                            },
-                            items: orderData.items,
-                            total: orderData.total,
-                            deliveryType: state.deliveryType,
-                            paymentMethod: state.paymentMethod
+                            customer: { name: document.getElementById('customerName').value.trim(), phone: document.getElementById('customerPhone').value.trim() },
+                            items: orderData.items, total: orderData.total,
+                            deliveryType: state.deliveryType, paymentMethod: state.paymentMethod
                         })
                     });
-                    
                     if (response.ok) {
                         const data = await response.json();
-                        
                         if (data.success) {
-                            if (data.qrCode) {
-                                showPixPayment(data.qrCode, data.copyPasteKey);
-                            } else if (data.paymentUrl) {
-                                window.open(data.paymentUrl, '_blank');
-                                setTimeout(() => confirmPayment(), 3000);
-                            } else {
-                                confirmPayment();
-                            }
+                            if (data.qrCode) showPixPayment(data.qrCode, data.copyPasteKey);
+                            else if (data.paymentUrl) { window.open(data.paymentUrl, '_blank'); setTimeout(() => confirmPayment(), 3000); }
+                            else confirmPayment();
                             return;
                         }
                     }
                 }
-                
-                // Fallback para pagamento manual
                 showManualPixPayment();
-                
             } catch (error) {
                 console.error('Erro no pagamento:', error);
                 showManualPixPayment();
@@ -2338,41 +2039,28 @@
         function showPixPayment(qrCode, copyKey) {
             const statusDiv = document.getElementById('paymentStatus');
             const total = prepareOrderData().total;
-            
-            // Escapar caracteres para evitar XSS
             const escapedCopyKey = copyKey.replace(/'/g, "\\'").replace(/"/g, '&quot;');
-            
             statusDiv.className = 'payment-status';
             statusDiv.innerHTML = `
                 <div style="text-align: center;">
                     <h4 style="margin-bottom: 15px; color: #ffd93d;">🧾 PIX</h4>
                     <p>Valor: <strong style="font-size: 22px;">R$ ${total.toFixed(2)}</strong></p>
-                    <div style="margin: 20px 0;">
-                        <img src="${qrCode}" alt="QR Code" style="width: 200px; height: 200px; border-radius: 12px; border: 2px solid #28a745;">
-                    </div>
+                    <div style="margin: 20px 0;"><img src="${qrCode}" alt="QR Code" style="width: 200px; height: 200px; border-radius: 12px; border: 2px solid #28a745;"></div>
                     <div style="background: rgba(0,0,0,0.5); padding: 15px; border-radius: 10px; margin: 15px 0;">
                         <small style="color: #aaa;">Chave PIX:</small><br>
                         <span style="font-family: monospace; word-break: break-all; color: white;">${escapedCopyKey}</span>
-                        <button onclick="navigator.clipboard.writeText('${escapedCopyKey}'); showNotification('Chave copiada!')" style="margin-top: 10px; background: #3b82f6; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer;">
-                            📋 Copiar
-                        </button>
+                        <button onclick="navigator.clipboard.writeText('${escapedCopyKey}'); showNotification('Chave copiada!')" style="margin-top: 10px; background: #3b82f6; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer;">📋 Copiar</button>
                     </div>
-                    <button onclick="confirmPayment()" style="background: #28a745; color: white; border: none; padding: 14px 28px; border-radius: 10px; margin: 10px; font-weight: bold; cursor: pointer;">
-                        ✅ Já Paguei
-                    </button>
-                    <button onclick="cancelPayment()" style="background: #dc3545; color: white; border: none; padding: 14px 28px; border-radius: 10px; margin: 10px; font-weight: bold; cursor: pointer;">
-                        ❌ Cancelar
-                    </button>
+                    <button onclick="confirmPayment()" style="background: #28a745; color: white; border: none; padding: 14px 28px; border-radius: 10px; margin: 10px; font-weight: bold; cursor: pointer;">✅ Já Paguei</button>
+                    <button onclick="cancelPayment()" style="background: #dc3545; color: white; border: none; padding: 14px 28px; border-radius: 10px; margin: 10px; font-weight: bold; cursor: pointer;">❌ Cancelar</button>
                 </div>
             `;
-            
             document.getElementById('payButton').style.display = 'none';
         }
 
         function showManualPixPayment() {
             const statusDiv = document.getElementById('paymentStatus');
             const total = prepareOrderData().total;
-            
             statusDiv.className = 'payment-status';
             statusDiv.innerHTML = `
                 <div style="text-align: center;">
@@ -2383,15 +2071,10 @@
                         <span style="font-family: monospace; font-size: 18px; color: #4d96ff;">12.345.678/0001-90</span>
                     </div>
                     <p style="color: #aaa;">Após pagar, envie o comprovante pelo WhatsApp</p>
-                    <button onclick="confirmPayment()" style="background: #28a745; color: white; border: none; padding: 14px 28px; border-radius: 10px; margin: 10px; font-weight: bold; cursor: pointer;">
-                        ✅ Já Paguei
-                    </button>
-                    <button onclick="cancelPayment()" style="background: #dc3545; color: white; border: none; padding: 14px 28px; border-radius: 10px; margin: 10px; font-weight: bold; cursor: pointer;">
-                        ❌ Cancelar
-                    </button>
+                    <button onclick="confirmPayment()" style="background: #28a745; color: white; border: none; padding: 14px 28px; border-radius: 10px; margin: 10px; font-weight: bold; cursor: pointer;">✅ Já Paguei</button>
+                    <button onclick="cancelPayment()" style="background: #dc3545; color: white; border: none; padding: 14px 28px; border-radius: 10px; margin: 10px; font-weight: bold; cursor: pointer;">❌ Cancelar</button>
                 </div>
             `;
-            
             document.getElementById('payButton').style.display = 'none';
         }
 
@@ -2403,15 +2086,12 @@
 
         function confirmPayment() {
             state.paymentConfirmed = true;
-            
             const statusDiv = document.getElementById('paymentStatus');
             statusDiv.className = 'payment-status success';
             statusDiv.innerHTML = '✅ Pagamento confirmado!';
-            
             document.getElementById('payButton').innerHTML = '✅ Pagamento Confirmado';
             document.getElementById('payButton').disabled = true;
             document.getElementById('whatsappButton').disabled = false;
-            
             showNotification('✅ Pagamento confirmado! Envie o pedido.');
         }
 
@@ -2419,38 +2099,23 @@
         // WHATSAPP
         // ============================================
         function sendToWhatsApp() {
-            if (!validateForm()) {
-                showNotification('Complete todas as informações', 'error');
-                return;
-            }
-            
+            if (!validateForm()) { showNotification('Complete todas as informações', 'error'); return; }
             const name = document.getElementById('customerName').value.trim();
             const phone = document.getElementById('customerPhone').value.trim();
             const street = document.getElementById('street').value.trim();
             const number = document.getElementById('number').value.trim();
             const neighborhood = document.getElementById('neighborhood').value.trim();
             const complement = document.getElementById('addressComplement').value.trim();
-            
             const order = prepareOrderData();
             const orderId = state.currentOrderId || 'BEB' + Date.now().toString().slice(-8);
             
-            let msg = `*🍹 PEDIDO BEBCOM DELIVERY*\n`;
-            msg += `━━━━━━━━━━━━━━━━\n`;
-            msg += `📋 *Pedido:* ${orderId}\n`;
-            msg += `👤 *Cliente:* ${name}\n`;
-            msg += `📱 *WhatsApp:* ${phone}\n`;
-            msg += `📦 *Tipo:* ${state.deliveryType === 'delivery' ? 'ENTREGA' : 'RETIRADA'}\n`;
-            
+            let msg = `*🍹 PEDIDO BEBCOM DELIVERY*\n━━━━━━━━━━━━━━━━\n📋 *Pedido:* ${orderId}\n👤 *Cliente:* ${name}\n📱 *WhatsApp:* ${phone}\n📦 *Tipo:* ${state.deliveryType === 'delivery' ? 'ENTREGA' : 'RETIRADA'}\n`;
             if (state.deliveryType === 'delivery') {
                 msg += `📍 *Endereço:* ${street}, ${number} - ${neighborhood}, Bauru\n`;
                 if (complement) msg += `🏠 *Complemento:* ${complement}\n`;
                 msg += `💳 *Pagamento:* ${state.paymentMethod === 'pix' ? 'PIX' : 'Cartão'} ${state.paymentConfirmed ? '✅ PAGO' : ''}\n`;
             }
-            
-            msg += `🕒 *Data:* ${new Date().toLocaleString('pt-BR')}\n`;
-            msg += `━━━━━━━━━━━━━━━━\n`;
-            msg += `\n*🛒 ITENS:*\n`;
-            
+            msg += `🕒 *Data:* ${new Date().toLocaleString('pt-BR')}\n━━━━━━━━━━━━━━━━\n\n*🛒 ITENS:*\n`;
             order.items.forEach((item, i) => {
                 const total = item.price * item.quantity;
                 msg += `\n${i+1}. ${item.name}\n`;
@@ -2460,22 +2125,12 @@
                 }
                 msg += `   ${item.quantity}x R$ ${item.price.toFixed(2)} = R$ ${total.toFixed(2)}\n`;
             });
+            msg += `\n━━━━━━━━━━━━━━━━\n💰 *Subtotal:* R$ ${order.subtotal.toFixed(2)}\n`;
+            if (state.deliveryType === 'delivery') msg += `🚚 *Entrega:* R$ ${order.deliveryFee.toFixed(2)}\n`;
+            msg += `💵 *TOTAL:* R$ ${order.total.toFixed(2)}\n━━━━━━━━━━━━━━━━\n✅ *Pedido confirmado!*\n🎉 Obrigado pela preferência!`;
             
-            msg += `\n━━━━━━━━━━━━━━━━\n`;
-            msg += `💰 *Subtotal:* R$ ${order.subtotal.toFixed(2)}\n`;
-            if (state.deliveryType === 'delivery') {
-                msg += `🚚 *Entrega:* R$ ${order.deliveryFee.toFixed(2)}\n`;
-            }
-            msg += `💵 *TOTAL:* R$ ${order.total.toFixed(2)}\n`;
-            msg += `━━━━━━━━━━━━━━━━\n`;
-            msg += `✅ *Pedido confirmado!*\n`;
-            msg += `🎉 Obrigado pela preferência!`;
-            
-            const url = `https://wa.me/${CONFIG.whatsappNumber}?text=${encodeURIComponent(msg)}`;
-            window.open(url, '_blank');
-            
+            window.open(`https://wa.me/${CONFIG.whatsappNumber}?text=${encodeURIComponent(msg)}`, '_blank');
             showNotification('✅ Pedido enviado!');
-            
             state.paymentConfirmed = false;
             document.getElementById('paymentStatus').style.display = 'none';
             document.getElementById('payButton').style.display = 'block';
@@ -2491,23 +2146,15 @@
             
             adminBtn.addEventListener('click', openAdminPanel);
             adminClose.addEventListener('click', closeAdminPanel);
-            adminModal.addEventListener('click', function(e) {
-                if (e.target === this) closeAdminPanel();
-            });
-            
+            adminModal.addEventListener('click', function(e) { if (e.target === this) closeAdminPanel(); });
             document.addEventListener('keydown', function(e) {
-                if (e.ctrlKey && e.altKey && e.key === 'a') {
-                    e.preventDefault();
-                    openAdminPanel();
-                }
+                if (e.ctrlKey && e.altKey && e.key === 'a') { e.preventDefault(); openAdminPanel(); }
                 if (e.key === 'Escape') closeAdminPanel();
             });
         }
 
         function openAdminPanel() {
             document.getElementById('adminModal').style.display = 'block';
-            
-            // Verificar se já está autenticado via token
             if (isAdminAuthenticated()) {
                 state.adminAuthenticated = true;
                 document.getElementById('passwordSection').style.display = 'none';
@@ -2529,7 +2176,6 @@
         function isAdminAuthenticated() {
             const token = sessionStorage.getItem('admin_token');
             const expires = sessionStorage.getItem('admin_expires');
-            
             if (!token || !expires) return false;
             if (Date.now() > parseInt(expires)) {
                 sessionStorage.removeItem('admin_token');
@@ -2537,94 +2183,66 @@
                 state.adminAuthenticated = false;
                 return false;
             }
-            
             state.adminToken = token;
             state.adminAuthenticated = true;
             return true;
         }
 
-     // ✅ CORRIGIDO: Com credentials e tratamento de erro detalhado
-async function checkAdminPassword() {
-    const password = document.getElementById('adminPassword').value;
-    const btn = document.querySelector('.password-button');
-    const original = btn.innerHTML;
-    
-    if (!password) {
-        showNotification('❌ Digite a senha', 'error');
-        return;
-    }
-    
-    btn.innerHTML = '<span class="loading-spinner"></span> Verificando...';
-    btn.disabled = true;
-    
-    try {
-        const url = `${CONFIG.backendUrl}/api/admin/verify`;
-        
-        console.log('📡 Enviando requisição para:', url);
-        
-        const response = await fetch(url, {
-            method: 'POST',
-            mode: 'cors',
-            credentials: 'include',  // ✅ IMPORTANTE!
-            headers: { 
-                'Content-Type': 'application/json',
-                'Accept': 'application/json'
-            },
-            body: JSON.stringify({ password })
-        });
-        
-        console.log('📥 Status da resposta:', response.status);
-        
-        if (response.ok) {
-            const data = await response.json();
+        async function checkAdminPassword() {
+            const password = document.getElementById('adminPassword').value;
+            const btn = document.querySelector('.password-button');
+            const original = btn.innerHTML;
             
-            if (data.success) {
-                sessionStorage.setItem('admin_token', data.token);
-                sessionStorage.setItem('admin_expires', (Date.now() + 30 * 60 * 1000).toString());
+            if (!password) { showNotification('❌ Digite a senha', 'error'); return; }
+            
+            btn.innerHTML = '<span class="loading-spinner"></span> Verificando...';
+            btn.disabled = true;
+            
+            try {
+                const url = `${CONFIG.backendUrl}/api/admin/verify`;
+                console.log('📡 Enviando requisição para:', url);
                 
-                state.adminAuthenticated = true;
-                state.adminToken = data.token;
+                const response = await fetch(url, {
+                    method: 'POST', mode: 'cors', credentials: 'include',
+                    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                    body: JSON.stringify({ password })
+                });
                 
-                document.getElementById('passwordSection').style.display = 'none';
-                document.getElementById('adminMain').style.display = 'block';
-                document.getElementById('adminActions').style.display = 'flex';
+                console.log('📥 Status da resposta:', response.status);
                 
-                loadAdminProducts();
-                showNotification('✅ Acesso concedido');
-            } else {
-                throw new Error(data.error || 'Senha incorreta');
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.success) {
+                        sessionStorage.setItem('admin_token', data.token);
+                        sessionStorage.setItem('admin_expires', (Date.now() + 30 * 60 * 1000).toString());
+                        state.adminAuthenticated = true;
+                        state.adminToken = data.token;
+                        document.getElementById('passwordSection').style.display = 'none';
+                        document.getElementById('adminMain').style.display = 'block';
+                        document.getElementById('adminActions').style.display = 'flex';
+                        loadAdminProducts();
+                        showNotification('✅ Acesso concedido');
+                    } else throw new Error(data.error || 'Senha incorreta');
+                } else if (response.status === 401) throw new Error('Senha incorreta');
+                else if (response.status === 429) throw new Error('Muitas tentativas. Aguarde 15 minutos.');
+                else throw new Error(`Erro ${response.status}: ${response.statusText}`);
+            } catch (error) {
+                console.error('❌ Erro detalhado:', error);
+                showNotification('❌ ' + error.message, 'error');
+                document.getElementById('adminPassword').value = '';
+            } finally {
+                btn.innerHTML = original;
+                btn.disabled = false;
             }
-        } else if (response.status === 401) {
-            throw new Error('Senha incorreta');
-        } else if (response.status === 429) {
-            throw new Error('Muitas tentativas. Aguarde 15 minutos.');
-        } else {
-            const text = await response.text();
-            console.error('❌ Resposta de erro:', text);
-            throw new Error(`Erro ${response.status}: ${response.statusText}`);
         }
-    } catch (error) {
-        console.error('❌ Erro detalhado:', error);
-        showNotification('❌ Erro de conexão com o servidor. Verifique o CORS.', 'error');
-        document.getElementById('adminPassword').value = '';
-    } finally {
-        btn.innerHTML = original;
-        btn.disabled = false;
-    }
-}
 
         function getAdminHeaders() {
-            const headers = {
-                'Content-Type': 'application/json'
-            };
-            
-            if (state.adminToken) {
-                headers['Authorization'] = `Bearer ${state.adminToken}`;
-            }
-            
+            const headers = { 'Content-Type': 'application/json' };
+            if (state.adminToken) headers['Authorization'] = `Bearer ${state.adminToken}`;
             return headers;
         }
 
+        // ✅ CORRIGIDO: Toggle dos produtos AGORA FUNCIONA!
         function loadAdminProducts() {
             const container = document.getElementById('adminMain');
             container.innerHTML = '';
@@ -2651,7 +2269,6 @@ async function checkAdminPassword() {
                 section.style.background = 'rgba(0,0,0,0.2)';
                 section.style.padding = '20px';
                 section.style.borderRadius = '12px';
-                
                 section.innerHTML = `<h3 style="color: #60a5fa; margin-bottom: 15px; border-bottom: 2px solid #3b82f6; padding-bottom: 10px;">${cat.name}</h3>`;
                 
                 const grid = document.createElement('div');
@@ -2672,19 +2289,21 @@ async function checkAdminPassword() {
                     item.style.borderRadius = '10px';
                     item.style.border = `1px solid ${available ? '#10b981' : '#ef4444'}`;
                     
+                    // ✅ CORRIGIDO: CSS inline para o toggle funcionar!
                     item.innerHTML = `
                         <div>
                             <div style="font-weight: bold; color: white;">${product.name}</div>
                             <div style="font-size: 13px; color: #94a3b8;">R$ ${product.price.toFixed(2)}</div>
                             ${product.requiresFlavorSelection ? '<div style="font-size: 12px; color: #60a5fa; margin-top: 4px;">⚡ Com sabores</div>' : ''}
                         </div>
-                        <label style="position: relative; display: inline-block; width: 60px; height: 30px;">
-                            <input type="checkbox" style="opacity: 0; width: 0; height: 0;" 
+                        <label style="position: relative; display: inline-block; width: 60px; height: 30px; cursor: pointer;">
+                            <input type="checkbox" 
+                                   style="opacity: 0; width: 0; height: 0; position: absolute;" 
                                    id="admin_toggle_${product.id}"
                                    ${available ? 'checked' : ''}
                                    onchange="adminToggleProductAvailability('${product.id}', this.checked)">
-                            <span style="position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: ${available ? '#10b981' : '#dc2626'}; transition: .4s; border-radius: 30px;"></span>
-                            <span style="position: absolute; content: ''; height: 22px; width: 22px; left: 4px; bottom: 4px; background-color: white; transition: .4s; border-radius: 50%; transform: ${available ? 'translateX(30px)' : 'none'};"></span>
+                            <span style="position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: ${available ? '#10b981' : '#dc2626'}; transition: .4s; border-radius: 30px; pointer-events: none;"></span>
+                            <span style="position: absolute; content: ''; height: 22px; width: 22px; left: ${available ? '34px' : '4px'}; bottom: 4px; background-color: white; transition: .4s; border-radius: 50%; pointer-events: none;"></span>
                         </label>
                     `;
                     
@@ -2697,9 +2316,20 @@ async function checkAdminPassword() {
         }
 
         function adminToggleProductAvailability(productId, isAvailable) {
+            // Atualiza o estado
             state.productAvailability[productId] = isAvailable;
             localStorage.setItem('bebcom_product_availability', JSON.stringify(state.productAvailability));
             
+            // Atualiza o toggle visualmente
+            const toggle = document.getElementById(`admin_toggle_${productId}`);
+            if (toggle) {
+                const span = toggle.nextElementSibling;
+                const slider = span.nextElementSibling;
+                if (span) span.style.backgroundColor = isAvailable ? '#10b981' : '#dc2626';
+                if (slider) slider.style.left = isAvailable ? '34px' : '4px';
+            }
+            
+            // Atualiza os cards de produto
             const product = findProductById(productId);
             const elements = document.querySelectorAll(`[data-product-id="${productId}"]`);
             
@@ -2720,6 +2350,8 @@ async function checkAdminPassword() {
                     }
                 }
             });
+            
+            showNotification(`${product?.name || 'Produto'} ${isAvailable ? '✅ disponível' : '❌ indisponível'}`, 'info');
         }
 
         function setAllAvailable(isAvailable) {
@@ -2728,7 +2360,13 @@ async function checkAdminPassword() {
                     state.productAvailability[p.id] = isAvailable;
                     
                     const toggle = document.getElementById(`admin_toggle_${p.id}`);
-                    if (toggle) toggle.checked = isAvailable;
+                    if (toggle) {
+                        toggle.checked = isAvailable;
+                        const span = toggle.nextElementSibling;
+                        const slider = span.nextElementSibling;
+                        if (span) span.style.backgroundColor = isAvailable ? '#10b981' : '#dc2626';
+                        if (slider) slider.style.left = isAvailable ? '34px' : '4px';
+                    }
                     
                     const elements = document.querySelectorAll(`[data-product-id="${p.id}"]`);
                     elements.forEach(el => {
@@ -2755,6 +2393,7 @@ async function checkAdminPassword() {
             showNotification(isAvailable ? '✅ Todos disponíveis' : '❌ Todos indisponíveis');
         }
 
+        // ✅ CORRIGIDO: Salvar no MongoDB AGORA FUNCIONA!
         async function saveAvailability() {
             if (!isAdminAuthenticated()) {
                 showNotification('🔐 Sessão expirada. Faça login novamente.', 'error');
@@ -2765,42 +2404,63 @@ async function checkAdminPassword() {
             const btn = document.querySelector('.save-btn');
             const original = btn.innerHTML;
             
-            btn.innerHTML = '<span class="loading-spinner"></span> Salvando...';
+            btn.innerHTML = '<span class="loading-spinner"></span> Salvando no servidor...';
             btn.disabled = true;
             
             try {
-                // Salvar localmente
+                // Sempre salva localmente primeiro
                 localStorage.setItem('bebcom_product_availability', JSON.stringify(state.productAvailability));
                 localStorage.setItem('bebcom_flavor_availability', JSON.stringify(state.flavorAvailability));
                 
-                // Tentar salvar no backend
-                if (state.backendOnline && CONFIG.backendUrl) {
-                    const [prodRes, flavRes] = await Promise.all([
-                        fetch(`${CONFIG.backendUrl}/api/admin/product-availability/bulk`, {
-                            method: 'POST',
-                            headers: getAdminHeaders(),
-                            body: JSON.stringify({ productAvailability: state.productAvailability })
-                        }),
-                        fetch(`${CONFIG.backendUrl}/api/admin/flavor-availability/bulk`, {
-                            method: 'POST',
-                            headers: getAdminHeaders(),
-                            body: JSON.stringify({ flavorAvailability: state.flavorAvailability })
-                        })
-                    ]);
+                // Tenta salvar no backend
+                if (CONFIG.backendUrl) {
+                    // Verifica se o backend está online
+                    await checkBackendHealth();
                     
-                    if (prodRes.ok && flavRes.ok) {
-                        showNotification('✅ Dados salvos no servidor!');
+                    if (state.backendOnline) {
+                        const headers = getAdminHeaders();
+                        
+                        // Salva produtos
+                        const prodRes = await fetch(`${CONFIG.backendUrl}/api/admin/product-availability/bulk`, {
+                            method: 'POST',
+                            headers: headers,
+                            body: JSON.stringify({ 
+                                productAvailability: state.productAvailability,
+                                adminName: 'Admin BebCom',
+                                source: 'frontend'
+                            })
+                        });
+                        
+                        // Salva sabores
+                        const flavRes = await fetch(`${CONFIG.backendUrl}/api/admin/flavor-availability/bulk`, {
+                            method: 'POST',
+                            headers: headers,
+                            body: JSON.stringify({ 
+                                flavorAvailability: state.flavorAvailability,
+                                adminName: 'Admin BebCom',
+                                source: 'frontend'
+                            })
+                        });
+                        
+                        if (prodRes.ok && flavRes.ok) {
+                            showNotification('✅ Dados salvos no servidor (MongoDB)!');
+                        } else {
+                            const prodError = prodRes.ok ? '' : ' produtos';
+                            const flavError = flavRes.ok ? '' : ' sabores';
+                            showNotification(`⚠️ Erro ao salvar:${prodError}${flavError}. Dados salvos localmente.`, 'warning');
+                        }
                     } else {
-                        showNotification('⚠️ Salvos localmente. Pendente de sincronização.', 'warning');
+                        showNotification('⚠️ Servidor offline. Dados salvos apenas localmente.', 'warning');
                     }
                 } else {
-                    showNotification('⚠️ Salvos localmente. Backend offline.', 'warning');
+                    showNotification('⚠️ URL do servidor não configurada. Dados salvos localmente.', 'warning');
                 }
                 
-                setTimeout(() => closeAdminPanel(), 1500);
+                setTimeout(() => closeAdminPanel(), 2000);
                 
             } catch (error) {
-                showNotification('❌ Erro ao salvar', 'error');
+                console.error('❌ Erro ao salvar:', error);
+                showNotification('❌ Erro ao salvar no servidor. Dados mantidos localmente.', 'error');
             } finally {
                 btn.innerHTML = original;
                 btn.disabled = false;
@@ -2829,103 +2489,11 @@ async function checkAdminPassword() {
                 }
                 
                 updateMenuAvailability();
-                
                 showNotification('🔄 Disponibilidade restaurada');
             }
         }
 
-        function openFlavorManagement() {
-            if (!isAdminAuthenticated()) {
-                showNotification('🔐 Sessão expirada. Faça login novamente.', 'error');
-                openAdminPanel();
-                return;
-            }
-            
-            const container = document.getElementById('adminMain');
-            container.innerHTML = `
-                <div style="margin-bottom: 30px;">
-                    <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 25px;">
-                        <button onclick="loadAdminProducts()" style="background: #3b82f6; color: white; border: none; border-radius: 8px; padding: 10px 15px; cursor: pointer;">
-                            ↩️ Voltar
-                        </button>
-                        <h3 style="color: #60a5fa; margin: 0;">🍹 Gerenciar Sabores</h3>
-                    </div>
-                    
-                    <select id="flavorTypeSelect" style="width: 100%; padding: 15px; background: rgba(255,255,255,0.1); border: 1px solid #444; border-radius: 8px; color: white; margin-bottom: 20px;" onchange="loadFlavorsForType(this.value)">
-                        <option value="">-- Selecione um tipo --</option>
-                        ${Object.entries(FLAVOR_TYPES).map(([key, name]) => `<option value="${key}">${name}</option>`).join('')}
-                    </select>
-                    
-                    <div id="flavorManagementSection" style="display: none;"></div>
-                </div>
-            `;
-        }
-
-        function loadFlavorsForType(flavorType) {
-            const section = document.getElementById('flavorManagementSection');
-            
-            if (!flavorType) {
-                section.style.display = 'none';
-                return;
-            }
-            
-            const flavors = FLAVOR_CATALOG[flavorType] || [];
-            const typeName = FLAVOR_TYPES[flavorType] || flavorType;
-            
-            let html = `
-                <div style="background: rgba(0,0,0,0.3); padding: 20px; border-radius: 12px;">
-                    <h4 style="color: #94a3b8; margin-bottom: 15px;">Gerenciando: ${typeName}</h4>
-                    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 10px;">
-            `;
-            
-            flavors.forEach(flavor => {
-                const key = `${flavorType}_${flavor}`;
-                const available = state.flavorAvailability[key] !== false;
-                
-                html += `
-                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 15px; background: ${available ? 'rgba(16,185,129,0.1)' : 'rgba(239,68,68,0.1)'}; border-radius: 8px; border: 1px solid ${available ? '#10b981' : '#ef4444'};">
-                        <span style="color: white; font-weight: 500;">${flavor}</span>
-                        <label style="position: relative; display: inline-block; width: 50px; height: 24px;">
-                            <input type="checkbox" style="opacity: 0; width: 0; height: 0;" 
-                                   ${available ? 'checked' : ''}
-                                   onchange="toggleFlavorAvailability('${flavorType}', '${flavor}', this.checked)">
-                            <span style="position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: ${available ? '#10b981' : '#dc2626'}; transition: .4s; border-radius: 24px;"></span>
-                            <span style="position: absolute; content: ''; height: 18px; width: 18px; left: 3px; bottom: 3px; background-color: white; transition: .4s; border-radius: 50%; transform: ${available ? 'translateX(26px)' : 'none'};"></span>
-                        </label>
-                    </div>
-                `;
-            });
-            
-            html += `
-                    </div>
-                    <div style="display: flex; gap: 10px; margin-top: 20px;">
-                        <button onclick="setAllFlavorsAvailable('${flavorType}', true)" style="flex: 1; padding: 12px; background: #10b981; color: white; border: none; border-radius: 8px; cursor: pointer;">✅ Todos</button>
-                        <button onclick="setAllFlavorsAvailable('${flavorType}', false)" style="flex: 1; padding: 12px; background: #ef4444; color: white; border: none; border-radius: 8px; cursor: pointer;">❌ Nenhum</button>
-                    </div>
-                </div>
-            `;
-            
-            section.innerHTML = html;
-            section.style.display = 'block';
-        }
-
-        function toggleFlavorAvailability(flavorType, flavorName, isAvailable) {
-            const key = `${flavorType}_${flavorName}`;
-            state.flavorAvailability[key] = isAvailable;
-            localStorage.setItem('bebcom_flavor_availability', JSON.stringify(state.flavorAvailability));
-            loadFlavorsForType(flavorType);
-        }
-
-        function setAllFlavorsAvailable(flavorType, makeAvailable) {
-            const flavors = FLAVOR_CATALOG[flavorType] || [];
-            flavors.forEach(flavor => {
-                const key = `${flavorType}_${flavor}`;
-                state.flavorAvailability[key] = makeAvailable;
-            });
-            localStorage.setItem('bebcom_flavor_availability', JSON.stringify(state.flavorAvailability));
-            loadFlavorsForType(flavorType);
-        }
-
+        // ✅ CORRIGIDO: Sincronizar do MongoDB AGORA FUNCIONA!
         async function syncAllFromServer() {
             if (!isAdminAuthenticated()) {
                 showNotification('🔐 Sessão expirada. Faça login novamente.', 'error');
@@ -2936,26 +2504,58 @@ async function checkAdminPassword() {
             const btn = document.querySelector('[onclick*="syncAllFromServer"]');
             const original = btn.innerHTML;
             
-            btn.innerHTML = '<span class="loading-spinner"></span> Sincronizando...';
+            btn.innerHTML = '<span class="loading-spinner"></span> Sincronizando do servidor...';
             btn.disabled = true;
             
             try {
+                if (!CONFIG.backendUrl) {
+                    showNotification('❌ URL do servidor não configurada', 'error');
+                    return;
+                }
+                
                 await checkBackendHealth();
                 
                 if (state.backendOnline) {
-                    await loadAvailability();
-                    updateMenuAvailability();
+                    const [productsRes, flavorsRes] = await Promise.all([
+                        fetch(`${CONFIG.backendUrl}/api/product-availability`),
+                        fetch(`${CONFIG.backendUrl}/api/flavor-availability`)
+                    ]);
                     
-                    if (document.getElementById('adminMain').style.display === 'block') {
-                        loadAdminProducts();
+                    let atualizado = false;
+                    
+                    if (productsRes.ok) {
+                        const productData = await productsRes.json();
+                        if (productData.success && productData.productAvailability) {
+                            state.productAvailability = productData.productAvailability;
+                            localStorage.setItem('bebcom_product_availability', JSON.stringify(state.productAvailability));
+                            atualizado = true;
+                        }
                     }
                     
-                    showNotification('✅ Sincronizado com servidor');
+                    if (flavorsRes.ok) {
+                        const flavorData = await flavorsRes.json();
+                        if (flavorData.success && flavorData.flavorAvailability) {
+                            state.flavorAvailability = flavorData.flavorAvailability;
+                            localStorage.setItem('bebcom_flavor_availability', JSON.stringify(state.flavorAvailability));
+                            atualizado = true;
+                        }
+                    }
+                    
+                    if (atualizado) {
+                        updateMenuAvailability();
+                        if (document.getElementById('adminMain').style.display === 'block') {
+                            loadAdminProducts();
+                        }
+                        showNotification('✅ Dados sincronizados do servidor (MongoDB)!');
+                    } else {
+                        showNotification('⚠️ Nenhum dado encontrado no servidor', 'warning');
+                    }
                 } else {
-                    showNotification('⚠️ Backend offline. Dados locais.', 'warning');
+                    showNotification('⚠️ Servidor offline. Mantendo dados locais.', 'warning');
                 }
             } catch (error) {
-                showNotification('❌ Erro na sincronização', 'error');
+                console.error('❌ Erro na sincronização:', error);
+                showNotification('❌ Erro ao sincronizar com o servidor', 'error');
             } finally {
                 btn.innerHTML = original;
                 btn.disabled = false;
@@ -3003,8 +2603,6 @@ async function checkAdminPassword() {
                 const el = document.getElementById(id);
                 if (el) el.addEventListener('input', validateForm);
             });
-            
-            // Máscara para número
             document.getElementById('number').addEventListener('input', function(e) {
                 this.value = this.value.replace(/[^0-9]/g, '');
             });
@@ -3015,53 +2613,29 @@ async function checkAdminPassword() {
             phone.addEventListener('input', function(e) {
                 let v = e.target.value.replace(/\D/g, '');
                 if (v.length > 11) v = v.substring(0, 11);
-                
                 if (v.length > 0) {
-                    if (v.length <= 2) {
-                        v = `(${v}`;
-                    } else if (v.length <= 6) {
-                        v = `(${v.substring(0, 2)}) ${v.substring(2)}`;
-                    } else {
-                        v = `(${v.substring(0, 2)}) ${v.substring(2, 6)}-${v.substring(6, 11)}`;
-                    }
+                    if (v.length <= 2) v = `(${v}`;
+                    else if (v.length <= 6) v = `(${v.substring(0, 2)}) ${v.substring(2)}`;
+                    else v = `(${v.substring(0, 2)}) ${v.substring(2, 6)}-${v.substring(6, 11)}`;
                 }
-                
                 e.target.value = v;
                 validateForm();
             });
         }
 
         function showNotification(msg, type = 'success') {
-            const colors = {
-                success: '#28a745',
-                error: '#dc3545',
-                warning: '#ffc107',
-                info: '#17a2b8'
-            };
-            
+            const colors = { success: '#28a745', error: '#dc3545', warning: '#ffc107', info: '#17a2b8' };
             const notif = document.createElement('div');
             notif.className = 'notification';
             notif.style.cssText = `
-                position: fixed;
-                top: 20px;
-                right: 20px;
-                background: ${colors[type]};
-                color: white;
-                padding: 16px 24px;
-                border-radius: 10px;
-                box-shadow: 0 8px 25px rgba(0,0,0,0.3);
-                z-index: 10000;
-                animation: slideIn 0.3s ease;
-                font-weight: bold;
-                max-width: 350px;
+                position: fixed; top: 20px; right: 20px; background: ${colors[type]};
+                color: white; padding: 16px 24px; border-radius: 10px;
+                box-shadow: 0 8px 25px rgba(0,0,0,0.3); z-index: 10000;
+                animation: slideIn 0.3s ease; font-weight: bold; max-width: 350px;
             `;
             notif.innerHTML = msg;
             document.body.appendChild(notif);
-            
-            setTimeout(() => {
-                notif.style.animation = 'fadeIn 0.3s reverse';
-                setTimeout(() => notif.remove(), 300);
-            }, 3000);
+            setTimeout(() => { notif.style.animation = 'fadeIn 0.3s reverse'; setTimeout(() => notif.remove(), 300); }, 3000);
         }
 
         // ============================================
@@ -3069,20 +2643,10 @@ async function checkAdminPassword() {
         // ============================================
         document.addEventListener('DOMContentLoaded', async () => {
             console.log('🚀 BebCom Delivery - Azure Production');
-            
-            // 1. Carregar configuração segura
             await loadSecureConfig();
-            
-            // 2. Inicializar storage
             initStorage();
-            
-            // 3. Inicializar sistema admin (✅ SEMPRE LIBERADO)
             initAdminSystem();
-            
-            // 4. Inicializar verificação de idade (✅ NÃO BLOQUEIA O ADMIN)
             initAgeVerification();
-            
-            // 5. Verificar backend
             setTimeout(checkBackendHealth, 2000);
         });
 
