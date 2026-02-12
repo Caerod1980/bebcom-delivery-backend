@@ -15,17 +15,11 @@ jobs:
       uses: actions/setup-node@v3
       with:
         node-version: '20'
-        cache: 'npm'
     
     - name: Instalar dependências
       run: |
-        npm install --ignore-scripts
+        npm install --omit=dev
         npm install bcryptjs@2.4.3 --save
-    
-    - name: Login no Azure
-      uses: azure/login@v1
-      with:
-        creds: ${{ secrets.AZURE_CREDENTIALS }}  # ✅ SEGURO!
     
     - name: Deploy para Azure
       uses: azure/webapps-deploy@v2
@@ -40,9 +34,3 @@ jobs:
           --resource-group bebcom-delivery-api-1980_group \
           --name bebcom-delivery-api-1980 \
           --startup-file "node backend/server.js"
-    
-    - name: Reiniciar App Service
-      run: |
-        az webapp restart \
-          --resource-group bebcom-delivery-api-1980_group \
-          --name bebcom-delivery-api-1980
