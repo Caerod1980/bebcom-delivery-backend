@@ -19,10 +19,13 @@
     <meta property="og:title" content="BebCom Delivery">
     <meta property="og:description" content="Seu delivery de bebidas em Bauru">
     <meta property="og:type" content="website">
-    <meta property="og:image" content="https://seudominio.azurewebsites.net/og-image.jpg">
+    <meta property="og:image" content="/og-image.jpg">
     
     <!-- Favicon -->
     <link rel="icon" type="image/png" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🍹</text></svg>">
+    
+    <!-- Mercado Pago SDK -->
+    <script src="https://sdk.mercadopago.com/js/v2"></script>
     
     <style>
         /* ====== ESTILOS OTIMIZADOS PARA PRODUÇÃO ====== */
@@ -54,6 +57,11 @@
 
         @keyframes spin {
             to { transform: rotate(360deg); }
+        }
+
+        @keyframes slideIn {
+            from { transform: translateX(100%); }
+            to { transform: translateX(0); }
         }
 
         body {
@@ -95,6 +103,15 @@
             top: 70px;
             z-index: 99;
             border-bottom: 1px solid #333;
+        }
+
+        .nav-container::-webkit-scrollbar {
+            height: 3px;
+        }
+
+        .nav-container::-webkit-scrollbar-thumb {
+            background: var(--primary);
+            border-radius: 10px;
         }
 
         .nav-button {
@@ -334,6 +351,15 @@
             border-radius: 12px;
         }
 
+        .cart-items::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .cart-items::-webkit-scrollbar-thumb {
+            background: var(--primary);
+            border-radius: 10px;
+        }
+
         .cart-item {
             display: flex;
             justify-content: space-between;
@@ -443,6 +469,10 @@
             box-shadow: 0 0 0 3px rgba(77, 150, 255, 0.1);
         }
 
+        .form-input::placeholder {
+            color: #666;
+        }
+
         /* Opções de entrega */
         .delivery-options {
             display: flex;
@@ -519,6 +549,12 @@
             box-shadow: 0 10px 25px rgba(40, 167, 69, 0.4);
         }
 
+        .primary-button:disabled {
+            background: #666;
+            cursor: not-allowed;
+            opacity: 0.7;
+        }
+
         .secondary-button {
             background: linear-gradient(135deg, #25D366 0%, #128C7E 100%);
             color: white;
@@ -542,6 +578,12 @@
             box-shadow: 0 10px 25px rgba(37, 211, 102, 0.4);
         }
 
+        .secondary-button:disabled {
+            background: #666;
+            cursor: not-allowed;
+            opacity: 0.7;
+        }
+
         .clear-button {
             background: linear-gradient(135deg, var(--danger) 0%, #c82333 100%);
             color: white;
@@ -554,6 +596,11 @@
             margin-top: 12px;
             transition: all 0.2s;
             font-weight: 600;
+        }
+
+        .clear-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(220, 53, 69, 0.3);
         }
 
         /* Status de pagamento */
@@ -760,6 +807,12 @@
             color: white;
         }
 
+        .age-btn-enter:disabled {
+            background: #666;
+            cursor: not-allowed;
+            opacity: 0.5;
+        }
+
         /* ADMIN */
         .admin-button {
             position: fixed;
@@ -835,6 +888,97 @@
             display: flex;
             align-items: center;
             justify-content: center;
+            transition: all 0.2s;
+        }
+
+        .admin-close:hover {
+            transform: scale(1.1);
+            background: #b91c1c;
+        }
+
+        .admin-password {
+            padding: 30px;
+        }
+
+        .password-input {
+            width: 100%;
+            padding: 15px;
+            background: rgba(255,255,255,0.1);
+            border: 1px solid #444;
+            border-radius: 8px;
+            color: white;
+            margin-bottom: 15px;
+            font-size: 16px;
+        }
+
+        .password-input:focus {
+            outline: none;
+            border-color: var(--secondary);
+            background: rgba(255,255,255,0.15);
+        }
+
+        .password-button {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+            font-size: 16px;
+            transition: all 0.2s;
+        }
+
+        .password-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(16, 185, 129, 0.3);
+        }
+
+        .admin-actions {
+            padding: 20px 30px;
+            background: rgba(26, 26, 26, 0.8);
+            border-top: 1px solid #333;
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .admin-action-btn {
+            flex: 1;
+            min-width: 150px;
+            padding: 15px;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 14px;
+        }
+
+        .admin-action-btn:hover {
+            transform: translateY(-2px);
+        }
+
+        .all-btn { background: linear-gradient(135deg, #10b981 0%, #059669 100%); }
+        .none-btn { background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); }
+        .save-btn { background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); }
+        .reset-btn { background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); }
+
+        /* Notification */
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 16px 24px;
+            border-radius: 10px;
+            color: white;
+            font-weight: bold;
+            z-index: 10000;
+            animation: slideIn 0.3s ease;
+            max-width: 350px;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.3);
         }
 
         /* Responsividade */
@@ -884,6 +1028,10 @@
             
             .admin-actions {
                 flex-direction: column;
+            }
+            
+            .admin-action-btn {
+                width: 100%;
             }
         }
 
@@ -1126,10 +1274,10 @@
                 <button class="admin-close" id="adminClose">×</button>
             </div>
 
-            <div class="admin-password" id="passwordSection" style="padding: 30px;">
+            <div class="admin-password" id="passwordSection">
                 <h3 style="color: #60a5fa; margin-bottom: 20px; text-align: center;">🔐 Acesso Administrativo</h3>
-                <input type="password" class="password-input" id="adminPassword" placeholder="Digite a senha" style="width: 100%; padding: 15px; background: rgba(255,255,255,0.1); border: 1px solid #444; border-radius: 8px; color: white; margin-bottom: 15px;">
-                <button class="password-button" onclick="checkAdminPassword()" style="width: 100%; padding: 15px; background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer;">
+                <input type="password" class="password-input" id="adminPassword" placeholder="Digite a senha">
+                <button class="password-button" onclick="checkAdminPassword()">
                     Entrar
                 </button>
             </div>
@@ -1138,51 +1286,33 @@
                 <!-- Categorias serão carregadas dinamicamente -->
             </div>
 
-            <div class="admin-actions" id="adminActions" style="display: none; padding: 20px 30px; background: rgba(26, 26, 26, 0.8); border-top: 1px solid #333; display: flex; gap: 15px; flex-wrap: wrap;">
-                <button class="admin-action-btn all-btn" onclick="setAllAvailable(true)" style="flex: 1; min-width: 150px; padding: 15px; background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer;">
-                    ✅ Todos Disponível
-                </button>
-                <button class="admin-action-btn none-btn" onclick="setAllAvailable(false)" style="flex: 1; min-width: 150px; padding: 15px; background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer;">
-                    ❌ Todos Indisponível
-                </button>
-                <button class="admin-action-btn save-btn" onclick="saveAvailability()" style="flex: 1; min-width: 150px; padding: 15px; background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer;">
-                    💾 Salvar
-                </button>
-                <button class="admin-action-btn reset-btn" onclick="resetAvailability()" style="flex: 1; min-width: 150px; padding: 15px; background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer;">
-                    🔄 Restaurar
-                </button>
-                <button class="admin-action-btn" onclick="openFlavorManagement()" style="flex: 1; min-width: 150px; padding: 15px; background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%); color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer;">
-                    🍹 Gerenciar Sabores
-                </button>
-                <button class="admin-action-btn" onclick="syncAllFromServer()" style="flex: 1; min-width: 150px; padding: 15px; background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%); color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer;">
-                    🔄 Sincronizar
-                </button>
+            <div class="admin-actions" id="adminActions" style="display: none;">
+                <button class="admin-action-btn all-btn" onclick="setAllAvailable(true)">✅ Todos Disponível</button>
+                <button class="admin-action-btn none-btn" onclick="setAllAvailable(false)">❌ Todos Indisponível</button>
+                <button class="admin-action-btn save-btn" onclick="saveAvailability()">💾 Salvar</button>
+                <button class="admin-action-btn reset-btn" onclick="resetAvailability()">🔄 Restaurar</button>
+                <button class="admin-action-btn" onclick="openFlavorManagement()" style="background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);">🍹 Gerenciar Sabores</button>
+                <button class="admin-action-btn" onclick="syncAllFromServer()" style="background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);">🔄 Sincronizar</button>
             </div>
         </div>
     </div>
 
     <script>
         // ============================================
-        // CONFIGURAÇÃO PRINCIPAL - AZURE PRODUCTION
+        // CONFIGURAÇÃO INICIAL (SEGURA)
         // ============================================
-        const CONFIG = {
-            // 🔥 URL DO BACKEND NO AZURE (ALTERE PARA SEU DOMÍNIO)
-            backendUrl: 'https://bebcom-delivery-api-1980.azurewebsites.net',
-            
-            // 🔥 NÚMERO DO WHATSAPP
-            whatsappNumber: '5514996130369',
-            
-            // 🔥 SENHA ADMINISTRATIVA (DEVE SER IGUAL AO .env DO BACKEND)
-            adminPassword: 'Bebcom25*',
-            
-            // Localização da loja
+        let CONFIG = {
+            backendUrl: '',
+            whatsappNumber: '',
+            mercadoPago: {
+                publicKey: null,
+                testMode: true
+            },
             storeLocation: {
                 lat: -22.35892,
                 lng: -49.0987233,
                 address: "R. José Henrique Ferraz, 18-10 - Centro, Bauru - SP"
             },
-            
-            // Taxas de entrega
             deliveryRates: {
                 baseFee: 5.00,
                 perKm: 2.65,
@@ -1190,14 +1320,12 @@
                 minDistance: 0.5,
                 freeDeliveryMin: 100.00
             },
-            
-            // Versão do sistema
-            version: '3.4.0-azure',
+            version: '3.5.0-azure-secure',
             environment: 'production'
         };
 
         // ============================================
-        // DADOS DOS PRODUTOS (OTIMIZADO)
+        // DADOS DOS PRODUTOS (FONTE ÚNICA DA VERDADE)
         // ============================================
         const products = {
             'drinks-whisky': [
@@ -1337,45 +1465,103 @@
             currentFlavorStep: null,
             currentButton: null,
             adminAuthenticated: false,
+            adminToken: null,
             productAvailability: {},
             flavorAvailability: {},
             ageVerified: false,
             backendOnline: null,
             offlineSince: null,
-            syncQueue: []
+            syncQueue: [],
+            mpInstance: null
         };
 
         // ============================================
-        // INICIALIZAÇÃO
+        // CARREGAR CONFIGURAÇÃO SEGURA DO BACKEND
         // ============================================
-        document.addEventListener('DOMContentLoaded', function() {
-            console.log('🚀 BebCom Delivery - Azure Production');
-            console.log(`📦 Versão: ${CONFIG.version}`);
-            console.log(`🌍 Backend: ${CONFIG.backendUrl}`);
-            
-            initAdminSystem();
-            initAgeVerification();
-            initStorage();
-            
-            setTimeout(() => {
-                checkBackendHealth();
-            }, 2000);
-        });
+        async function loadSecureConfig() {
+            try {
+                // Tentar carregar do backend primeiro
+                const response = await fetch('/api/config', {
+                    method: 'GET',
+                    headers: { 'Cache-Control': 'no-cache' },
+                    timeout: 5000
+                });
+                
+                if (response.ok) {
+                    const config = await response.json();
+                    
+                    // Atualizar configuração (NUNCA recebe senha admin!)
+                    CONFIG = {
+                        ...CONFIG,
+                        ...config,
+                        adminPassword: null // Garantia de segurança
+                    };
+                    
+                    console.log('✅ Configuração carregada do backend');
+                    
+                    // Inicializar Mercado Pago se tiver public key
+                    if (CONFIG.mercadoPago?.publicKey) {
+                        initMercadoPago();
+                    }
+                    
+                    return true;
+                } else {
+                    throw new Error('Falha ao carregar configuração');
+                }
+            } catch (error) {
+                console.warn('⚠️ Usando configuração fallback local');
+                
+                // Fallback para desenvolvimento - NUNCA incluir senha!
+                CONFIG.backendUrl = window.location.origin;
+                CONFIG.whatsappNumber = '5514996130369';
+                CONFIG.mercadoPago = {
+                    publicKey: null,
+                    testMode: true
+                };
+                
+                showNotification('⚠️ Modo offline - configurações locais', 'warning');
+                return false;
+            }
+        }
+
+        // ============================================
+        // INICIALIZAR MERCADO PAGO
+        // ============================================
+        function initMercadoPago() {
+            try {
+                if (window.MercadoPago && CONFIG.mercadoPago?.publicKey) {
+                    state.mpInstance = new MercadoPago(CONFIG.mercadoPago.publicKey, {
+                        locale: 'pt-BR'
+                    });
+                    console.log('✅ Mercado Pago SDK inicializado');
+                }
+            } catch (error) {
+                console.error('❌ Erro ao inicializar Mercado Pago:', error);
+            }
+        }
 
         // ============================================
         // VERIFICAÇÃO DE IDADE
         // ============================================
         function initAgeVerification() {
             const hasConfirmed = localStorage.getItem('bebcom_age_verified');
+            const verifiedTime = localStorage.getItem('bebcom_age_verified_time');
             
-            if (hasConfirmed === 'true') {
-                state.ageVerified = true;
-                document.getElementById('ageVerificationModal').style.display = 'none';
-                document.body.style.overflow = 'auto';
-                initUserInterface();
-                return;
+            // Verificar se a verificação expirou (24 horas)
+            if (hasConfirmed === 'true' && verifiedTime) {
+                const timeSinceVerification = Date.now() - parseInt(verifiedTime);
+                const hoursSinceVerification = timeSinceVerification / (1000 * 60 * 60);
+                
+                if (hoursSinceVerification < 24) {
+                    state.ageVerified = true;
+                    document.getElementById('ageVerificationModal').style.display = 'none';
+                    document.body.style.overflow = 'auto';
+                    initAfterAgeVerification();
+                    return;
+                }
             }
             
+            // Mostrar modal de idade
             const modal = document.getElementById('ageVerificationModal');
             modal.style.display = 'flex';
             document.body.style.overflow = 'hidden';
@@ -1387,40 +1573,56 @@
                 enterBtn.disabled = !this.checked;
             });
             
-            enterBtn.addEventListener('click', function() {
+            enterBtn.addEventListener('click', async function() {
                 if (!checkbox.checked) return;
                 
                 state.ageVerified = true;
+                
+                // Salvar verificação com timestamp
                 localStorage.setItem('bebcom_age_verified', 'true');
+                localStorage.setItem('bebcom_age_verified_time', Date.now().toString());
+                
+                // Registrar verificação no backend (seguro)
+                try {
+                    if (CONFIG.backendUrl) {
+                        await fetch(`${CONFIG.backendUrl}/api/age/verify`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' }
+                        });
+                    }
+                } catch (error) {
+                    console.log('⚠️ Registro de idade offline');
+                }
+                
                 modal.style.display = 'none';
                 document.body.style.overflow = 'auto';
                 
-                initUserInterface();
+                initAfterAgeVerification();
             });
         }
 
         // ============================================
-        // INICIALIZAÇÃO DA INTERFACE
+        // INICIALIZAÇÃO PÓS-VERIFICAÇÃO DE IDADE
         // ============================================
-        async function initUserInterface() {
-            if (!state.ageVerified) return;
-            
+        async function initAfterAgeVerification() {
             console.log('✅ Inicializando interface...');
             
-            loadCart();
             await loadAvailability();
-            
+            loadCart();
             showCategory('drinks-whisky');
             setupEventListeners();
             setupPhoneMask();
-            
             selectDeliveryType('pickup');
+            
+            // Verificar saúde do backend a cada 5 minutos
+            setInterval(checkBackendHealth, 300000);
         }
 
         // ============================================
         // STORAGE MANAGEMENT
         // ============================================
         function initStorage() {
+            // Carregar disponibilidade de produtos
             if (!localStorage.getItem('bebcom_product_availability')) {
                 const defaultAvailability = {};
                 Object.keys(products).forEach(cat => {
@@ -1434,6 +1636,7 @@
                 state.productAvailability = JSON.parse(localStorage.getItem('bebcom_product_availability'));
             }
             
+            // Carregar disponibilidade de sabores
             if (!localStorage.getItem('bebcom_flavor_availability')) {
                 const defaultFlavors = {};
                 Object.keys(FLAVOR_CATALOG).forEach(type => {
@@ -1452,6 +1655,8 @@
         // BACKEND HEALTH CHECK
         // ============================================
         async function checkBackendHealth() {
+            if (!CONFIG.backendUrl) return false;
+            
             try {
                 const response = await fetch(`${CONFIG.backendUrl}/health`, {
                     method: 'GET',
@@ -1463,7 +1668,7 @@
                     const data = await response.json();
                     state.backendOnline = true;
                     state.offlineSince = null;
-                    console.log('✅ Backend Azure online');
+                    console.log('✅ Backend online');
                     
                     // Tentar sincronizar dados pendentes
                     syncPendingData();
@@ -1485,7 +1690,7 @@
         // ============================================
         async function loadAvailability() {
             try {
-                if (state.backendOnline) {
+                if (state.backendOnline && CONFIG.backendUrl) {
                     const [productsRes, flavorsRes] = await Promise.all([
                         fetch(`${CONFIG.backendUrl}/api/product-availability`),
                         fetch(`${CONFIG.backendUrl}/api/flavor-availability`)
@@ -1508,7 +1713,8 @@
                     }
                 }
             } catch (error) {
-                console.log('⚠️ Usando dados locais');
+                console.log('⚠️ Usando dados locais de disponibilidade');
+                initStorage(); // Carregar do localStorage
             }
         }
 
@@ -1691,12 +1897,12 @@
 
         function confirmFlavorSelection() {
             if (state.currentFlavorStep === 'primary' && !state.pendingFlavors.primary) {
-                alert('Selecione um sabor');
+                showNotification('❌ Selecione um sabor', 'error');
                 return;
             }
             
             if (state.currentFlavorStep === 'ice' && !state.pendingFlavors.ice) {
-                alert('Selecione um sabor de gelo');
+                showNotification('❌ Selecione um sabor de gelo', 'error');
                 return;
             }
             
@@ -1912,7 +2118,14 @@
             if (saved) {
                 try {
                     const data = JSON.parse(saved);
-                    state.cart = data.items || [];
+                    // Verificar se o carrinho não é muito antigo (24 horas)
+                    const age = Date.now() - (data.timestamp || 0);
+                    if (age < 24 * 60 * 60 * 1000) {
+                        state.cart = data.items || [];
+                    } else {
+                        localStorage.removeItem('bebcom_cart');
+                        state.cart = [];
+                    }
                     updateCart();
                 } catch (e) {
                     state.cart = [];
@@ -2003,9 +2216,56 @@
             return isValid;
         }
 
+        function validateOrder() {
+            const errors = [];
+            const name = document.getElementById('customerName').value.trim();
+            const phone = document.getElementById('customerPhone').value.trim();
+            
+            if (!name) errors.push('• Nome obrigatório');
+            if (!phone || phone.replace(/\D/g, '').length < 10) errors.push('• WhatsApp inválido');
+            if (state.cart.length === 0) errors.push('• Carrinho vazio');
+            
+            if (state.deliveryType === 'delivery') {
+                if (!document.getElementById('street').value.trim()) errors.push('• Rua obrigatória');
+                if (!document.getElementById('number').value.trim()) errors.push('• Número obrigatório');
+                if (!document.getElementById('neighborhood').value.trim()) errors.push('• Bairro obrigatório');
+                if (!state.paymentMethod) errors.push('• Selecione pagamento');
+                if (!state.paymentConfirmed) errors.push('• Confirme o pagamento');
+            }
+            
+            return errors;
+        }
+
+        function prepareOrderData() {
+            const items = state.cart.map(item => ({
+                name: item.name,
+                quantity: item.quantity,
+                price: item.price,
+                flavors: item.flavors || null
+            }));
+            
+            const subtotal = items.reduce((sum, i) => sum + (i.quantity * i.price), 0);
+            
+            let deliveryFee = 0;
+            if (state.deliveryType === 'delivery') {
+                deliveryFee = CONFIG.deliveryRates.baseFee;
+                if (subtotal >= CONFIG.deliveryRates.freeDeliveryMin) deliveryFee = 0;
+            }
+            
+            return {
+                items,
+                subtotal,
+                deliveryFee,
+                total: subtotal + deliveryFee
+            };
+        }
+
+        // ============================================
+        // PROCESSAMENTO DE PAGAMENTO
+        // ============================================
         async function processPayment() {
             if (state.deliveryType === 'pickup') {
-                alert('Pagamento será realizado na retirada.');
+                showNotification('✅ Pagamento será realizado na retirada', 'info');
                 return;
             }
             
@@ -2013,7 +2273,7 @@
             
             const errors = validateOrder();
             if (errors.length > 0) {
-                alert(errors.join('\n'));
+                showNotification(errors.join('\n'), 'error');
                 return;
             }
             
@@ -2025,47 +2285,53 @@
             button.innerHTML = '<span class="loading-spinner"></span> Processando...';
             button.disabled = true;
             statusDiv.style.display = 'block';
+            statusDiv.className = 'payment-status';
             statusDiv.innerHTML = '🔄 Processando pagamento...';
             
             try {
                 const orderData = prepareOrderData();
                 state.currentOrderId = 'BEB' + Date.now().toString().slice(-8);
                 
-                const response = await fetch(`${CONFIG.backendUrl}/api/create-payment`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        orderId: state.currentOrderId,
-                        customer: {
-                            name: document.getElementById('customerName').value.trim(),
-                            phone: document.getElementById('customerPhone').value.trim()
-                        },
-                        items: orderData.items,
-                        total: orderData.total,
-                        deliveryType: state.deliveryType,
-                        paymentMethod: state.paymentMethod
-                    })
-                });
-                
-                if (!response.ok) throw new Error('Erro no pagamento');
-                
-                const data = await response.json();
-                
-                if (data.success) {
-                    if (data.qrCode) {
-                        showPixPayment(data.qrCode, data.copyPasteKey);
-                    } else if (data.paymentUrl) {
-                        window.open(data.paymentUrl, '_blank');
-                        setTimeout(() => confirmPayment(), 3000);
-                    } else {
-                        confirmPayment();
+                // Tentar processar pagamento online
+                if (state.backendOnline && CONFIG.backendUrl) {
+                    const response = await fetch(`${CONFIG.backendUrl}/api/create-payment`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            orderId: state.currentOrderId,
+                            customer: {
+                                name: document.getElementById('customerName').value.trim(),
+                                phone: document.getElementById('customerPhone').value.trim()
+                            },
+                            items: orderData.items,
+                            total: orderData.total,
+                            deliveryType: state.deliveryType,
+                            paymentMethod: state.paymentMethod
+                        })
+                    });
+                    
+                    if (response.ok) {
+                        const data = await response.json();
+                        
+                        if (data.success) {
+                            if (data.qrCode) {
+                                showPixPayment(data.qrCode, data.copyPasteKey);
+                            } else if (data.paymentUrl) {
+                                window.open(data.paymentUrl, '_blank');
+                                setTimeout(() => confirmPayment(), 3000);
+                            } else {
+                                confirmPayment();
+                            }
+                            return;
+                        }
                     }
-                } else {
-                    throw new Error(data.error || 'Erro no pagamento');
                 }
                 
+                // Fallback para pagamento manual
+                showManualPixPayment();
+                
             } catch (error) {
-                console.error('Erro:', error);
+                console.error('Erro no pagamento:', error);
                 showManualPixPayment();
             } finally {
                 button.innerHTML = original;
@@ -2089,7 +2355,7 @@
                     <div style="background: rgba(0,0,0,0.5); padding: 15px; border-radius: 10px; margin: 15px 0;">
                         <small style="color: #aaa;">Chave PIX:</small><br>
                         <span style="font-family: monospace; word-break: break-all; color: white;">${copyKey}</span>
-                        <button onclick="navigator.clipboard.writeText('${copyKey}'); alert('Chave copiada!');" style="margin-top: 10px; background: #3b82f6; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer;">
+                        <button onclick="navigator.clipboard.writeText('${copyKey}'); showNotification('Chave copiada!')" style="margin-top: 10px; background: #3b82f6; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer;">
                             📋 Copiar
                         </button>
                     </div>
@@ -2151,56 +2417,12 @@
             showNotification('✅ Pagamento confirmado! Envie o pedido.');
         }
 
-        function prepareOrderData() {
-            const items = state.cart.map(item => ({
-                name: item.name,
-                quantity: item.quantity,
-                price: item.price,
-                flavors: item.flavors || null
-            }));
-            
-            const subtotal = items.reduce((sum, i) => sum + (i.quantity * i.price), 0);
-            
-            let deliveryFee = 0;
-            if (state.deliveryType === 'delivery') {
-                deliveryFee = CONFIG.deliveryRates.baseFee;
-                if (subtotal >= CONFIG.deliveryRates.freeDeliveryMin) deliveryFee = 0;
-            }
-            
-            return {
-                items,
-                subtotal,
-                deliveryFee,
-                total: subtotal + deliveryFee
-            };
-        }
-
-        function validateOrder() {
-            const errors = [];
-            const name = document.getElementById('customerName').value.trim();
-            const phone = document.getElementById('customerPhone').value.trim();
-            
-            if (!name) errors.push('• Nome obrigatório');
-            if (!phone || phone.replace(/\D/g, '').length < 10) errors.push('• WhatsApp inválido');
-            if (state.cart.length === 0) errors.push('• Carrinho vazio');
-            
-            if (state.deliveryType === 'delivery') {
-                if (!document.getElementById('street').value.trim()) errors.push('• Rua obrigatória');
-                if (!document.getElementById('number').value.trim()) errors.push('• Número obrigatório');
-                if (!document.getElementById('neighborhood').value.trim()) errors.push('• Bairro obrigatório');
-                if (!state.paymentMethod) errors.push('• Selecione pagamento');
-                if (!state.paymentConfirmed) errors.push('• Confirme o pagamento');
-            }
-            
-            return errors;
-        }
-
         // ============================================
         // WHATSAPP
         // ============================================
         function sendToWhatsApp() {
             if (!validateForm()) {
-                alert('Complete todas as informações');
+                showNotification('Complete todas as informações', 'error');
                 return;
             }
             
@@ -2262,7 +2484,7 @@
         }
 
         // ============================================
-        // ADMINISTRAÇÃO
+        // ADMINISTRAÇÃO SEGURA
         // ============================================
         function initAdminSystem() {
             const adminBtn = document.getElementById('adminButton');
@@ -2287,22 +2509,40 @@
         function openAdminPanel() {
             document.getElementById('adminModal').style.display = 'block';
             
-            if (!state.adminAuthenticated) {
-                document.getElementById('passwordSection').style.display = 'block';
-                document.getElementById('adminMain').style.display = 'none';
-                document.getElementById('adminActions').style.display = 'none';
-                document.getElementById('adminPassword').focus();
-            } else {
+            // Verificar se já está autenticado via token
+            if (isAdminAuthenticated()) {
+                state.adminAuthenticated = true;
                 document.getElementById('passwordSection').style.display = 'none';
                 document.getElementById('adminMain').style.display = 'block';
                 document.getElementById('adminActions').style.display = 'flex';
                 loadAdminProducts();
+            } else {
+                document.getElementById('passwordSection').style.display = 'block';
+                document.getElementById('adminMain').style.display = 'none';
+                document.getElementById('adminActions').style.display = 'none';
+                document.getElementById('adminPassword').focus();
             }
         }
 
         function closeAdminPanel() {
             document.getElementById('adminModal').style.display = 'none';
-            state.adminAuthenticated = false;
+        }
+
+        function isAdminAuthenticated() {
+            const token = sessionStorage.getItem('admin_token');
+            const expires = sessionStorage.getItem('admin_expires');
+            
+            if (!token || !expires) return false;
+            if (Date.now() > parseInt(expires)) {
+                sessionStorage.removeItem('admin_token');
+                sessionStorage.removeItem('admin_expires');
+                state.adminAuthenticated = false;
+                return false;
+            }
+            
+            state.adminToken = token;
+            state.adminAuthenticated = true;
+            return true;
         }
 
         async function checkAdminPassword() {
@@ -2314,23 +2554,51 @@
             btn.disabled = true;
             
             try {
-                if (password === CONFIG.adminPassword) {
+                // ✅ SEGURO: Senha verificada no backend
+                const response = await fetch(`${CONFIG.backendUrl}/api/admin/verify`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ password })
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    
+                    // Armazenar token JWT (expira em 30 min)
+                    sessionStorage.setItem('admin_token', data.token);
+                    sessionStorage.setItem('admin_expires', (Date.now() + 30 * 60 * 1000).toString());
+                    
                     state.adminAuthenticated = true;
+                    state.adminToken = data.token;
+                    
                     document.getElementById('passwordSection').style.display = 'none';
                     document.getElementById('adminMain').style.display = 'block';
                     document.getElementById('adminActions').style.display = 'flex';
+                    
                     loadAdminProducts();
                     showNotification('✅ Acesso concedido');
                 } else {
                     throw new Error('Senha incorreta');
                 }
             } catch (error) {
-                alert('❌ ' + error.message);
+                showNotification('❌ ' + error.message, 'error');
                 document.getElementById('adminPassword').value = '';
             } finally {
                 btn.innerHTML = original;
                 btn.disabled = false;
             }
+        }
+
+        function getAdminHeaders() {
+            const headers = {
+                'Content-Type': 'application/json'
+            };
+            
+            if (state.adminToken) {
+                headers['Authorization'] = `Bearer ${state.adminToken}`;
+            }
+            
+            return headers;
         }
 
         function loadAdminProducts() {
@@ -2464,6 +2732,12 @@
         }
 
         async function saveAvailability() {
+            if (!isAdminAuthenticated()) {
+                showNotification('🔐 Sessão expirada. Faça login novamente.', 'error');
+                openAdminPanel();
+                return;
+            }
+            
             const btn = document.querySelector('.save-btn');
             const original = btn.innerHTML;
             
@@ -2471,25 +2745,21 @@
             btn.disabled = true;
             
             try {
+                // Salvar localmente
                 localStorage.setItem('bebcom_product_availability', JSON.stringify(state.productAvailability));
                 localStorage.setItem('bebcom_flavor_availability', JSON.stringify(state.flavorAvailability));
                 
-                if (state.backendOnline) {
+                // Tentar salvar no backend
+                if (state.backendOnline && CONFIG.backendUrl) {
                     const [prodRes, flavRes] = await Promise.all([
                         fetch(`${CONFIG.backendUrl}/api/admin/product-availability/bulk`, {
                             method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'x-admin-password': CONFIG.adminPassword
-                            },
+                            headers: getAdminHeaders(),
                             body: JSON.stringify({ productAvailability: state.productAvailability })
                         }),
                         fetch(`${CONFIG.backendUrl}/api/admin/flavor-availability/bulk`, {
                             method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'x-admin-password': CONFIG.adminPassword
-                            },
+                            headers: getAdminHeaders(),
                             body: JSON.stringify({ flavorAvailability: state.flavorAvailability })
                         })
                     ]);
@@ -2530,7 +2800,10 @@
                 localStorage.setItem('bebcom_product_availability', JSON.stringify(state.productAvailability));
                 localStorage.setItem('bebcom_flavor_availability', JSON.stringify(state.flavorAvailability));
                 
-                loadAdminProducts();
+                if (document.getElementById('adminMain').style.display === 'block') {
+                    loadAdminProducts();
+                }
+                
                 updateMenuAvailability();
                 
                 showNotification('🔄 Disponibilidade restaurada');
@@ -2538,6 +2811,12 @@
         }
 
         function openFlavorManagement() {
+            if (!isAdminAuthenticated()) {
+                showNotification('🔐 Sessão expirada. Faça login novamente.', 'error');
+                openAdminPanel();
+                return;
+            }
+            
             const container = document.getElementById('adminMain');
             container.innerHTML = `
                 <div style="margin-bottom: 30px;">
@@ -2624,6 +2903,12 @@
         }
 
         async function syncAllFromServer() {
+            if (!isAdminAuthenticated()) {
+                showNotification('🔐 Sessão expirada. Faça login novamente.', 'error');
+                openAdminPanel();
+                return;
+            }
+            
             const btn = document.querySelector('[onclick*="syncAllFromServer"]');
             const original = btn.innerHTML;
             
@@ -2637,7 +2922,7 @@
                     await loadAvailability();
                     updateMenuAvailability();
                     
-                    if (document.getElementById('adminModal').style.display === 'block') {
+                    if (document.getElementById('adminMain').style.display === 'block') {
                         loadAdminProducts();
                     }
                     
@@ -2655,6 +2940,7 @@
 
         function syncPendingData() {
             // Implementar sincronização de dados pendentes
+            console.log('🔄 Sincronização pendente...');
         }
 
         function updateMenuAvailability() {
@@ -2694,6 +2980,11 @@
                 const el = document.getElementById(id);
                 if (el) el.addEventListener('input', validateForm);
             });
+            
+            // Máscara para número
+            document.getElementById('number').addEventListener('input', function(e) {
+                this.value = this.value.replace(/[^0-9]/g, '');
+            });
         }
 
         function setupPhoneMask() {
@@ -2701,8 +2992,17 @@
             phone.addEventListener('input', function(e) {
                 let v = e.target.value.replace(/\D/g, '');
                 if (v.length > 11) v = v.substring(0, 11);
-                if (v.length > 0) v = '(' + v.substring(0, 2) + ') ' + v.substring(2);
-                if (v.length > 9) v = v.substring(0, 10) + '-' + v.substring(10);
+                
+                if (v.length > 0) {
+                    if (v.length <= 2) {
+                        v = `(${v}`;
+                    } else if (v.length <= 6) {
+                        v = `(${v.substring(0, 2)}) ${v.substring(2)}`;
+                    } else {
+                        v = `(${v.substring(0, 2)}) ${v.substring(2, 6)}-${v.substring(6, 11)}`;
+                    }
+                }
+                
                 e.target.value = v;
                 validateForm();
             });
@@ -2717,6 +3017,7 @@
             };
             
             const notif = document.createElement('div');
+            notif.className = 'notification';
             notif.style.cssText = `
                 position: fixed;
                 top: 20px;
@@ -2727,7 +3028,7 @@
                 border-radius: 10px;
                 box-shadow: 0 8px 25px rgba(0,0,0,0.3);
                 z-index: 10000;
-                animation: fadeIn 0.3s;
+                animation: slideIn 0.3s ease;
                 font-weight: bold;
                 max-width: 350px;
             `;
@@ -2739,6 +3040,52 @@
                 setTimeout(() => notif.remove(), 300);
             }, 3000);
         }
+
+        // ============================================
+        // INICIALIZAÇÃO PRINCIPAL
+        // ============================================
+        document.addEventListener('DOMContentLoaded', async () => {
+            console.log('🚀 BebCom Delivery - Secure Version');
+            
+            // 1. Carregar configuração segura
+            await loadSecureConfig();
+            
+            // 2. Inicializar storage
+            initStorage();
+            
+            // 3. Inicializar sistema admin
+            initAdminSystem();
+            
+            // 4. Inicializar verificação de idade
+            initAgeVerification();
+            
+            // 5. Verificar backend
+            setTimeout(checkBackendHealth, 2000);
+        });
+
+        // Expor funções globais necessárias
+        window.showCategory = showCategory;
+        window.handleAddToCart = handleAddToCart;
+        window.updateQuantity = updateQuantity;
+        window.removeFromCart = removeFromCart;
+        window.clearCart = clearCart;
+        window.selectDeliveryType = selectDeliveryType;
+        window.selectPaymentMethod = selectPaymentMethod;
+        window.processPayment = processPayment;
+        window.sendToWhatsApp = sendToWhatsApp;
+        window.confirmFlavorSelection = confirmFlavorSelection;
+        window.cancelFlavorSelection = cancelFlavorSelection;
+        window.checkAdminPassword = checkAdminPassword;
+        window.setAllAvailable = setAllAvailable;
+        window.saveAvailability = saveAvailability;
+        window.resetAvailability = resetAvailability;
+        window.openFlavorManagement = openFlavorManagement;
+        window.loadFlavorsForType = loadFlavorsForType;
+        window.toggleFlavorAvailability = toggleFlavorAvailability;
+        window.setAllFlavorsAvailable = setAllFlavorsAvailable;
+        window.syncAllFromServer = syncAllFromServer;
+        window.adminToggleProductAvailability = adminToggleProductAvailability;
+        window.loadAdminProducts = loadAdminProducts;
     </script>
 </body>
 </html>
