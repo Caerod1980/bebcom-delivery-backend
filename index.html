@@ -2593,7 +2593,102 @@
                 btn.disabled = false;
             }
         }
+     // ============================================
+// GERENCIAMENTO DE SABORES - FUNÇÕES FALTANTES!
+// ============================================
+function openFlavorManagement() {
+    if (!isAdminAuthenticated()) {
+        showNotification('🔐 Sessão expirada. Faça login novamente.', 'error');
+        openAdminPanel();
+        return;
+    }
+    
+    const container = document.getElementById('adminMain');
+    container.innerHTML = `
+        <div style="margin-bottom: 30px;">
+            <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 25px;">
+                <button onclick="loadAdminProducts()" style="background: #3b82f6; color: white; border: none; border-radius: 8px; padding: 10px 15px; cursor: pointer;">
+                    ↩️ Voltar
+                </button>
+                <h3 style="color: #60a5fa; margin: 0;">🍹 Gerenciar Sabores</h3>
+            </div>
+            
+            <select id="flavorTypeSelect" style="width: 100%; padding: 15px; background: rgba(255,255,255,0.1); border: 1px solid #444; border-radius: 8px; color: white; margin-bottom: 20px;" onchange="loadFlavorsForType(this.value)">
+                <option value="">-- Selecione um tipo --</option>
+                ${Object.entries(FLAVOR_TYPES).map(([key, name]) => `<option value="${key}">${name}</option>`).join('')}
+            </select>
+            
+            <div id="flavorManagementSection" style="display: none;"></div>
+        </div>
+    `;
+}
 
+function loadFlavorsForType(flavorType) {
+    const section = document.getElementById('flavorManagementSection');
+    
+    if (!flavorType) {
+        section.style.display = 'none';
+        return;
+    }
+    
+    const flavors = FLAVOR_CATALOG[flavorType] || [];
+    const typeName = FLAVOR_TYPES[flavorType] || flavorType;
+    
+    let html = `
+        <div style="background: rgba(0,0,0,0.3); padding: 20px; border-radius: 12px;">
+            <h4 style="color: #94a3b8; margin-bottom: 15px;">Gerenciando: ${typeName}</h4>
+            <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 10px;">
+    `;
+    
+    flavors.forEach(flavor => {
+        const key = `${flavorType}_${flavor}`;
+        const available = state.flavorAvailability[key] !== false;
+        
+        html += `
+            <div style="display: flex; justify-content: space-between; align-items: center; padding: 15px; background: ${available ? 'rgba(16,185,129,0.1)' : 'rgba(239,68,68,0.1)'}; border-radius: 8px; border: 1px solid ${available ? '#10b981' : '#ef4444'};">
+                <span style="color: white; font-weight: 500;">${flavor}</span>
+                <label style="position: relative; display: inline-block; width: 50px; height: 24px;">
+                    <input type="checkbox" style="opacity: 0; width: 0; height: 0;" 
+                           ${available ? 'checked' : ''}
+                           onchange="toggleFlavorAvailability('${flavorType}', '${flavor}', this.checked)">
+                    <span style="position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: ${available ? '#10b981' : '#dc2626'}; transition: .4s; border-radius: 24px;"></span>
+                    <span style="position: absolute; content: ''; height: 18px; width: 18px; left: 3px; bottom: 3px; background-color: white; transition: .4s; border-radius: 50%; transform: ${available ? 'translateX(26px)' : 'none'};"></span>
+                </label>
+            </div>
+        `;
+    });
+    
+    html += `
+            </div>
+            <div style="display: flex; gap: 10px; margin-top: 20px;">
+                <button onclick="setAllFlavorsAvailable('${flavorType}', true)" style="flex: 1; padding: 12px; background: #10b981; color: white; border: none; border-radius: 8px; cursor: pointer;">✅ Todos</button>
+                <button onclick="setAllFlavorsAvailable('${flavorType}', false)" style="flex: 1; padding: 12px; background: #ef4444; color: white; border: none; border-radius: 8px; cursor: pointer;">❌ Nenhum</button>
+            </div>
+        </div>
+    `;
+    
+    section.innerHTML = html;
+    section.style.display = 'block';
+}
+
+function toggleFlavorAvailability(flavorType, flavorName, isAvailable) {
+    const key = `${flavorType}_${flavorName}`;
+    state.flavorAvailability[key] = isAvailable;
+    localStorage.setItem('bebcom_flavor_availability', JSON.stringify(state.flavorAvailability));
+    loadFlavorsForType(flavorType);
+    showNotification(`Sabor ${flavorName} ${isAvailable ? '✅ disponível' : '❌ indisponível'}`, 'info');
+}
+
+function setAllFlavorsAvailable(flavorType, makeAvailable) {
+    const flavors = FLAVOR_CATALOG[flavorType] || [];
+    flavors.forEach(flavor => {
+        const key = `${flavorType}_${flavor}`;
+        state.flavorAvailability[key] = makeAvailable;
+    });
+    localStorage.setItem('bebcom_flavor_availability', JSON.stringify(state.flavorAvailability));
+    loadFlavorsForType(flavorType);
+    showNotification(`Todos os sabores ${makeAvailable ? '✅ disponíveis' : '❌ indisponíveis'}`, 'info');
+}
         function syncPendingData() {
             console.log('🔄 Sincronização pendente...');
         }
