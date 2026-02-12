@@ -1302,8 +1302,8 @@
         // CONFIGURAÇÃO INICIAL (SEGURA)
         // ============================================
         let CONFIG = {
-            backendUrl: '',
-            whatsappNumber: '',
+            backendUrl: 'https://bebcom-delivery-api-1980-bchkauhjf0djajag.brazilsouth-01.azurewebsites.net',
+            whatsappNumber: '5514996130369',
             mercadoPago: {
                 publicKey: null,
                 testMode: true
@@ -1511,7 +1511,7 @@
                 console.warn('⚠️ Backend offline, usando URL fixa do Azure');
                 
                 // ✅ CORREÇÃO: URL do Azure configurada
-                CONFIG.backendUrl = 'https://bebcom-delivery-api-1980.azurewebsites.net';
+                CONFIG.backendUrl = 'https://bebcom-delivery-api-1980-bchkauhjf0djajag.brazilsouth-01.azurewebsites.net';
                 CONFIG.whatsappNumber = '5514996130369'; // SEU NÚMERO
                 CONFIG.mercadoPago = {
                     publicKey: null,
