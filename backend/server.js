@@ -91,9 +91,8 @@ app.get('/health/readiness', (req, res) => {
     });
 });
 
-// ========== ✅ NOVA: ROTA DE CONFIGURAÇÃO PÚBLICA ==========
+// ========== ROTA DE CONFIGURAÇÃO PÚBLICA ==========
 app.get('/api/config', (req, res) => {
-    // ✅ APENAS dados públicos - NUNCA enviar senhas ou tokens secretos!
     res.json({
         backendUrl: `${req.protocol}://${req.get('host')}`,
         whatsappNumber: process.env.WHATSAPP_NUMBER || '',
@@ -156,11 +155,57 @@ app.get('/api/docs', (req, res) => {
                 { method: 'GET', path: '/api/sync-all', description: 'Sincronizar todos os dados' }
             ],
             admin: [
+                { method: 'POST', path: '/api/admin/verify', description: 'Verificar senha admin' },
                 { method: 'POST', path: '/api/admin/product-availability/bulk', description: 'Atualizar produtos' },
                 { method: 'POST', path: '/api/admin/flavor-availability/bulk', description: 'Atualizar sabores' }
             ]
         },
         timestamp: new Date().toISOString()
+    });
+});
+
+// ========== ✅ NOVA: ROTA DE VERIFICAÇÃO ADMIN ==========
+app.post('/api/admin/verify', adminLimiter, (req, res) => {
+    const { password } = req.body;
+    
+    if (!password) {
+        return res.status(400).json({
+            success: false,
+            error: 'Senha não fornecida'
+        });
+    }
+
+    const currentYear = new Date().getFullYear();
+    const expectedHash = crypto
+        .createHash('sha256')
+        .update(ADMIN_PASSWORD)
+        .digest('hex');
+    
+    const hashWithSalt = crypto
+        .createHash('sha256')
+        .update(ADMIN_PASSWORD + 'bebcom_' + currentYear)
+        .digest('hex');
+
+    if (password === ADMIN_PASSWORD || 
+        password === expectedHash || 
+        password === hashWithSalt) {
+        
+        // Gerar token simples
+        const token = crypto
+            .createHash('sha256')
+            .update(ADMIN_PASSWORD + Date.now() + crypto.randomBytes(16).toString('hex'))
+            .digest('hex');
+        
+        return res.json({
+            success: true,
+            token: token,
+            message: 'Autenticado com sucesso'
+        });
+    }
+
+    return res.status(401).json({
+        success: false,
+        error: 'Senha administrativa incorreta'
     });
 });
 
@@ -209,7 +254,6 @@ async function initializeMongoDB() {
         await initializeCollections(db);
         setupMongoRoutes(app, db);
 
-        // Configurar graceful shutdown
         setupGracefulShutdown();
 
     } catch (error) {
@@ -217,7 +261,6 @@ async function initializeMongoDB() {
         app.locals.isDBConnected = false;
         app.locals.db = null;
 
-        // Tentar reconectar após 30 segundos
         setTimeout(() => {
             console.log('🔄 Tentando reconectar ao MongoDB...');
             initializeMongoDB();
@@ -244,7 +287,6 @@ async function initializeCollections(db) {
                 await db.createCollection(name);
                 console.log(`📦 Collection criada: ${name}`);
 
-                // Criar índices
                 if (name === 'products' || name === 'flavors') {
                     await db.collection(name).createIndex({ type: 1 });
                     await db.collection(name).createIndex({ lastUpdated: -1 });
@@ -284,7 +326,6 @@ function authenticateAdmin(req, res, next) {
     }
 
     const currentYear = new Date().getFullYear();
-
     const expectedHash = crypto
         .createHash('sha256')
         .update(ADMIN_PASSWORD)
@@ -310,7 +351,6 @@ function authenticateAdmin(req, res, next) {
 // ========== ROTAS COM MONGODB ==========
 function setupMongoRoutes(app, db) {
 
-    // GET - Disponibilidade de produtos
     app.get('/api/product-availability', async (req, res) => {
         try {
             const productData = await db.collection('products')
@@ -335,7 +375,6 @@ function setupMongoRoutes(app, db) {
         }
     });
 
-    // GET - Disponibilidade de sabores
     app.get('/api/flavor-availability', async (req, res) => {
         try {
             const flavorData = await db.collection('flavors')
@@ -360,7 +399,6 @@ function setupMongoRoutes(app, db) {
         }
     });
 
-    // GET - Sincronização completa
     app.get('/api/sync-all', async (req, res) => {
         try {
             const [products, flavors] = await Promise.all([
@@ -386,7 +424,6 @@ function setupMongoRoutes(app, db) {
         }
     });
 
-    // POST - Atualizar produtos (admin) - COM RATE LIMIT
     app.post('/api/admin/product-availability/bulk', adminLimiter, authenticateAdmin, async (req, res) => {
         try {
             if (!db) {
@@ -420,7 +457,6 @@ function setupMongoRoutes(app, db) {
                 { upsert: true }
             );
 
-            // Registrar log
             await db.collection('admin_logs').insertOne({
                 action: 'update_products',
                 admin: adminName || 'Admin BebCom',
@@ -447,7 +483,6 @@ function setupMongoRoutes(app, db) {
         }
     });
 
-    // POST - Atualizar sabores (admin) - COM RATE LIMIT
     app.post('/api/admin/flavor-availability/bulk', adminLimiter, authenticateAdmin, async (req, res) => {
         try {
             if (!db) {
@@ -559,19 +594,17 @@ const server = app.listen(PORT, '0.0.0.0', () => {
     console.log(`🩺 Health: http://0.0.0.0:${PORT}/health`);
     console.log(`⚙️  Config: http://0.0.0.0:${PORT}/api/config`);
     console.log(`📚 Docs: http://0.0.0.0:${PORT}/api/docs`);
+    console.log(`🔐 Admin Verify: http://0.0.0.0:${PORT}/api/admin/verify`);
     console.log(`🌍 Ambiente: ${NODE_ENV}`);
     console.log(`🕒 Início: ${new Date().toISOString()}`);
     console.log(`🔒 Rate Limit Admin: 5 tentativas / 15 minutos`);
     console.log('='.repeat(70));
 
-    // Inicializar MongoDB após 1 segundo
     setTimeout(initializeMongoDB, 1000);
 });
 
-// Timeout do servidor
-server.timeout = 120000; // 2 minutos
+server.timeout = 120000;
 server.keepAliveTimeout = 65000;
 server.headersTimeout = 66000;
 
-// ========== EXPORTAR PARA TESTES ==========
 module.exports = app;
