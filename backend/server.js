@@ -3,25 +3,54 @@ const express = require('express');
 const cors = require('cors');
 const http = require('http');
 const crypto = require('crypto');
+const rateLimit = require('express-rate-limit'); // NOVO
 
 const app = express();
 const PORT = process.env.PORT || 8080; // Azure usa porta dinâmica
 
-// Middleware
+// ========== NOVO: VALIDAÇÃO DE VARIÁVEIS CRÍTICAS ==========
+const NODE_ENV = process.env.NODE_ENV || 'production';
+const REQUIRED_ENV_VARS = ['MONGODB_URI', 'ADMIN_PASSWORD'];
+const missingEnvVars = REQUIRED_ENV_VARS.filter(varName => !process.env[varName]);
+
+if (missingEnvVars.length > 0) {
+    console.error('='.repeat(70));
+    console.error('❌ ERRO CRÍTICO - VARIÁVEIS DE AMBIENTE NÃO CONFIGURADAS:');
+    missingEnvVars.forEach(varName => console.error(`   - ${varName}`));
+    console.error('='.repeat(70));
+    console.error('📌 Configure no Azure: Portal -> App Service -> Configuration');
+    console.error('='.repeat(70));
+    process.exit(1);
+}
+
+// ========== CONFIGURAÇÕES SEGURAS ==========
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD; // REMOVIDO FALLBACK
+const MONGODB_URI = process.env.MONGODB_URI;
+const DB_NAME = process.env.DB_NAME || 'bebcom_delivery';
+const API_VERSION = '3.4.0-azure';
+
+// ========== NOVO: RATE LIMITING ==========
+const adminLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutos
+    max: 5, // 5 tentativas
+    skipSuccessfulRequests: true,
+    message: {
+        success: false,
+        error: 'Muitas tentativas de admin. Aguarde 15 minutos.'
+    },
+    standardHeaders: true,
+    legacyHeaders: false
+});
+
+// Middleware - CORS (mantido original)
 app.use(cors({
     origin: process.env.CORS_ORIGIN || '*',
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'x-admin-password', 'x-admin-key']
 }));
+
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
-
-// ========== CONFIGURAÇÕES SEGURAS ==========
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'Bebcom25*';
-const MONGODB_URI = process.env.MONGODB_URI;
-const DB_NAME = process.env.DB_NAME || 'bebcom_delivery';
-const NODE_ENV = process.env.NODE_ENV || 'production';
-const API_VERSION = '3.4.0-azure';
 
 // ========== LOG DE INICIALIZAÇÃO ==========
 console.log('='.repeat(70));
@@ -95,8 +124,8 @@ app.get('/api/docs', (req, res) => {
                 { method: 'GET', path: '/health/readiness', description: 'Azure readiness probe' },
                 { method: 'GET', path: '/api/product-availability', description: 'Disponibilidade de produtos' },
                 { method: 'GET', path: '/api/flavor-availability', description: 'Disponibilidade de sabores' },
-                { method: 'GET', path: '/api/sync-all', description: 'Sincronizar todos os dados' },
-                { method: 'GET', path: '/api/admin-password', description: 'Hash da senha admin' }
+                { method: 'GET', path: '/api/sync-all', description: 'Sincronizar todos os dados' }
+                // REMOVIDO: /api/admin-password da documentação pública
             ],
             admin: [
                 { method: 'POST', path: '/api/admin/product-availability/bulk', description: 'Atualizar produtos' },
@@ -111,16 +140,16 @@ app.get('/api/docs', (req, res) => {
 async function initializeMongoDB() {
     try {
         if (!MONGODB_URI) {
-            console.log('const MONGODB_URI = process.env.MONGODB_URI;');
+            console.error('❌ CRÍTICO: MONGODB_URI não configurada!');
             app.locals.isDBConnected = false;
             app.locals.db = null;
             return;
         }
 
         console.log('🔌 Conectando ao MongoDB Atlas...');
-        
+
         const { MongoClient, ServerApiVersion } = require('mongodb');
-        
+
         const client = new MongoClient(MONGODB_URI, {
             serverApi: {
                 version: ServerApiVersion.v1,
@@ -139,27 +168,27 @@ async function initializeMongoDB() {
 
         await client.connect();
         await client.db('admin').command({ ping: 1 });
-        
+
         const db = client.db(DB_NAME);
-        
+
         console.log('✅ MongoDB Atlas CONECTADO com sucesso!');
         console.log(`📊 Database: ${DB_NAME}`);
-        
+
         app.locals.db = db;
         app.locals.mongoClient = client;
         app.locals.isDBConnected = true;
-        
+
         await initializeCollections(db);
         setupMongoRoutes(app, db);
-        
+
         // Configurar graceful shutdown
         setupGracefulShutdown();
-        
+
     } catch (error) {
         console.error('❌ Falha na conexão MongoDB:', error.message);
         app.locals.isDBConnected = false;
         app.locals.db = null;
-        
+
         // Tentar reconectar após 30 segundos
         setTimeout(() => {
             console.log('🔄 Tentando reconectar ao MongoDB...');
@@ -172,7 +201,7 @@ async function initializeCollections(db) {
     try {
         const collections = await db.listCollections().toArray();
         const existingNames = collections.map(c => c.name);
-        
+
         const requiredCollections = [
             'products',
             'flavors',
@@ -181,31 +210,31 @@ async function initializeCollections(db) {
             'sync_queue',
             'customers'
         ];
-        
+
         for (const name of requiredCollections) {
             if (!existingNames.includes(name)) {
                 await db.createCollection(name);
                 console.log(`📦 Collection criada: ${name}`);
-                
+
                 // Criar índices
                 if (name === 'products' || name === 'flavors') {
                     await db.collection(name).createIndex({ type: 1 });
                     await db.collection(name).createIndex({ lastUpdated: -1 });
                 }
-                
+
                 if (name === 'orders') {
                     await db.collection(name).createIndex({ orderId: 1 }, { unique: true });
                     await db.collection(name).createIndex({ timestamp: -1 });
                     await db.collection(name).createIndex({ customerPhone: 1 });
                 }
-                
+
                 if (name === 'admin_logs') {
                     await db.collection(name).createIndex({ timestamp: -1 });
                     await db.collection(name).createIndex({ admin: 1 });
                 }
             }
         }
-        
+
         console.log('✅ Collections e índices configurados');
     } catch (error) {
         console.error('⚠️ Erro ao configurar collections:', error.message);
@@ -215,9 +244,9 @@ async function initializeCollections(db) {
 // ========== MIDDLEWARE DE AUTENTICAÇÃO ==========
 function authenticateAdmin(req, res, next) {
     const password = req.body.password ||
-                    req.headers['x-admin-password'] ||
-                    req.headers['x-admin-key'] ||
-                    req.query.adminPassword;
+        req.headers['x-admin-password'] ||
+        req.headers['x-admin-key'] ||
+        req.query.adminPassword;
 
     if (!password) {
         return res.status(401).json({
@@ -227,19 +256,19 @@ function authenticateAdmin(req, res, next) {
     }
 
     const currentYear = new Date().getFullYear();
-    
+
     const expectedHash = crypto
         .createHash('sha256')
         .update(ADMIN_PASSWORD)
         .digest('hex');
-    
+
     const hashWithSalt = crypto
         .createHash('sha256')
         .update(ADMIN_PASSWORD + 'bebcom_' + currentYear)
         .digest('hex');
 
-    if (password === ADMIN_PASSWORD || 
-        password === expectedHash || 
+    if (password === ADMIN_PASSWORD ||
+        password === expectedHash ||
         password === hashWithSalt) {
         next();
     } else {
@@ -251,30 +280,17 @@ function authenticateAdmin(req, res, next) {
 }
 
 // ========== ROTAS PÚBLICAS ==========
-app.get('/api/admin-password', (req, res) => {
-    const currentYear = new Date().getFullYear();
-    const passwordHash = crypto
-        .createHash('sha256')
-        .update(ADMIN_PASSWORD)
-        .digest('hex');
-    
-    res.json({
-        success: true,
-        passwordHash: passwordHash,
-        salt: 'bebcom_' + currentYear,
-        timestamp: new Date().toISOString()
-    });
-});
+// REMOVIDA: Rota /api/admin-password (não deve existir em produção)
 
 // ========== ROTAS COM MONGODB ==========
 function setupMongoRoutes(app, db) {
-    
+
     // GET - Disponibilidade de produtos
     app.get('/api/product-availability', async (req, res) => {
         try {
             const productData = await db.collection('products')
                 .findOne({ type: 'availability' });
-            
+
             res.json({
                 success: true,
                 productAvailability: productData?.data || {},
@@ -293,13 +309,13 @@ function setupMongoRoutes(app, db) {
             });
         }
     });
-    
+
     // GET - Disponibilidade de sabores
     app.get('/api/flavor-availability', async (req, res) => {
         try {
             const flavorData = await db.collection('flavors')
                 .findOne({ type: 'availability' });
-            
+
             res.json({
                 success: true,
                 flavorAvailability: flavorData?.data || {},
@@ -318,7 +334,7 @@ function setupMongoRoutes(app, db) {
             });
         }
     });
-    
+
     // GET - Sincronização completa
     app.get('/api/sync-all', async (req, res) => {
         try {
@@ -326,7 +342,7 @@ function setupMongoRoutes(app, db) {
                 db.collection('products').findOne({ type: 'availability' }),
                 db.collection('flavors').findOne({ type: 'availability' })
             ]);
-            
+
             res.json({
                 success: true,
                 productAvailability: products?.data || {},
@@ -344,9 +360,9 @@ function setupMongoRoutes(app, db) {
             });
         }
     });
-    
-    // POST - Atualizar produtos (admin)
-    app.post('/api/admin/product-availability/bulk', authenticateAdmin, async (req, res) => {
+
+    // POST - Atualizar produtos (admin) - ADICIONADO RATE LIMIT
+    app.post('/api/admin/product-availability/bulk', adminLimiter, authenticateAdmin, async (req, res) => {
         try {
             if (!db) {
                 return res.status(503).json({
@@ -354,16 +370,16 @@ function setupMongoRoutes(app, db) {
                     error: 'Banco de dados indisponível'
                 });
             }
-            
+
             const { productAvailability, adminName, source } = req.body;
-            
+
             if (!productAvailability || typeof productAvailability !== 'object') {
                 return res.status(400).json({
                     success: false,
                     error: 'Dados inválidos'
                 });
             }
-            
+
             const result = await db.collection('products').updateOne(
                 { type: 'availability' },
                 {
@@ -378,7 +394,7 @@ function setupMongoRoutes(app, db) {
                 },
                 { upsert: true }
             );
-            
+
             // Registrar log
             await db.collection('admin_logs').insertOne({
                 action: 'update_products',
@@ -388,7 +404,7 @@ function setupMongoRoutes(app, db) {
                 timestamp: new Date(),
                 version: API_VERSION
             });
-            
+
             res.json({
                 success: true,
                 message: 'Produtos atualizados com sucesso',
@@ -396,7 +412,7 @@ function setupMongoRoutes(app, db) {
                 count: Object.keys(productAvailability).length,
                 upserted: result.upsertedId ? true : false
             });
-            
+
         } catch (error) {
             console.error('❌ Erro ao salvar produtos:', error);
             res.status(500).json({
@@ -405,9 +421,9 @@ function setupMongoRoutes(app, db) {
             });
         }
     });
-    
-    // POST - Atualizar sabores (admin)
-    app.post('/api/admin/flavor-availability/bulk', authenticateAdmin, async (req, res) => {
+
+    // POST - Atualizar sabores (admin) - ADICIONADO RATE LIMIT
+    app.post('/api/admin/flavor-availability/bulk', adminLimiter, authenticateAdmin, async (req, res) => {
         try {
             if (!db) {
                 return res.status(503).json({
@@ -415,16 +431,16 @@ function setupMongoRoutes(app, db) {
                     error: 'Banco de dados indisponível'
                 });
             }
-            
+
             const { flavorAvailability, adminName, source } = req.body;
-            
+
             if (!flavorAvailability || typeof flavorAvailability !== 'object') {
                 return res.status(400).json({
                     success: false,
                     error: 'Dados inválidos'
                 });
             }
-            
+
             const result = await db.collection('flavors').updateOne(
                 { type: 'availability' },
                 {
@@ -439,7 +455,7 @@ function setupMongoRoutes(app, db) {
                 },
                 { upsert: true }
             );
-            
+
             await db.collection('admin_logs').insertOne({
                 action: 'update_flavors',
                 admin: adminName || 'Admin BebCom',
@@ -448,7 +464,7 @@ function setupMongoRoutes(app, db) {
                 timestamp: new Date(),
                 version: API_VERSION
             });
-            
+
             res.json({
                 success: true,
                 message: 'Sabores atualizados com sucesso',
@@ -456,7 +472,7 @@ function setupMongoRoutes(app, db) {
                 count: Object.keys(flavorAvailability).length,
                 upserted: result.upsertedId ? true : false
             });
-            
+
         } catch (error) {
             console.error('❌ Erro ao salvar sabores:', error);
             res.status(500).json({
@@ -465,7 +481,7 @@ function setupMongoRoutes(app, db) {
             });
         }
     });
-    
+
     console.log('✅ Rotas MongoDB configuradas');
 }
 
@@ -473,11 +489,11 @@ function setupMongoRoutes(app, db) {
 function setupGracefulShutdown() {
     const gracefulShutdown = async (signal) => {
         console.log(`\n👋 Recebido ${signal}, encerrando graciosamente...`);
-        
+
         server.close(() => {
             console.log('✅ Servidor HTTP encerrado');
         });
-        
+
         if (app.locals.mongoClient) {
             try {
                 await app.locals.mongoClient.close();
@@ -486,13 +502,13 @@ function setupGracefulShutdown() {
                 console.error('❌ Erro ao encerrar MongoDB:', err);
             }
         }
-        
+
         setTimeout(() => {
             console.log('👋 Encerrando processo');
             process.exit(0);
         }, 3000);
     };
-    
+
     process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
     process.on('SIGINT', () => gracefulShutdown('SIGINT'));
     process.on('SIGHUP', () => gracefulShutdown('SIGHUP'));
@@ -519,8 +535,9 @@ const server = app.listen(PORT, '0.0.0.0', () => {
     console.log(`📚 Docs: http://0.0.0.0:${PORT}/api/docs`);
     console.log(`🌍 Ambiente: ${NODE_ENV}`);
     console.log(`🕒 Início: ${new Date().toISOString()}`);
+    console.log(`🔒 Rate Limit Admin: 5 tentativas / 15 minutos`); // NOVO LOG
     console.log('='.repeat(70));
-    
+
     // Inicializar MongoDB após 1 segundo
     setTimeout(initializeMongoDB, 1000);
 });
