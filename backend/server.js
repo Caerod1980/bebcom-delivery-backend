@@ -322,42 +322,79 @@ async function initializeCollections(db) {
     }
 }
 
-// ========== MIDDLEWARE DE AUTENTICAÇÃO ==========
+// ========== MIDDLEWARE DE AUTENTICAÇÃO - CORRIGIDO COM BEARER TOKEN ==========
 function authenticateAdmin(req, res, next) {
-    const password = req.body.password ||
+    // Verificar senha direta (modo simples)
+    const directPassword = req.body.password ||
         req.headers['x-admin-password'] ||
         req.headers['x-admin-key'] ||
         req.query.adminPassword;
-
-    if (!password) {
+    
+    // Verificar Bearer Token (enviado pelo frontend)
+    let token = null;
+    const authHeader = req.headers['authorization'] || req.headers['Authorization'];
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+        token = authHeader.substring(7);
+    }
+    
+    // Se não tem nenhum dos dois, erro
+    if (!directPassword && !token) {
         return res.status(401).json({
             success: false,
-            error: 'Senha administrativa não fornecida'
+            error: 'Senha ou token não fornecido'
         });
     }
 
     const currentYear = new Date().getFullYear();
-    const expectedHash = crypto
+    const passwordHash = crypto
         .createHash('sha256')
         .update(ADMIN_PASSWORD)
         .digest('hex');
-
+    
     const hashWithSalt = crypto
         .createHash('sha256')
         .update(ADMIN_PASSWORD + 'bebcom_' + currentYear)
         .digest('hex');
 
-    if (password === ADMIN_PASSWORD ||
-        password === expectedHash ||
-        password === hashWithSalt) {
-        next();
-    } else {
-        return res.status(401).json({
-            success: false,
-            error: 'Senha administrativa incorreta'
-        });
+    // Verificar senha direta
+    if (directPassword) {
+        if (directPassword === ADMIN_PASSWORD ||
+            directPassword === passwordHash ||
+            directPassword === hashWithSalt) {
+            return next();
+        }
     }
+    
+    // Verificar token (validação simples - em produção use JWT)
+    if (token) {
+        // O token gerado no login contém o hash da senha + timestamp
+        // Verificamos se ele contém parte do hash da senha
+        if (token.includes(passwordHash.substring(0, 16))) {
+            return next();
+        }
+        
+        // Fallback: verificar se o token é igual ao último gerado (simplificado)
+        // Isso é uma validação básica - em produção, use JWT de verdade
+        try {
+            const tokenParts = token.split('_');
+            if (tokenParts.length > 1) {
+                const tokenHash = tokenParts[0];
+                if (tokenHash === passwordHash.substring(0, 16)) {
+                    return next();
+                }
+            }
+        } catch (e) {
+            // Ignora erro de parsing
+        }
+    }
+
+    // Se chegou aqui, falhou
+    return res.status(401).json({
+        success: false,
+        error: 'Senha ou token inválido'
+    });
 }
+
 
 // ========== ROTAS COM MONGODB ==========
 function setupMongoRoutes(app, db) {
