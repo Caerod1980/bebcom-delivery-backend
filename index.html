@@ -2543,65 +2543,75 @@
             return true;
         }
 
-        // ✅ CORRIGIDO: URL sem barra duplicada e com try/catch melhorado
-        async function checkAdminPassword() {
-            const password = document.getElementById('adminPassword').value;
-            const btn = document.querySelector('.password-button');
-            const original = btn.innerHTML;
+     // ✅ CORRIGIDO: Com credentials e tratamento de erro detalhado
+async function checkAdminPassword() {
+    const password = document.getElementById('adminPassword').value;
+    const btn = document.querySelector('.password-button');
+    const original = btn.innerHTML;
+    
+    if (!password) {
+        showNotification('❌ Digite a senha', 'error');
+        return;
+    }
+    
+    btn.innerHTML = '<span class="loading-spinner"></span> Verificando...';
+    btn.disabled = true;
+    
+    try {
+        const url = `${CONFIG.backendUrl}/api/admin/verify`;
+        
+        console.log('📡 Enviando requisição para:', url);
+        
+        const response = await fetch(url, {
+            method: 'POST',
+            mode: 'cors',
+            credentials: 'include',  // ✅ IMPORTANTE!
+            headers: { 
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify({ password })
+        });
+        
+        console.log('📥 Status da resposta:', response.status);
+        
+        if (response.ok) {
+            const data = await response.json();
             
-            if (!password) {
-                showNotification('❌ Digite a senha', 'error');
-                return;
-            }
-            
-            btn.innerHTML = '<span class="loading-spinner"></span> Verificando...';
-            btn.disabled = true;
-            
-            try {
-                // ✅ URL CORRETA - sem barra duplicada
-                const url = `${CONFIG.backendUrl}/api/admin/verify`;
+            if (data.success) {
+                sessionStorage.setItem('admin_token', data.token);
+                sessionStorage.setItem('admin_expires', (Date.now() + 30 * 60 * 1000).toString());
                 
-                const response = await fetch(url, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ password })
-                });
+                state.adminAuthenticated = true;
+                state.adminToken = data.token;
                 
-                if (response.ok) {
-                    const data = await response.json();
-                    
-                    if (data.success) {
-                        // Armazenar token JWT (expira em 30 min)
-                        sessionStorage.setItem('admin_token', data.token);
-                        sessionStorage.setItem('admin_expires', (Date.now() + 30 * 60 * 1000).toString());
-                        
-                        state.adminAuthenticated = true;
-                        state.adminToken = data.token;
-                        
-                        document.getElementById('passwordSection').style.display = 'none';
-                        document.getElementById('adminMain').style.display = 'block';
-                        document.getElementById('adminActions').style.display = 'flex';
-                        
-                        loadAdminProducts();
-                        showNotification('✅ Acesso concedido');
-                    } else {
-                        throw new Error(data.error || 'Senha incorreta');
-                    }
-                } else if (response.status === 401) {
-                    throw new Error('Senha incorreta');
-                } else if (response.status === 429) {
-                    throw new Error('Muitas tentativas. Aguarde 15 minutos.');
-                } else {
-                    throw new Error('Erro no servidor. Tente novamente.');
-                }
-            } catch (error) {
-                showNotification('❌ ' + error.message, 'error');
-                document.getElementById('adminPassword').value = '';
-            } finally {
-                btn.innerHTML = original;
-                btn.disabled = false;
+                document.getElementById('passwordSection').style.display = 'none';
+                document.getElementById('adminMain').style.display = 'block';
+                document.getElementById('adminActions').style.display = 'flex';
+                
+                loadAdminProducts();
+                showNotification('✅ Acesso concedido');
+            } else {
+                throw new Error(data.error || 'Senha incorreta');
             }
+        } else if (response.status === 401) {
+            throw new Error('Senha incorreta');
+        } else if (response.status === 429) {
+            throw new Error('Muitas tentativas. Aguarde 15 minutos.');
+        } else {
+            const text = await response.text();
+            console.error('❌ Resposta de erro:', text);
+            throw new Error(`Erro ${response.status}: ${response.statusText}`);
         }
+    } catch (error) {
+        console.error('❌ Erro detalhado:', error);
+        showNotification('❌ Erro de conexão com o servidor. Verifique o CORS.', 'error');
+        document.getElementById('adminPassword').value = '';
+    } finally {
+        btn.innerHTML = original;
+        btn.disabled = false;
+    }
+}
 
         function getAdminHeaders() {
             const headers = {
