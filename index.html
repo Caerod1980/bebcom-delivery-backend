@@ -2681,9 +2681,9 @@
             initAgeVerification();
             setTimeout(checkBackendHealth, 2000);
         });
-
-        // Expor funções globais necessárias
-// Expor funções globais necessárias
+// ============================================
+// EXPOR FUNÇÕES GLOBAIS - ✅ CORRIGIDO!
+// ============================================
 window.showCategory = showCategory;
 window.handleAddToCart = handleAddToCart;
 window.updateQuantity = updateQuantity;
@@ -2699,8 +2699,8 @@ window.checkAdminPassword = checkAdminPassword;
 window.setAllAvailable = setAllAvailable;
 window.saveAvailability = saveAvailability;
 window.resetAvailability = resetAvailability;
-window.openFlavorManagement = openFlavorManagement;        // ✅ ADICIONADO
-window.loadFlavorsForType = loadFlavorsForType;            // ✅ ADICIONADO
+window.openFlavorManagement = openFlavorManagement;        // ✅ AGORA EXPORTADO!
+window.loadFlavorsForType = loadFlavorsForType;            // ✅ AGORA EXPORTADO!
 window.toggleFlavorAvailability = toggleFlavorAvailability;
 window.setAllFlavorsAvailable = setAllFlavorsAvailable;
 window.syncAllFromServer = syncAllFromServer;
