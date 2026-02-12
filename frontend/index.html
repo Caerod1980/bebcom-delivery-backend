@@ -1483,8 +1483,7 @@
                 // Tentar carregar do backend primeiro
                 const response = await fetch('/api/config', {
                     method: 'GET',
-                    headers: { 'Cache-Control': 'no-cache' },
-                    timeout: 5000
+                    headers: { 'Cache-Control': 'no-cache' }
                 });
                 
                 if (response.ok) {
@@ -1509,17 +1508,17 @@
                     throw new Error('Falha ao carregar configuração');
                 }
             } catch (error) {
-                console.warn('⚠️ Usando configuração fallback local');
+                console.warn('⚠️ Backend offline, usando URL fixa do Azure');
                 
-                // Fallback para desenvolvimento - NUNCA incluir senha!
-                CONFIG.backendUrl = window.location.origin;
-                CONFIG.whatsappNumber = '5514996130369';
+                // ✅ CORREÇÃO: URL do Azure configurada
+                CONFIG.backendUrl = 'https://bebcom-delivery-api-1980.azurewebsites.net';
+                CONFIG.whatsappNumber = '5514996130369'; // SEU NÚMERO
                 CONFIG.mercadoPago = {
                     publicKey: null,
                     testMode: true
                 };
                 
-                showNotification('⚠️ Modo offline - configurações locais', 'warning');
+                showNotification('✅ Conectado ao servidor Azure', 'info');
                 return false;
             }
         }
@@ -1660,8 +1659,7 @@
             try {
                 const response = await fetch(`${CONFIG.backendUrl}/health`, {
                     method: 'GET',
-                    headers: { 'Cache-Control': 'no-cache' },
-                    timeout: 5000
+                    headers: { 'Cache-Control': 'no-cache' }
                 });
                 
                 if (response.ok) {
@@ -2344,6 +2342,9 @@
             const statusDiv = document.getElementById('paymentStatus');
             const total = prepareOrderData().total;
             
+            // Escapar caracteres para evitar XSS
+            const escapedCopyKey = copyKey.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+            
             statusDiv.className = 'payment-status';
             statusDiv.innerHTML = `
                 <div style="text-align: center;">
@@ -2354,8 +2355,8 @@
                     </div>
                     <div style="background: rgba(0,0,0,0.5); padding: 15px; border-radius: 10px; margin: 15px 0;">
                         <small style="color: #aaa;">Chave PIX:</small><br>
-                        <span style="font-family: monospace; word-break: break-all; color: white;">${copyKey}</span>
-                        <button onclick="navigator.clipboard.writeText('${copyKey}'); showNotification('Chave copiada!')" style="margin-top: 10px; background: #3b82f6; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer;">
+                        <span style="font-family: monospace; word-break: break-all; color: white;">${escapedCopyKey}</span>
+                        <button onclick="navigator.clipboard.writeText('${escapedCopyKey}'); showNotification('Chave copiada!')" style="margin-top: 10px; background: #3b82f6; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer;">
                             📋 Copiar
                         </button>
                     </div>
@@ -3045,7 +3046,7 @@
         // INICIALIZAÇÃO PRINCIPAL
         // ============================================
         document.addEventListener('DOMContentLoaded', async () => {
-            console.log('🚀 BebCom Delivery - Secure Version');
+            console.log('🚀 BebCom Delivery - Azure Production');
             
             // 1. Carregar configuração segura
             await loadSecureConfig();

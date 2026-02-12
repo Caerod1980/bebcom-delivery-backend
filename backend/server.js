@@ -3,12 +3,12 @@ const express = require('express');
 const cors = require('cors');
 const http = require('http');
 const crypto = require('crypto');
-const rateLimit = require('express-rate-limit'); // NOVO
+const rateLimit = require('express-rate-limit');
 
 const app = express();
 const PORT = process.env.PORT || 8080; // Azure usa porta dinâmica
 
-// ========== NOVO: VALIDAÇÃO DE VARIÁVEIS CRÍTICAS ==========
+// ========== VALIDAÇÃO DE VARIÁVEIS CRÍTICAS ==========
 const NODE_ENV = process.env.NODE_ENV || 'production';
 const REQUIRED_ENV_VARS = ['MONGODB_URI', 'ADMIN_PASSWORD'];
 const missingEnvVars = REQUIRED_ENV_VARS.filter(varName => !process.env[varName]);
@@ -24,12 +24,12 @@ if (missingEnvVars.length > 0) {
 }
 
 // ========== CONFIGURAÇÕES SEGURAS ==========
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD; // REMOVIDO FALLBACK
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
 const MONGODB_URI = process.env.MONGODB_URI;
 const DB_NAME = process.env.DB_NAME || 'bebcom_delivery';
 const API_VERSION = '3.4.0-azure';
 
-// ========== NOVO: RATE LIMITING ==========
+// ========== RATE LIMITING ==========
 const adminLimiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutos
     max: 5, // 5 tentativas
@@ -42,7 +42,7 @@ const adminLimiter = rateLimit({
     legacyHeaders: false
 });
 
-// Middleware - CORS (mantido original)
+// Middleware - CORS
 app.use(cors({
     origin: process.env.CORS_ORIGIN || '*',
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
@@ -63,7 +63,7 @@ console.log(`📦 Versão: ${API_VERSION}`);
 console.log(`🆔 PID: ${process.pid}`);
 console.log('='.repeat(70));
 
-// ========== HEALTH CHECKS OTIMIZADOS ==========
+// ========== HEALTH CHECKS ==========
 app.get('/health', (req, res) => {
     res.status(200).json({
         status: 'healthy',
@@ -91,6 +91,33 @@ app.get('/health/readiness', (req, res) => {
     });
 });
 
+// ========== ✅ NOVA: ROTA DE CONFIGURAÇÃO PÚBLICA ==========
+app.get('/api/config', (req, res) => {
+    // ✅ APENAS dados públicos - NUNCA enviar senhas ou tokens secretos!
+    res.json({
+        backendUrl: `${req.protocol}://${req.get('host')}`,
+        whatsappNumber: process.env.WHATSAPP_NUMBER || '',
+        mercadoPago: {
+            publicKey: process.env.MERCADO_PAGO_PUBLIC_KEY || null,
+            testMode: NODE_ENV !== 'production'
+        },
+        storeLocation: {
+            lat: -22.35892,
+            lng: -49.0987233,
+            address: "R. José Henrique Ferraz, 18-10 - Centro, Bauru - SP"
+        },
+        deliveryRates: {
+            baseFee: 5.00,
+            perKm: 2.65,
+            maxDistance: 15,
+            minDistance: 0.5,
+            freeDeliveryMin: 100.00
+        },
+        version: API_VERSION,
+        environment: NODE_ENV
+    });
+});
+
 // ========== ROTA RAIZ ==========
 app.get('/', (req, res) => {
     res.json({
@@ -102,6 +129,7 @@ app.get('/', (req, res) => {
         timestamp: new Date().toISOString(),
         endpoints: {
             health: '/health',
+            config: '/api/config',
             docs: '/api/docs',
             products: '/api/product-availability',
             flavors: '/api/flavor-availability',
@@ -110,7 +138,7 @@ app.get('/', (req, res) => {
     });
 });
 
-// ========== DOCUMENTAÇÃO SIMPLES ==========
+// ========== DOCUMENTAÇÃO ==========
 app.get('/api/docs', (req, res) => {
     res.json({
         api: 'BebCom Delivery API',
@@ -122,10 +150,10 @@ app.get('/api/docs', (req, res) => {
                 { method: 'GET', path: '/health', description: 'Health check completo' },
                 { method: 'GET', path: '/health/liveness', description: 'Azure liveness probe' },
                 { method: 'GET', path: '/health/readiness', description: 'Azure readiness probe' },
+                { method: 'GET', path: '/api/config', description: 'Configuração pública do frontend' },
                 { method: 'GET', path: '/api/product-availability', description: 'Disponibilidade de produtos' },
                 { method: 'GET', path: '/api/flavor-availability', description: 'Disponibilidade de sabores' },
                 { method: 'GET', path: '/api/sync-all', description: 'Sincronizar todos os dados' }
-                // REMOVIDO: /api/admin-password da documentação pública
             ],
             admin: [
                 { method: 'POST', path: '/api/admin/product-availability/bulk', description: 'Atualizar produtos' },
@@ -279,9 +307,6 @@ function authenticateAdmin(req, res, next) {
     }
 }
 
-// ========== ROTAS PÚBLICAS ==========
-// REMOVIDA: Rota /api/admin-password (não deve existir em produção)
-
 // ========== ROTAS COM MONGODB ==========
 function setupMongoRoutes(app, db) {
 
@@ -361,7 +386,7 @@ function setupMongoRoutes(app, db) {
         }
     });
 
-    // POST - Atualizar produtos (admin) - ADICIONADO RATE LIMIT
+    // POST - Atualizar produtos (admin) - COM RATE LIMIT
     app.post('/api/admin/product-availability/bulk', adminLimiter, authenticateAdmin, async (req, res) => {
         try {
             if (!db) {
@@ -422,7 +447,7 @@ function setupMongoRoutes(app, db) {
         }
     });
 
-    // POST - Atualizar sabores (admin) - ADICIONADO RATE LIMIT
+    // POST - Atualizar sabores (admin) - COM RATE LIMIT
     app.post('/api/admin/flavor-availability/bulk', adminLimiter, authenticateAdmin, async (req, res) => {
         try {
             if (!db) {
@@ -532,10 +557,11 @@ const server = app.listen(PORT, '0.0.0.0', () => {
     console.log('='.repeat(70));
     console.log(`📡 Endereço: http://0.0.0.0:${PORT}`);
     console.log(`🩺 Health: http://0.0.0.0:${PORT}/health`);
+    console.log(`⚙️  Config: http://0.0.0.0:${PORT}/api/config`);
     console.log(`📚 Docs: http://0.0.0.0:${PORT}/api/docs`);
     console.log(`🌍 Ambiente: ${NODE_ENV}`);
     console.log(`🕒 Início: ${new Date().toISOString()}`);
-    console.log(`🔒 Rate Limit Admin: 5 tentativas / 15 minutos`); // NOVO LOG
+    console.log(`🔒 Rate Limit Admin: 5 tentativas / 15 minutos`);
     console.log('='.repeat(70));
 
     // Inicializar MongoDB após 1 segundo
