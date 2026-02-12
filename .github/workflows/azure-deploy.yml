@@ -21,16 +21,14 @@ jobs:
         npm install --omit=dev
         npm install bcryptjs@2.4.3 --save
     
+    - name: Verificar estrutura
+      run: |
+        ls -la
+        ls -la backend/ || echo "❌ PASTA backend NÃO EXISTE!"
+    
     - name: Deploy para Azure
       uses: azure/webapps-deploy@v2
       with:
         app-name: bebcom-delivery-api-1980
         publish-profile: ${{ secrets.AZURE_PUBLISH_PROFILE }}
         package: .
-    
-    - name: Configurar Startup Command
-      run: |
-        az webapp config set \
-          --resource-group bebcom-delivery-api-1980_group \
-          --name bebcom-delivery-api-1980 \
-          --startup-file "node backend/server.js"
