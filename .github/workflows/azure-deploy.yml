@@ -14,26 +14,35 @@ jobs:
     - name: Setup Node.js
       uses: actions/setup-node@v3
       with:
-        node-version: '20'                    # ✅ MUDADO PARA 20 LTS
+        node-version: '20'
         cache: 'npm'
     
     - name: Instalar dependências
       run: |
         npm install --ignore-scripts
-        npm rebuild bcryptjs --build-from-source
+        npm install bcryptjs@2.4.3 --save
+    
+    - name: Login no Azure
+      uses: azure/login@v1
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}  # ✅ SEGURO!
     
     - name: Deploy para Azure
       uses: azure/webapps-deploy@v2
       with:
         app-name: bebcom-delivery-api-1980
         publish-profile: ${{ secrets.AZURE_PUBLISH_PROFILE }}
-        package: .                           # ✅ Deploy da raiz
+        package: .
     
-    - name: Configurar Startup Command       # ✅ NOVO STEP CRÍTICO!
+    - name: Configurar Startup Command
       run: |
         az webapp config set \
           --resource-group bebcom-delivery-api-1980_group \
           --name bebcom-delivery-api-1980 \
           --startup-file "node backend/server.js"
-      env:
-        AZURE_CREDENTIALS: ${{ secrets.AZURE_CREDENTIALS }}
+    
+    - name: Reiniciar App Service
+      run: |
+        az webapp restart \
+          --resource-group bebcom-delivery-api-1980_group \
+          --name bebcom-delivery-api-1980
