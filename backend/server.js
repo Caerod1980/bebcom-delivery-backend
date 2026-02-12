@@ -111,7 +111,7 @@ app.get('/api/docs', (req, res) => {
 async function initializeMongoDB() {
     try {
         if (!MONGODB_URI) {
-            console.log('⚠️ MONGODB_URI não configurada - Executando em modo local');
+            console.log('const MONGODB_URI = process.env.MONGODB_URI;');
             app.locals.isDBConnected = false;
             app.locals.db = null;
             return;
