@@ -1547,34 +1547,64 @@
         }
 
         // ============================================
-        // CARREGAR DISPONIBILIDADE
+        // CARREGAR DISPONIBILIDADE - ✅ CORRIGIDO: SEMPRE BUSCA DO SERVIDOR!
         // ============================================
         async function loadAvailability() {
             try {
-                if (state.backendOnline && CONFIG.backendUrl) {
-                    const [productsRes, flavorsRes] = await Promise.all([
-                        fetch(`${CONFIG.backendUrl}/api/product-availability`),
-                        fetch(`${CONFIG.backendUrl}/api/flavor-availability`)
-                    ]);
+                // SEMPRE tenta buscar do servidor primeiro
+                if (CONFIG.backendUrl) {
+                    // Verifica se o backend está online
+                    await checkBackendHealth();
                     
-                    if (productsRes.ok) {
-                        const productData = await productsRes.json();
-                        if (productData.success && productData.productAvailability) {
-                            state.productAvailability = productData.productAvailability;
-                            localStorage.setItem('bebcom_product_availability', JSON.stringify(state.productAvailability));
+                    if (state.backendOnline) {
+                        console.log('📡 Buscando disponibilidade do servidor...');
+                        
+                        const [productsRes, flavorsRes] = await Promise.all([
+                            fetch(`${CONFIG.backendUrl}/api/product-availability`),
+                            fetch(`${CONFIG.backendUrl}/api/flavor-availability`)
+                        ]);
+                        
+                        if (productsRes.ok) {
+                            const productData = await productsRes.json();
+                            if (productData.success && productData.productAvailability) {
+                                // ✅ ATUALIZA o estado com os dados do servidor
+                                state.productAvailability = productData.productAvailability;
+                                // ✅ ATUALIZA o cache local
+                                localStorage.setItem('bebcom_product_availability', JSON.stringify(state.productAvailability));
+                                console.log('✅ Produtos carregados do servidor');
+                            }
                         }
-                    }
-                    
-                    if (flavorsRes.ok) {
-                        const flavorData = await flavorsRes.json();
-                        if (flavorData.success && flavorData.flavorAvailability) {
-                            state.flavorAvailability = flavorData.flavorAvailability;
-                            localStorage.setItem('bebcom_flavor_availability', JSON.stringify(state.flavorAvailability));
+                        
+                        if (flavorsRes.ok) {
+                            const flavorData = await flavorsRes.json();
+                            if (flavorData.success && flavorData.flavorAvailability) {
+                                // ✅ ATUALIZA o estado com os dados do servidor
+                                state.flavorAvailability = flavorData.flavorAvailability;
+                                // ✅ ATUALIZA o cache local
+                                localStorage.setItem('bebcom_flavor_availability', JSON.stringify(state.flavorAvailability));
+                                console.log('✅ Sabores carregados do servidor');
+                            }
                         }
+                        
+                        // ✅ ATUALIZA a interface imediatamente
+                        updateMenuAvailability();
+                        
+                        // ✅ Se o admin estiver logado, recarrega o painel
+                        if (document.getElementById('adminMain').style.display === 'block') {
+                            loadAdminProducts();
+                        }
+                        
+                        return;
                     }
                 }
+                
+                // ⚠️ Fallback: só usa cache local se servidor estiver offline
+                console.log('⚠️ Servidor offline, usando dados locais');
+                initStorage();
+                
             } catch (error) {
-                console.log('⚠️ Usando dados locais de disponibilidade');
+                console.error('❌ Erro ao carregar disponibilidade:', error);
+                // Fallback para cache local
                 initStorage();
             }
         }
@@ -2242,7 +2272,6 @@
             return headers;
         }
 
-        // ✅ CORRIGIDO: Toggle dos produtos AGORA FUNCIONA!
         function loadAdminProducts() {
             const container = document.getElementById('adminMain');
             container.innerHTML = '';
@@ -2289,7 +2318,6 @@
                     item.style.borderRadius = '10px';
                     item.style.border = `1px solid ${available ? '#10b981' : '#ef4444'}`;
                     
-                    // ✅ CORRIGIDO: CSS inline para o toggle funcionar!
                     item.innerHTML = `
                         <div>
                             <div style="font-weight: bold; color: white;">${product.name}</div>
@@ -2316,11 +2344,9 @@
         }
 
         function adminToggleProductAvailability(productId, isAvailable) {
-            // Atualiza o estado
             state.productAvailability[productId] = isAvailable;
             localStorage.setItem('bebcom_product_availability', JSON.stringify(state.productAvailability));
             
-            // Atualiza o toggle visualmente
             const toggle = document.getElementById(`admin_toggle_${productId}`);
             if (toggle) {
                 const span = toggle.nextElementSibling;
@@ -2329,7 +2355,6 @@
                 if (slider) slider.style.left = isAvailable ? '34px' : '4px';
             }
             
-            // Atualiza os cards de produto
             const product = findProductById(productId);
             const elements = document.querySelectorAll(`[data-product-id="${productId}"]`);
             
@@ -2444,23 +2469,31 @@
                         
                         if (prodRes.ok && flavRes.ok) {
                             showNotification('✅ Dados salvos no servidor (MongoDB)!');
+                            
+                            // ✅ RECARREGA a disponibilidade imediatamente
+                            await loadAvailability();
+                            
+                            // ✅ Fecha o painel após 1.5 segundos
+                            setTimeout(() => closeAdminPanel(), 1500);
                         } else {
                             const prodError = prodRes.ok ? '' : ' produtos';
                             const flavError = flavRes.ok ? '' : ' sabores';
                             showNotification(`⚠️ Erro ao salvar:${prodError}${flavError}. Dados salvos localmente.`, 'warning');
+                            setTimeout(() => closeAdminPanel(), 2000);
                         }
                     } else {
                         showNotification('⚠️ Servidor offline. Dados salvos apenas localmente.', 'warning');
+                        setTimeout(() => closeAdminPanel(), 2000);
                     }
                 } else {
                     showNotification('⚠️ URL do servidor não configurada. Dados salvos localmente.', 'warning');
+                    setTimeout(() => closeAdminPanel(), 2000);
                 }
-                
-                setTimeout(() => closeAdminPanel(), 2000);
                 
             } catch (error) {
                 console.error('❌ Erro ao salvar:', error);
                 showNotification('❌ Erro ao salvar no servidor. Dados mantidos localmente.', 'error');
+                setTimeout(() => closeAdminPanel(), 2000);
             } finally {
                 btn.innerHTML = original;
                 btn.disabled = false;
@@ -2493,7 +2526,6 @@
             }
         }
 
-        // ✅ CORRIGIDO: Sincronizar do MongoDB AGORA FUNCIONA!
         async function syncAllFromServer() {
             if (!isAdminAuthenticated()) {
                 showNotification('🔐 Sessão expirada. Faça login novamente.', 'error');
