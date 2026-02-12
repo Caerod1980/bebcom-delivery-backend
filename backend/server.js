@@ -42,17 +42,25 @@ const adminLimiter = rateLimit({
     legacyHeaders: false
 });
 
-// Middleware - CORS
-// ✅ CORS CORRETO - Aceita qualquer origem e permite credenciais
+// ========== CORS CORRIGIDO - AGORA PERMITE CACHE-CONTROL! ==========
 app.use(cors({
-    origin: true,  // ✅ Permite qualquer origem (GitHub Pages, Vercel, localhost)
-    credentials: true,  // ✅ Permite envio de cookies/tokens
+    origin: true,  // Permite qualquer origem (GitHub Pages, Vercel, localhost)
+    credentials: true,  // Permite envio de cookies/tokens
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'x-admin-password', 'x-admin-key']
+    allowedHeaders: [
+        'Content-Type', 
+        'Authorization', 
+        'x-admin-password', 
+        'x-admin-key',
+        'Cache-Control',  // ✅ ADICIONADO! ESSE ERA O ERRO!
+        'X-Requested-With',
+        'Accept'
+    ]
 }));
 
 // ✅ IMPORTANTE: Responde preflight requests corretamente
 app.options('*', cors());
+
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
@@ -168,7 +176,7 @@ app.get('/api/docs', (req, res) => {
     });
 });
 
-// ========== ✅ NOVA: ROTA DE VERIFICAÇÃO ADMIN ==========
+// ========== ROTA DE VERIFICAÇÃO ADMIN ==========
 app.post('/api/admin/verify', adminLimiter, (req, res) => {
     const { password } = req.body;
     
@@ -194,7 +202,6 @@ app.post('/api/admin/verify', adminLimiter, (req, res) => {
         password === expectedHash || 
         password === hashWithSalt) {
         
-        // Gerar token simples
         const token = crypto
             .createHash('sha256')
             .update(ADMIN_PASSWORD + Date.now() + crypto.randomBytes(16).toString('hex'))
