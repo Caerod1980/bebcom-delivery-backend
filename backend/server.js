@@ -1,12 +1,13 @@
-// backend/server.js - VERSÃO PRODUÇÃO PARA AZURE
+// backend/server.js - VERSÃO PRODUÇÃO PARA AZURE (COMPLETO COM MERCADO PAGO)
 const express = require('express');
 const cors = require('cors');
 const http = require('http');
 const crypto = require('crypto');
 const rateLimit = require('express-rate-limit');
+const { MercadoPagoConfig, Preference } = require('mercadopago'); // ✅ ADICIONADO
 
 const app = express();
-const PORT = process.env.PORT || 8080; // Azure usa porta dinâmica
+const PORT = process.env.PORT || 8080;
 
 // ========== VALIDAÇÃO DE VARIÁVEIS CRÍTICAS ==========
 const NODE_ENV = process.env.NODE_ENV || 'production';
@@ -27,12 +28,32 @@ if (missingEnvVars.length > 0) {
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
 const MONGODB_URI = process.env.MONGODB_URI;
 const DB_NAME = process.env.DB_NAME || 'bebcom_delivery';
-const API_VERSION = '3.4.0-azure';
+const API_VERSION = '4.0.0-azure-mp'; // ✅ Versão atualizada
+
+// ========== MERCADO PAGO ==========
+const MERCADO_PAGO_ACCESS_TOKEN = process.env.MERCADO_PAGO_ACCESS_TOKEN;
+const MERCADO_PAGO_PUBLIC_KEY = process.env.MERCADO_PAGO_PUBLIC_KEY;
+const MERCADO_PAGO_WEBHOOK_SECRET = process.env.MERCADO_PAGO_WEBHOOK_SECRET;
+
+// Inicializa cliente do Mercado Pago (se token disponível)
+let mercadopagoClient = null;
+if (MERCADO_PAGO_ACCESS_TOKEN) {
+    try {
+        const client = new MercadoPagoConfig({ 
+            accessToken: MERCADO_PAGO_ACCESS_TOKEN,
+            options: { timeout: 5000 }
+        });
+        mercadopagoClient = client;
+        console.log('✅ Mercado Pago SDK inicializado');
+    } catch (error) {
+        console.error('❌ Erro ao inicializar Mercado Pago:', error.message);
+    }
+}
 
 // ========== RATE LIMITING ==========
 const adminLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000, // 15 minutos
-    max: 5, // 5 tentativas
+    windowMs: 15 * 60 * 1000,
+    max: 5,
     skipSuccessfulRequests: true,
     message: {
         success: false,
@@ -42,23 +63,32 @@ const adminLimiter = rateLimit({
     legacyHeaders: false
 });
 
-// ========== CORS CORRIGIDO - AGORA PERMITE CACHE-CONTROL! ==========
+const paymentLimiter = rateLimit({
+    windowMs: 5 * 60 * 1000, // 5 minutos
+    max: 10, // 10 tentativas de pagamento
+    message: {
+        success: false,
+        error: 'Muitas tentativas de pagamento. Aguarde 5 minutos.'
+    }
+});
+
+// ========== CORS ==========
 app.use(cors({
-    origin: true,  // Permite qualquer origem (GitHub Pages, Vercel, localhost)
-    credentials: true,  // Permite envio de cookies/tokens
+    origin: true,
+    credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: [
         'Content-Type', 
         'Authorization', 
         'x-admin-password', 
         'x-admin-key',
-        'Cache-Control',  // ✅ ADICIONADO! ESSE ERA O ERRO!
+        'Cache-Control',
         'X-Requested-With',
-        'Accept'
+        'Accept',
+        'x-meli-session-id' // Para Mercado Pago
     ]
 }));
 
-// ✅ IMPORTANTE: Responde preflight requests corretamente
 app.options('*', cors());
 
 app.use(express.json({ limit: '10mb' }));
@@ -72,7 +102,7 @@ console.log(`📅 Inicialização: ${new Date().toISOString()}`);
 console.log(`🌍 Ambiente: ${NODE_ENV}`);
 console.log(`🔌 Porta: ${PORT}`);
 console.log(`📦 Versão: ${API_VERSION}`);
-console.log(`🆔 PID: ${process.pid}`);
+console.log(`💳 Mercado Pago: ${MERCADO_PAGO_ACCESS_TOKEN ? '✅ Configurado' : '❌ Não configurado'}`);
 console.log('='.repeat(70));
 
 // ========== HEALTH CHECKS ==========
@@ -86,7 +116,8 @@ app.get('/health', (req, res) => {
         memory: process.memoryUsage(),
         node: process.version,
         environment: NODE_ENV,
-        dbStatus: app.locals.isDBConnected ? 'connected' : 'disconnected'
+        dbStatus: app.locals.isDBConnected ? 'connected' : 'disconnected',
+        mercadopago: MERCADO_PAGO_ACCESS_TOKEN ? 'configured' : 'missing'
     });
 });
 
@@ -109,7 +140,7 @@ app.get('/api/config', (req, res) => {
         backendUrl: `${req.protocol}://${req.get('host')}`,
         whatsappNumber: process.env.WHATSAPP_NUMBER || '',
         mercadoPago: {
-            publicKey: process.env.MERCADO_PAGO_PUBLIC_KEY || null,
+            publicKey: MERCADO_PAGO_PUBLIC_KEY || null,
             testMode: NODE_ENV !== 'production'
         },
         storeLocation: {
@@ -144,7 +175,9 @@ app.get('/', (req, res) => {
             docs: '/api/docs',
             products: '/api/product-availability',
             flavors: '/api/flavor-availability',
-            admin: '/api/admin/*'
+            admin: '/api/admin/*',
+            payment: '/api/create-payment', // ✅ Novo endpoint
+            webhook: '/api/webhooks/mercadopago' // ✅ Webhook
         }
     });
 });
@@ -164,7 +197,11 @@ app.get('/api/docs', (req, res) => {
                 { method: 'GET', path: '/api/config', description: 'Configuração pública do frontend' },
                 { method: 'GET', path: '/api/product-availability', description: 'Disponibilidade de produtos' },
                 { method: 'GET', path: '/api/flavor-availability', description: 'Disponibilidade de sabores' },
-                { method: 'GET', path: '/api/sync-all', description: 'Sincronizar todos os dados' }
+                { method: 'GET', path: '/api/sync-all', description: 'Sincronizar todos os dados' },
+                { method: 'POST', path: '/api/create-payment', description: 'Criar pagamento Mercado Pago' }
+            ],
+            webhooks: [
+                { method: 'POST', path: '/api/webhooks/mercadopago', description: 'Webhook de notificação MP' }
             ],
             admin: [
                 { method: 'POST', path: '/api/admin/verify', description: 'Verificar senha admin' },
@@ -219,6 +256,264 @@ app.post('/api/admin/verify', adminLimiter, (req, res) => {
         error: 'Senha administrativa incorreta'
     });
 });
+
+// ========== ENDPOINT DE PAGAMENTO MERCADO PAGO ==========
+app.post('/api/create-payment', paymentLimiter, async (req, res) => {
+    try {
+        const {
+            orderId,
+            customer,
+            items,
+            total,
+            deliveryFee,
+            deliveryType,
+            paymentMethod,
+            address,
+            notificationUrl,
+            redirectUrls
+        } = req.body;
+
+        // Validações básicas
+        if (!items || !Array.isArray(items) || items.length === 0) {
+            return res.status(400).json({
+                success: false,
+                error: 'Itens do pedido são obrigatórios'
+            });
+        }
+
+        if (!customer || !customer.email) {
+            return res.status(400).json({
+                success: false,
+                error: 'E-mail do cliente é obrigatório'
+            });
+        }
+
+        // Se não tiver Mercado Pago configurado, retorna erro
+        if (!mercadopagoClient) {
+            return res.status(503).json({
+                success: false,
+                error: 'Mercado Pago não configurado no servidor'
+            });
+        }
+
+        // Formata itens para o Mercado Pago
+        const mpItems = items.map(item => ({
+            id: item.id || `item-${Date.now()}`,
+            title: item.title,
+            description: item.description || item.title,
+            quantity: Number(item.quantity),
+            unit_price: Number(item.unit_price),
+            currency_id: 'BRL'
+        }));
+
+        // Adiciona taxa de entrega como um item separado
+        if (deliveryType === 'delivery' && deliveryFee > 0) {
+            mpItems.push({
+                id: 'delivery-fee',
+                title: 'Taxa de Entrega',
+                description: `Entrega em ${address?.street || 'endereço informado'}`,
+                quantity: 1,
+                unit_price: Number(deliveryFee),
+                currency_id: 'BRL'
+            });
+        }
+
+        // Prepara dados do comprador
+        const payer = {
+            name: customer.name,
+            email: customer.email,
+            phone: {
+                number: customer.phone.replace(/\D/g, ''),
+                area_code: customer.phone.replace(/\D/g, '').substring(0, 2)
+            }
+        };
+
+        // Adiciona endereço se disponível
+        if (address && address.street) {
+            payer.address = {
+                street_name: address.street,
+                street_number: address.number || 's/n',
+                complement: address.complement || ''
+            };
+        }
+
+        // URLs de retorno (frontend)
+        const successUrl = redirectUrls?.success || 
+            `${req.headers.origin || 'https://bebcom.com.br'}/?status=approved&order_id=${orderId}`;
+        const failureUrl = redirectUrls?.failure || 
+            `${req.headers.origin || 'https://bebcom.com.br'}/?status=failure`;
+        const pendingUrl = redirectUrls?.pending || 
+            `${req.headers.origin || 'https://bebcom.com.br'}/?status=pending`;
+
+        // Cria a preferência
+        const preference = new Preference(mercadopagoClient);
+        
+        const preferenceData = {
+            body: {
+                items: mpItems,
+                payer: payer,
+                external_reference: orderId,
+                back_urls: {
+                    success: successUrl,
+                    failure: failureUrl,
+                    pending: pendingUrl
+                },
+                auto_return: 'approved',
+                notification_url: notificationUrl || `${req.protocol}://${req.get('host')}/api/webhooks/mercadopago`,
+                payment_methods: {
+                    excluded_payment_methods: [],
+                    excluded_payment_types: [],
+                    installments: 12
+                },
+                statement_descriptor: 'BEBCOM DELIVERY',
+                metadata: {
+                    order_id: orderId,
+                    delivery_type: deliveryType,
+                    customer_name: customer.name,
+                    customer_phone: customer.phone
+                }
+            }
+        };
+
+        // Se for PIX, configura para exibir apenas PIX
+        if (paymentMethod === 'pix') {
+            preferenceData.body.payment_methods = {
+                excluded_payment_methods: [],
+                excluded_payment_types: [{ id: 'credit_card' }, { id: 'debit_card' }, { id: 'ticket' }],
+                installments: 1
+            };
+        }
+
+        const result = await preference.create(preferenceData);
+
+        // Salva no banco de dados (se conectado)
+        if (app.locals.db) {
+            await app.locals.db.collection('orders').insertOne({
+                orderId: orderId,
+                preferenceId: result.id,
+                customer: customer,
+                items: items,
+                total: total,
+                deliveryFee: deliveryFee,
+                deliveryType: deliveryType,
+                address: address,
+                status: 'pending',
+                createdAt: new Date(),
+                updatedAt: new Date(),
+                initPoint: result.init_point,
+                sandboxInitPoint: result.sandbox_init_point
+            });
+        }
+
+        // Retorna os links de pagamento
+        res.json({
+            success: true,
+            preferenceId: result.id,
+            initPoint: result.init_point,
+            sandboxInitPoint: result.sandbox_init_point,
+            orderId: orderId
+        });
+
+    } catch (error) {
+        console.error('❌ Erro ao criar pagamento:', error);
+        
+        res.status(500).json({
+            success: false,
+            error: 'Erro ao criar pagamento',
+            details: error.message
+        });
+    }
+});
+
+// ========== WEBHOOK DO MERCADO PAGO ==========
+app.post('/api/webhooks/mercadopago', async (req, res) => {
+    try {
+        const { type, data } = req.body;
+        
+        console.log('📩 Webhook recebido:', { type, data });
+
+        // Responde imediatamente para o Mercado Pago
+        res.status(200).json({ received: true });
+
+        // Processa em background
+        setTimeout(async () => {
+            try {
+                if (type === 'payment' && data.id) {
+                    // Busca informações do pagamento na API do Mercado Pago
+                    // Nota: Isso requer uma chamada adicional à API com o access token
+                    console.log(`💳 Pagamento ${data.id} recebido`);
+                    
+                    if (app.locals.db) {
+                        // Atualiza status no banco
+                        await app.locals.db.collection('orders').updateOne(
+                            { 'metadata.payment_id': data.id },
+                            { $set: { 
+                                'payment_status': 'received',
+                                'webhook_received_at': new Date()
+                            } }
+                        );
+                    }
+                }
+            } catch (err) {
+                console.error('❌ Erro no processamento do webhook:', err);
+            }
+        }, 100);
+
+    } catch (error) {
+        console.error('❌ Erro no webhook:', error);
+        res.status(500).json({ error: 'Erro interno' });
+    }
+});
+
+// ========== MIDDLEWARE DE AUTENTICAÇÃO ADMIN ==========
+function authenticateAdmin(req, res, next) {
+    const directPassword = req.body.password ||
+        req.headers['x-admin-password'] ||
+        req.headers['x-admin-key'] ||
+        req.query.adminPassword;
+    
+    let token = null;
+    const authHeader = req.headers['authorization'] || req.headers['Authorization'];
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+        token = authHeader.substring(7);
+    }
+    
+    if (!directPassword && !token) {
+        return res.status(401).json({
+            success: false,
+            error: 'Senha ou token não fornecido'
+        });
+    }
+
+    const currentYear = new Date().getFullYear();
+    
+    if (directPassword) {
+        const expectedHash = crypto
+            .createHash('sha256')
+            .update(ADMIN_PASSWORD)
+            .digest('hex');
+
+        const hashWithSalt = crypto
+            .createHash('sha256')
+            .update(ADMIN_PASSWORD + 'bebcom_' + currentYear)
+            .digest('hex');
+
+        if (directPassword === ADMIN_PASSWORD ||
+            directPassword === expectedHash ||
+            directPassword === hashWithSalt) {
+            return next();
+        }
+    }
+    
+    if (token && token.length === 64 && /^[a-f0-9]+$/i.test(token)) {
+        return next();
+    }
+
+    return res.status(401).json({
+        success: false,
+        error: 'Senha ou token inválido'
+    });
+}
 
 // ========== INICIALIZAÇÃO DO MONGODB ==========
 async function initializeMongoDB() {
@@ -290,7 +585,8 @@ async function initializeCollections(db) {
             'orders',
             'admin_logs',
             'sync_queue',
-            'customers'
+            'customers',
+            'payments' // ✅ Adicionado para pagamentos
         ];
 
         for (const name of requiredCollections) {
@@ -307,6 +603,15 @@ async function initializeCollections(db) {
                     await db.collection(name).createIndex({ orderId: 1 }, { unique: true });
                     await db.collection(name).createIndex({ timestamp: -1 });
                     await db.collection(name).createIndex({ customerPhone: 1 });
+                    await db.collection(name).createIndex({ preferenceId: 1 });
+                    await db.collection(name).createIndex({ status: 1 });
+                }
+
+                if (name === 'payments') {
+                    await db.collection(name).createIndex({ paymentId: 1 }, { unique: true });
+                    await db.collection(name).createIndex({ orderId: 1 });
+                    await db.collection(name).createIndex({ status: 1 });
+                    await db.collection(name).createIndex({ createdAt: -1 });
                 }
 
                 if (name === 'admin_logs') {
@@ -320,64 +625,6 @@ async function initializeCollections(db) {
     } catch (error) {
         console.error('⚠️ Erro ao configurar collections:', error.message);
     }
-}
-
-// ========== MIDDLEWARE DE AUTENTICAÇÃO - CORRIGIDO ==========
-function authenticateAdmin(req, res, next) {
-    // Verificar senha direta
-    const directPassword = req.body.password ||
-        req.headers['x-admin-password'] ||
-        req.headers['x-admin-key'] ||
-        req.query.adminPassword;
-    
-    // Verificar Bearer Token
-    let token = null;
-    const authHeader = req.headers['authorization'] || req.headers['Authorization'];
-    if (authHeader && authHeader.startsWith('Bearer ')) {
-        token = authHeader.substring(7);
-    }
-    
-    if (!directPassword && !token) {
-        return res.status(401).json({
-            success: false,
-            error: 'Senha ou token não fornecido'
-        });
-    }
-
-    const currentYear = new Date().getFullYear();
-    
-    // Verificar senha direta
-    if (directPassword) {
-        const expectedHash = crypto
-            .createHash('sha256')
-            .update(ADMIN_PASSWORD)
-            .digest('hex');
-
-        const hashWithSalt = crypto
-            .createHash('sha256')
-            .update(ADMIN_PASSWORD + 'bebcom_' + currentYear)
-            .digest('hex');
-
-        if (directPassword === ADMIN_PASSWORD ||
-            directPassword === expectedHash ||
-            directPassword === hashWithSalt) {
-            return next();
-        }
-    }
-    
-    // Verificar token - FORMATO SHA256 (64 caracteres hex)
-    if (token) {
-        // O token gerado no login é um hash SHA256 (64 caracteres hex)
-        if (token && token.length === 64 && /^[a-f0-9]+$/i.test(token)) {
-            console.log('✅ Token SHA256 válido');
-            return next();
-        }
-    }
-
-    return res.status(401).json({
-        success: false,
-        error: 'Senha ou token inválido'
-    });
 }
 
 // ========== ROTAS COM MONGODB ==========
@@ -625,6 +872,7 @@ const server = app.listen(PORT, '0.0.0.0', () => {
     console.log(`📡 Endereço: http://0.0.0.0:${PORT}`);
     console.log(`🩺 Health: http://0.0.0.0:${PORT}/health`);
     console.log(`⚙️  Config: http://0.0.0.0:${PORT}/api/config`);
+    console.log(`💳 Pagamento: http://0.0.0.0:${PORT}/api/create-payment`);
     console.log(`📚 Docs: http://0.0.0.0:${PORT}/api/docs`);
     console.log(`🔐 Admin Verify: http://0.0.0.0:${PORT}/api/admin/verify`);
     console.log(`🌍 Ambiente: ${NODE_ENV}`);
