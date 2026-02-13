@@ -204,7 +204,7 @@ app.post('/api/admin/verify', adminLimiter, (req, res) => {
     });
 });
 
-// ========== ENDPOINT DE PAGAMENTO MERCADO PAGO ==========
+// ========== ENDPOINT DE PAGAMENTO MERCADO PAGO CORRIGIDO ==========
 app.post('/api/create-payment', paymentLimiter, async (req, res) => {
     try {
         const {
@@ -239,6 +239,17 @@ app.post('/api/create-payment', paymentLimiter, async (req, res) => {
             });
         }
 
+        // ✅ CORREÇÃO: Limpa o telefone (remove tudo que não é número)
+        const cleanPhone = customer.phone.replace(/\D/g, '');
+        
+        // ✅ Valida se o telefone tem pelo menos 10 dígitos
+        if (cleanPhone.length < 10 || cleanPhone.length > 11) {
+            return res.status(400).json({
+                success: false,
+                error: 'Telefone inválido. Use DDD + número (10 ou 11 dígitos)'
+            });
+        }
+
         // Formata itens
         const mpItems = items.map(item => ({
             title: item.title,
@@ -263,14 +274,14 @@ app.post('/api/create-payment', paymentLimiter, async (req, res) => {
         const failureUrl = `${req.headers.origin || 'https://bebcom.com.br'}/?status=failure`;
         const pendingUrl = `${req.headers.origin || 'https://bebcom.com.br'}/?status=pending`;
 
-        // Cria preferência
+        // Cria preferência - AGORA COM O NÚMERO LIMPO
         const preference = {
             items: mpItems,
             payer: {
                 name: customer.name,
                 email: customer.email,
                 phone: {
-                    number: customer.phone.replace(/\D/g, '')
+                    number: Number(cleanPhone)  // ✅ Converte para número
                 }
             },
             external_reference: orderId,
@@ -312,7 +323,8 @@ app.post('/api/create-payment', paymentLimiter, async (req, res) => {
         console.error('❌ Erro no pagamento:', error);
         res.status(500).json({
             success: false,
-            error: 'Erro ao criar pagamento'
+            error: 'Erro ao criar pagamento',
+            details: error.message
         });
     }
 });
