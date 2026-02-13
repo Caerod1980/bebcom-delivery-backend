@@ -1248,11 +1248,11 @@
         const products = {
             'drinks-whisky': [
                 { id: 'old-star', name: 'Copão Old Star', description: 'Drink clássico de whisky', price: 11.00, requiresFlavorSelection: true, flavorType: 'whisky_oldstar', nextStep: 'ice' },
-                { id: 'passport', name: 'Copão Passport', description: 'Whisky importado', price: 18.00, requiresFlavorSelection: false },
-                { id: 'natu-nobilis', name: 'Copão Natu Nobilis', description: 'Whisky premium', price: 17.00, requiresFlavorSelection: false },
-                { id: 'white-horse', name: 'Copão White Horse', description: 'Whisky escocês', price: 22.00, requiresFlavorSelection: false },
-                { id: 'red-label', name: 'Copão Red Label', description: 'Johnnie Walker', price: 25.00, requiresFlavorSelection: false },
-                { id: 'ballantines', name: 'Copão Ballantines', description: 'Whisky escocês', price: 28.00, requiresFlavorSelection: false },
+                { id: 'passport', name: 'Copão Passport', description: 'Whisky importado', price: 18.00, requiresFlavorSelection: true, flavorType: 'whisky_padrao', nextStep: 'ice' },
+                { id: 'natu-nobilis', name: 'Copão Natu Nobilis', description: 'Whisky premium', price: 17.00, requiresFlavorSelection: true, flavorType: 'whisky_padrao', nextStep: 'ice' },
+                { id: 'white-horse', name: 'Copão White Horse', description: 'Whisky escocês', price: 22.00, requiresFlavorSelection: true, flavorType: 'whisky_padrao', nextStep: 'ice' },
+                { id: 'red-label', name: 'Copão Red Label', description: 'Johnnie Walker', price: 25.00, requiresFlavorSelection: true, flavorType: 'whisky_padrao', nextStep: 'ice' },
+                { id: 'ballantines', name: 'Copão Ballantines', description: 'Whisky escocês', price: 28.00, requiresFlavorSelection: true, flavorType: 'whisky_padrao', nextStep: 'ice' },
                 { id: 'jack-daniels', name: 'Copão Jack Daniels', description: 'Whisky americano', price: 35.00, requiresFlavorSelection: true, flavorType: 'whisky_jack', nextStep: 'ice' }
             ],
             'drinks-gin': [
@@ -1334,6 +1334,7 @@
         const FLAVOR_CATALOG = {
             'whisky_oldstar': ['Old Star Tradicional', 'Old Star Maçã-Verde'],
             'whisky_jack': ['Jack Tradicional', 'Jack Mel', 'Jack Maçã-Verde'],
+            'whisky_padrao': ['Tradicional', 'Mel', 'Maçã-Verde', 'Caramelo'],
             'gin_sabores': ['Tropical', 'Melancia', 'Morango', 'Maçã-Verde'],
             'corote_sabores': ['Morango', 'Melância', 'Maracujá', 'Pêssego', 'Blueberry', 'Limão', 'Canelinha'],
             'vodka_sabores': ['Frutas Vermelhas', 'Maracujá', 'Frutas Roxas', 'Kiwi', 'Pêssego', 'Limão', 'Blueberry'],
@@ -1352,6 +1353,7 @@
         const FLAVOR_TYPES = {
             'whisky_oldstar': 'Old Star',
             'whisky_jack': 'Jack Daniels',
+            'whisky_padrao': 'Whisky',
             'gin_sabores': 'Gin',
             'corote_sabores': 'Corote',
             'vodka_sabores': 'Vodka',
