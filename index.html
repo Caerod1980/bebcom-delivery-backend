@@ -1248,11 +1248,11 @@
         const products = {
             'drinks-whisky': [
                 { id: 'old-star', name: 'Copão Old Star', description: 'Drink clássico de whisky', price: 11.00, requiresFlavorSelection: true, flavorType: 'whisky_oldstar', nextStep: 'ice' },
-                { id: 'passport', name: 'Copão Passport', description: 'Whisky importado', price: 18.00, requiresFlavorSelection: true, nextStep: 'ice' },
-                { id: 'natu-nobilis', name: 'Copão Natu Nobilis', description: 'Whisky premium', price: 17.00, requiresFlavorSelection: true, nextStep: 'ice' },
-                { id: 'white-horse', name: 'Copão White Horse', description: 'Whisky escocês', price: 22.00, requiresFlavorSelection: true, nextStep: 'ice' },
-                { id: 'red-label', name: 'Copão Red Label', description: 'Johnnie Walker', price: 25.00, requiresFlavorSelection: true, nextStep: 'ice' },
-                { id: 'ballantines', name: 'Copão Ballantines', description: 'Whisky escocês', price: 28.00, requiresFlavorSelection: true, nextStep: 'ice' },
+                { id: 'passport', name: 'Copão Passport', description: 'Whisky importado', price: 18.00, requiresFlavorSelection: true, flavorType: 'whisky_sem_sabor', nextStep: 'ice' },
+                { id: 'natu-nobilis', name: 'Copão Natu Nobilis', description: 'Whisky premium', price: 17.00, requiresFlavorSelection: true, flavorType: 'whisky_sem_sabor', nextStep: 'ice' },
+                { id: 'white-horse', name: 'Copão White Horse', description: 'Whisky escocês', price: 22.00, requiresFlavorSelection: true, flavorType: 'whisky_sem_sabor', nextStep: 'ice' },
+                { id: 'red-label', name: 'Copão Red Label', description: 'Johnnie Walker', price: 25.00, requiresFlavorSelection: true, flavorType: 'whisky_sem_sabor', nextStep: 'ice' },
+                { id: 'ballantines', name: 'Copão Ballantines', description: 'Whisky escocês', price: 28.00, requiresFlavorSelection: true, flavorType: 'whisky_sem_sabor', nextStep: 'ice' },
                 { id: 'jack-daniels', name: 'Copão Jack Daniels', description: 'Whisky americano', price: 35.00, requiresFlavorSelection: true, flavorType: 'whisky_jack', nextStep: 'ice' }
             ],
             'drinks-gin': [
@@ -1334,6 +1334,7 @@
         const FLAVOR_CATALOG = {
             'whisky_oldstar': ['Old Star Tradicional', 'Old Star Maçã-Verde'],
             'whisky_jack': ['Jack Tradicional', 'Jack Mel', 'Jack Maçã-Verde'],
+            'whisky_sem_sabor': ['Tradicional'],
             'gin_sabores': ['Tropical', 'Melancia', 'Morango', 'Maçã-Verde'],
             'corote_sabores': ['Morango', 'Melância', 'Maracujá', 'Pêssego', 'Blueberry', 'Limão', 'Canelinha'],
             'vodka_sabores': ['Frutas Vermelhas', 'Maracujá', 'Frutas Roxas', 'Kiwi', 'Pêssego', 'Limão', 'Blueberry'],
@@ -1352,6 +1353,7 @@
         const FLAVOR_TYPES = {
             'whisky_oldstar': 'Old Star',
             'whisky_jack': 'Jack Daniels',
+            'whisky_sem_sabor': 'Whisky',
             'gin_sabores': 'Gin',
             'corote_sabores': 'Corote',
             'vodka_sabores': 'Vodka',
@@ -1687,6 +1689,8 @@
                 state.pendingFlavors = {};
                 state.currentFlavorStep = 'primary';
                 state.currentButton = button;
+                
+                // Sempre abre o modal de sabor primeiro (mesmo que seja 'Tradicional')
                 if (product.flavorType && FLAVOR_CATALOG[product.flavorType]) {
                     const flavors = FLAVOR_CATALOG[product.flavorType];
                     const hasAvailable = flavors.some(f => isFlavorAvailable(product.flavorType, f));
@@ -1696,7 +1700,9 @@
                     }
                     openFlavorModal(product, 'primary');
                 } else {
-                    openFlavorModal(product, 'ice');
+                    // Se não tiver flavorType, usa o genérico 'sem sabor'
+                    product.flavorType = 'whisky_sem_sabor';
+                    openFlavorModal(product, 'primary');
                 }
             } else {
                 addToCartDirect(product, button);
@@ -1775,9 +1781,12 @@
                 return;
             }
             document.getElementById('flavorModal').style.display = 'none';
+            
             if (state.currentFlavorStep === 'primary' && state.pendingProduct.nextStep === 'ice') {
+                // Vai para o modal de gelo
                 openFlavorModal(state.pendingProduct, 'ice');
             } else {
+                // Adiciona ao carrinho com os sabores selecionados
                 addToCartWithFlavors();
             }
         }
@@ -1794,20 +1803,40 @@
             if (!state.pendingProduct) return;
             const product = state.pendingProduct;
             const flavors = state.pendingFlavors;
-            const existing = state.cart.find(item => item.name === product.name && JSON.stringify(item.flavors) === JSON.stringify(flavors));
+            const existing = state.cart.find(item => 
+                item.name === product.name && 
+                JSON.stringify(item.flavors) === JSON.stringify(flavors)
+            );
+            
             if (existing) {
                 existing.quantity += 1;
             } else {
-                state.cart.push({ name: product.name, price: product.price, quantity: 1, productId: product.id, flavors: { ...flavors } });
+                state.cart.push({ 
+                    name: product.name, 
+                    price: product.price, 
+                    quantity: 1, 
+                    productId: product.id, 
+                    flavors: { ...flavors } 
+                });
             }
-            updateCart(); saveCart();
+            updateCart(); 
+            saveCart();
+            
             if (state.currentButton) {
                 const original = state.currentButton.innerHTML;
                 state.currentButton.innerHTML = '✓ Adicionado!';
                 state.currentButton.classList.add('added');
-                setTimeout(() => { state.currentButton.innerHTML = original; state.currentButton.classList.remove('added'); }, 1000);
+                setTimeout(() => { 
+                    state.currentButton.innerHTML = original; 
+                    state.currentButton.classList.remove('added'); 
+                }, 1000);
             }
-            state.pendingProduct = null; state.pendingFlavors = {}; state.currentFlavorStep = null; state.currentButton = null;
+            
+            state.pendingProduct = null; 
+            state.pendingFlavors = {}; 
+            state.currentFlavorStep = null; 
+            state.currentButton = null;
+            
             showNotification(`✅ ${product.name} adicionado`);
         }
 
