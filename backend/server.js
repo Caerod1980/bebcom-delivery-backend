@@ -120,10 +120,10 @@ app.get('/api/config', (req, res) => {
         : `${protocol}://${host}`;
 
     res.json({
-        backendUrl: backendUrl,  // ✅ AGORA SEMPRE HTTPS EM PRODUÇÃO
+        backendUrl: backendUrl,  // ✅ AGORA SEMPRE HTTPS
         whatsappNumber: process.env.WHATSAPP_NUMBER || '',
         mercadoPago: {
-            publicKey: MERCADO_PAGO_PUBLIC_KEY || null,
+            publicKey: process.env.MERCADO_PAGO_PUBLIC_KEY || null,
             testMode: NODE_ENV !== 'production'
         },
         storeLocation: {
