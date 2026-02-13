@@ -1572,6 +1572,7 @@
         // ============================================
         async function initAfterAgeVerification() {
             console.log('✅ Inicializando interface...');
+            recoverPendingOrder();
             await loadAvailability();
             loadCart();
             showCategory('drinks-whisky');
@@ -1586,33 +1587,117 @@
             checkForPaymentReturn();
         }
 
-        // ============================================
-        // VERIFICAR RETORNO DE PAGAMENTO
-        // ============================================
-        function checkForPaymentReturn() {
-            const urlParams = new URLSearchParams(window.location.search);
-            const paymentId = urlParams.get('payment_id');
-            const status = urlParams.get('status');
-            const orderId = urlParams.get('order_id');
-            
-            if (paymentId && status === 'approved' && orderId) {
-                // Pagamento aprovado via retorno
-                state.currentOrderId = orderId;
-                state.paymentConfirmed = true;
-                
-                const statusDiv = document.getElementById('paymentStatus');
-                statusDiv.style.display = 'block';
-                statusDiv.className = 'payment-status success';
-                statusDiv.innerHTML = '✅ Pagamento aprovado! Seu pedido está confirmado.';
-                
-                document.getElementById('payButton').style.display = 'none';
-                enableWhatsAppButton();
-                
-                // Limpa os parâmetros da URL
-                window.history.replaceState({}, document.title, window.location.pathname);
-            }
+// ============================================
+// VERIFICAR RETORNO DE PAGAMENTO - CORRIGIDO
+// ============================================
+function checkForPaymentReturn() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const paymentId = urlParams.get('payment_id');
+    const status = urlParams.get('status');
+    const orderId = urlParams.get('order_id');
+    const collectionId = urlParams.get('collection_id');
+    const preferenceId = urlParams.get('preference_id');
+    
+    console.log('🔍 Parâmetros de retorno:', { paymentId, status, orderId, collectionId, preferenceId });
+    
+    if ((paymentId || collectionId) && orderId) {
+        const actualPaymentId = paymentId || collectionId;
+        
+        const statusDiv = document.getElementById('paymentStatus');
+        statusDiv.style.display = 'block';
+        statusDiv.className = 'payment-status info';
+        statusDiv.innerHTML = '🔄 Verificando pagamento...';
+        
+        if (status === 'approved') {
+            confirmPaymentSuccess(orderId, actualPaymentId);
+        } else {
+            checkPaymentStatus(orderId, actualPaymentId);
         }
-
+        
+        window.history.replaceState({}, document.title, window.location.pathname);
+    }
+}
+// ============================================
+// FUNÇÃO PARA CONFIRMAR PAGAMENTO COM SUCESSO
+// ============================================
+function confirmPaymentSuccess(orderId, paymentId) {
+    console.log('✅ Pagamento confirmado!', { orderId, paymentId });
+    
+    state.currentOrderId = orderId;
+    state.paymentConfirmed = true;
+    
+    const statusDiv = document.getElementById('paymentStatus');
+    statusDiv.style.display = 'block';
+    statusDiv.className = 'payment-status success';
+    statusDiv.innerHTML = '✅ Pagamento aprovado! Seu pedido está confirmado.';
+    
+    document.getElementById('payButton').style.display = 'none';
+    enableWhatsAppButton();
+    
+    sessionStorage.setItem('bebcom_last_order', JSON.stringify({
+        orderId: orderId,
+        paymentId: paymentId,
+        confirmed: true,
+        timestamp: Date.now()
+    }));
+}
+        // ============================================
+// FUNÇÃO PARA VERIFICAR STATUS NO BACKEND
+// ============================================
+async function checkPaymentStatus(orderId, paymentId) {
+    try {
+        console.log('🔄 Verificando status do pagamento...');
+        
+        const response = await fetch(`${CONFIG.backendUrl}/api/payment-status/${orderId}`);
+        const data = await response.json();
+        
+        console.log('📥 Status do pedido:', data);
+        
+        if (data.success && data.status === 'approved') {
+            confirmPaymentSuccess(orderId, paymentId);
+        } else {
+            setTimeout(() => checkPaymentStatus(orderId, paymentId), 3000);
+            
+            const statusDiv = document.getElementById('paymentStatus');
+            statusDiv.innerHTML = '⏳ Pagamento processando. Aguarde confirmação...';
+        }
+        
+    } catch (error) {
+        console.error('❌ Erro ao verificar status:', error);
+        setTimeout(() => checkPaymentStatus(orderId, paymentId), 5000);
+    }
+}
+        // ============================================
+// FUNÇÃO PARA RECUPERAR PEDIDO PENDENTE
+// ============================================
+function recoverPendingOrder() {
+    try {
+        const saved = sessionStorage.getItem('bebcom_last_order');
+        if (!saved) return;
+        
+        const order = JSON.parse(saved);
+        
+        if (order.confirmed && (Date.now() - order.timestamp < 60 * 60 * 1000)) {
+            console.log('🔄 Recuperando pedido pendente:', order);
+            
+            state.currentOrderId = order.orderId;
+            state.paymentConfirmed = true;
+            
+            const statusDiv = document.getElementById('paymentStatus');
+            statusDiv.style.display = 'block';
+            statusDiv.className = 'payment-status success';
+            statusDiv.innerHTML = '✅ Pagamento aprovado! Seu pedido está confirmado.';
+            
+            document.getElementById('payButton').style.display = 'none';
+            enableWhatsAppButton();
+        } else {
+            sessionStorage.removeItem('bebcom_last_order');
+        }
+    } catch (e) {
+        console.warn('Erro ao recuperar pedido:', e);
+        sessionStorage.removeItem('bebcom_last_order');
+    }
+}
         // ============================================
         // STORAGE MANAGEMENT
         // ============================================
@@ -2367,6 +2452,16 @@
                 const data = await response.json();
                 
                 if (data.success && data.initPoint) {
+                    sessionStorage.setItem('bebcom_last_order', JSON.stringify({
+        orderId: orderId,
+        preferenceId: data.preferenceId,
+        confirmed: false,
+        timestamp: Date.now()
+    }));
+    
+    statusDiv.innerHTML = '🔄 Redirecionando para o Mercado Pago...';
+    window.location.href = data.initPoint;
+}
                     // Redireciona para o Mercado Pago
                     statusDiv.innerHTML = '🔄 Redirecionando para o Mercado Pago...';
                     
