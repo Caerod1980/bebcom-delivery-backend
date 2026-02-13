@@ -1,7 +1,8 @@
-# Node modules
+# Dependências
 node_modules/
+package-lock.json
 
-# Environment variables
+# Arquivos de ambiente
 .env
 .env.local
 .env.production
@@ -11,15 +12,6 @@ logs/
 *.log
 npm-debug.log*
 
-# OS
+# Sistema
 .DS_Store
 Thumbs.db
-
-# IDE
-.vscode/
-.idea/
-*.swp
-*.swo
-
-# Azure
-deployment.json
