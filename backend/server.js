@@ -7,6 +7,7 @@ const { MongoClient, ObjectId } = require('mongodb');
 const mercadopago = require('mercadopago');
 
 const app = express();
+app.set('trust proxy', 1); // Confia no primeiro proxy (Azure)
 const PORT = process.env.PORT || 8080;
 
 // ========== VALIDAÇÃO DE VARIÁVEIS DE AMBIENTE ==========
@@ -458,7 +459,48 @@ app.post('/api/admin/flavor-availability/bulk', adminLimiter, authenticateAdmin,
         res.status(500).json({ success: false, error: error.message });
     }
 });
+// ========== ROTA PARA VERIFICAR STATUS DO PAGAMENTO ==========
+app.get('/api/payment-status/:orderId', async (req, res) => {
+    try {
+        const { orderId } = req.params;
+        
+        if (!app.locals.db) {
+            return res.json({ 
+                success: false, 
+                error: 'Banco de dados indisponível',
+                status: 'pending' 
+            });
+        }
 
+        // Busca o pedido no banco
+        const order = await app.locals.db.collection('orders').findOne({ orderId: orderId });
+        
+        if (!order) {
+            return res.json({ 
+                success: false, 
+                error: 'Pedido não encontrado',
+                status: 'pending' 
+            });
+        }
+
+        // Retorna o status atual
+        res.json({
+            success: true,
+            status: order.status || 'pending',
+            orderId: order.orderId,
+            paymentId: order.payment_id,
+            updatedAt: order.updatedAt
+        });
+
+    } catch (error) {
+        console.error('❌ Erro ao verificar status:', error);
+        res.status(500).json({ 
+            success: false, 
+            error: error.message,
+            status: 'pending' 
+        });
+    }
+});
 // ========== INICIALIZAÇÃO DO MONGODB ==========
 async function initializeMongoDB() {
     try {
