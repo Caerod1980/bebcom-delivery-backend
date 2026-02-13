@@ -110,10 +110,17 @@ app.get('/health/readiness', (req, res) => {
     });
 });
 
-// ========== ROTA DE CONFIGURAÇÃO PÚBLICA ==========
+// ========== ROTA DE CONFIGURAÇÃO PÚBLICA CORRIGIDA ==========
 app.get('/api/config', (req, res) => {
+    // ✅ FORÇA HTTPS em produção
+    const protocol = req.headers['x-forwarded-proto'] || req.protocol;
+    const host = req.get('host');
+    const backendUrl = (protocol === 'https' || process.env.NODE_ENV === 'production') 
+        ? `https://${host}` 
+        : `${protocol}://${host}`;
+
     res.json({
-        backendUrl: `${req.protocol}://${req.get('host')}`,
+        backendUrl: backendUrl,  // ✅ AGORA SEMPRE HTTPS EM PRODUÇÃO
         whatsappNumber: process.env.WHATSAPP_NUMBER || '',
         mercadoPago: {
             publicKey: MERCADO_PAGO_PUBLIC_KEY || null,
