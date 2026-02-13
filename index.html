@@ -1773,6 +1773,7 @@
             }, 100);
         }
 
+        // ✅ FUNÇÃO CORRIGIDA - AGORA FUNCIONA COM 2 MODAIS!
         function confirmFlavorSelection() {
             if (state.currentFlavorStep === 'primary' && !state.pendingFlavors.primary) {
                 showNotification('❌ Selecione um sabor', 'error');
@@ -1782,13 +1783,16 @@
                 showNotification('❌ Selecione um sabor de gelo', 'error');
                 return;
             }
+            
             document.getElementById('flavorModal').style.display = 'none';
             
+            // ✅ Se é o primeiro modal (sabor) e o produto tem gelo, abre o modal de gelo
             if (state.currentFlavorStep === 'primary' && state.pendingProduct.nextStep === 'ice') {
-                // ✅ Abre o modal de gelo
+                state.currentFlavorStep = 'ice'; // ✅ Garante que o próximo passo é gelo
                 openFlavorModal(state.pendingProduct, 'ice');
-            } else {
-                // ✅ Adiciona ao carrinho com os sabores selecionados
+            } 
+            // ✅ Se é o modal de gelo OU o produto não tem próximo passo, adiciona ao carrinho
+            else {
                 addToCartWithFlavors();
             }
         }
