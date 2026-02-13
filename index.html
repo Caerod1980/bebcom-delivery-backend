@@ -1675,7 +1675,7 @@
         }
 
         // ============================================
-        // ADICIONAR AO CARRINHO
+        // ADICIONAR AO CARRINHO - ✅ CORRIGIDO!
         // ============================================
         function handleAddToCart(productId, button) {
             const product = findProductById(productId);
@@ -1689,21 +1689,23 @@
                 state.pendingFlavors = {};
                 state.currentFlavorStep = 'primary';
                 state.currentButton = button;
-                
-                // Sempre abre o modal de sabor primeiro (mesmo que seja 'Tradicional')
-                if (product.flavorType && FLAVOR_CATALOG[product.flavorType]) {
-                    const flavors = FLAVOR_CATALOG[product.flavorType];
-                    const hasAvailable = flavors.some(f => isFlavorAvailable(product.flavorType, f));
-                    if (!hasAvailable) {
-                        showNotification('❌ Todos os sabores estão indisponíveis', 'error');
-                        return;
-                    }
-                    openFlavorModal(product, 'primary');
-                } else {
-                    // Se não tiver flavorType, usa o genérico 'sem sabor'
-                    product.flavorType = 'whisky_sem_sabor';
-                    openFlavorModal(product, 'primary');
+
+                // ✅ Garante que sempre há um flavorType
+                const flavorType = product.flavorType || 'whisky_sem_sabor';
+                const flavors = FLAVOR_CATALOG[flavorType] || [];
+                const hasAvailable = flavors.some(f => isFlavorAvailable(flavorType, f));
+
+                if (!hasAvailable) {
+                    showNotification('❌ Todos os sabores estão indisponíveis', 'error');
+                    return;
                 }
+
+                // ✅ Define o flavorType no produto (se não existir)
+                if (!product.flavorType) {
+                    product.flavorType = 'whisky_sem_sabor';
+                }
+
+                openFlavorModal(product, 'primary');
             } else {
                 addToCartDirect(product, button);
             }
@@ -1783,10 +1785,10 @@
             document.getElementById('flavorModal').style.display = 'none';
             
             if (state.currentFlavorStep === 'primary' && state.pendingProduct.nextStep === 'ice') {
-                // Vai para o modal de gelo
+                // ✅ Abre o modal de gelo
                 openFlavorModal(state.pendingProduct, 'ice');
             } else {
-                // Adiciona ao carrinho com os sabores selecionados
+                // ✅ Adiciona ao carrinho com os sabores selecionados
                 addToCartWithFlavors();
             }
         }
