@@ -7,7 +7,7 @@
     
     <!-- SEO -->
     <meta name="description" content="BebCom Delivery - Bebidas, drinks e muito mais. Peça pelo WhatsApp!">
-    <meta name="keywords" content="delivery, bebidas, drinks, cerveja, whisky, gin, vodka, bauru">
+    <meta name="keywords" content="delivery, bebidas, drinks, cerveja, whisky, gin, vodka, bauru, salgadinhos, doces">
     <meta name="author" content="BebCom Delivery">
     
     <!-- PWA -->
@@ -1054,6 +1054,8 @@
         <button class="nav-button" onclick="showCategory('sucos')">🧃 Sucos</button>
         <button class="nav-button" onclick="showCategory('energeticos')">⚡ Energéticos</button>
         <button class="nav-button" onclick="showCategory('gelo-carvao')">🧊 Gelo/Carvão</button>
+        <button class="nav-button" onclick="showCategory('salgadinhos')">🥨 Salgadinhos</button>
+        <button class="nav-button" onclick="showCategory('doces')">🍬 Doces</button>
     </div>
 
     <div class="main-container">
@@ -1256,7 +1258,7 @@
                 { id: 'jack-daniels', name: 'Copão Jack Daniels', description: 'Whisky americano', price: 35.00, requiresFlavorSelection: true, flavorType: 'whisky_jack', nextStep: 'ice' }
             ],
             'drinks-gin': [
-                { id: 'danoninho-gin', name: 'Danoninho de Gin', description: 'Batida com Gin', price: 18.00, requiresFlavorSelection: true, flavorType: 'gin_sabores', nextStep: 'ice' },
+                { id: 'danoninho-gin', name: 'Danoninho de Gin', description: 'Batida com Gin', price: 18.00, requiresFlavorSelection: true, flavorType: 'gin_sabores' },
                 { id: 'copa-gin', name: 'Copão de Gin', description: 'Drink com Gin Askov', price: 18.00, requiresFlavorSelection: true, flavorType: 'gin_sabores', nextStep: 'ice' }
             ],
             'drinks-vodka': [
@@ -1325,6 +1327,22 @@
                 { id: 'gelo-saborizado', name: 'Gelo Saborizado', description: 'Gelo com sabor', price: 3.00, requiresFlavorSelection: true, flavorType: 'gelo_sabores' },
                 { id: 'carvao-3kg', name: 'Carvão 3kg', description: 'Carvão', price: 20.00 },
                 { id: 'gelo-4.5kg', name: 'Gelo 4,5Kg', description: 'Gelo', price: 11.00 }
+            ],
+            'salgadinhos': [
+                { id: 'coxinha', name: 'Coxinha', description: 'Frango com catupiry', price: 6.00 },
+                { id: 'kibe', name: 'Kibe', description: 'Carne moída com hortelã', price: 5.50 },
+                { id: 'risole', name: 'Risole', description: 'Presunto e queijo', price: 5.50 },
+                { id: 'bolinha-queijo', name: 'Bolinha de Queijo', description: 'Queijo mussarela', price: 5.00 },
+                { id: 'pastel', name: 'Pastel', description: 'Pastel assado de carne', price: 6.50 },
+                { id: 'empada', name: 'Empada', description: 'Frango ou palmito', price: 6.00 }
+            ],
+            'doces': [
+                { id: 'brigadeiro', name: 'Brigadeiro', description: 'Doce de chocolate', price: 3.50 },
+                { id: 'beijinho', name: 'Beijinho', description: 'Doce de coco', price: 3.50 },
+                { id: 'cajuzinho', name: 'Cajuzinho', description: 'Doce de amendoim', price: 3.50 },
+                { id: 'pao-mel', name: 'Pão de Mel', description: 'Recheado com doce de leite', price: 4.50 },
+                { id: 'brownie', name: 'Brownie', description: 'Brownie de chocolate', price: 5.00 },
+                { id: 'cookie', name: 'Cookie', description: 'Cookie de chocolate', price: 4.00 }
             ]
         };
 
@@ -2323,7 +2341,9 @@
                 { id: 'refri-pet', name: '🥤 Refri PET' },
                 { id: 'sucos', name: '🧃 Sucos' },
                 { id: 'energeticos', name: '⚡ Energéticos' },
-                { id: 'gelo-carvao', name: '🧊 Gelo/Carvão' }
+                { id: 'gelo-carvao', name: '🧊 Gelo/Carvão' },
+                { id: 'salgadinhos', name: '🥨 Salgadinhos' },
+                { id: 'doces', name: '🍬 Doces' }
             ];
             
             categories.forEach(cat => {
