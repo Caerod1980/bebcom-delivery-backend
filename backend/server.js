@@ -1,10 +1,10 @@
-// backend/server.js - VERSÃO COMPLETA E FUNCIONAL
+// backend/server.js - VERSÃO ESTÁVEL PARA PRODUÇÃO
 const express = require('express');
 const cors = require('cors');
 const crypto = require('crypto');
 const rateLimit = require('express-rate-limit');
-const { MongoClient, ServerApiVersion } = require('mongodb');
-const { MercadoPagoConfig, Preference } = require('mercadopago');
+const { MongoClient, ObjectId } = require('mongodb');
+const mercadopago = require('mercadopago');
 
 const app = express();
 const PORT = process.env.PORT || 8080;
@@ -15,12 +15,8 @@ const REQUIRED_ENV_VARS = ['MONGODB_URI', 'ADMIN_PASSWORD'];
 const missingEnvVars = REQUIRED_ENV_VARS.filter(varName => !process.env[varName]);
 
 if (missingEnvVars.length > 0) {
-    console.error('='.repeat(70));
     console.error('❌ ERRO CRÍTICO - VARIÁVEIS DE AMBIENTE NÃO CONFIGURADAS:');
     missingEnvVars.forEach(varName => console.error(`   - ${varName}`));
-    console.error('='.repeat(70));
-    console.error('📌 Configure no Azure: Portal -> App Service -> Configuration');
-    console.error('='.repeat(70));
     process.exit(1);
 }
 
@@ -28,25 +24,17 @@ if (missingEnvVars.length > 0) {
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
 const MONGODB_URI = process.env.MONGODB_URI;
 const DB_NAME = process.env.DB_NAME || 'bebcom_delivery';
-const API_VERSION = '4.0.0-azure-mp-completo';
+const API_VERSION = '4.0.0-stable';
 
 // ========== MERCADO PAGO ==========
 const MERCADO_PAGO_ACCESS_TOKEN = process.env.MERCADO_PAGO_ACCESS_TOKEN;
 const MERCADO_PAGO_PUBLIC_KEY = process.env.MERCADO_PAGO_PUBLIC_KEY;
-const MERCADO_PAGO_WEBHOOK_SECRET = process.env.MERCADO_PAGO_WEBHOOK_SECRET;
 
-let mercadopagoClient = null;
 if (MERCADO_PAGO_ACCESS_TOKEN) {
-    try {
-        const client = new MercadoPagoConfig({ 
-            accessToken: MERCADO_PAGO_ACCESS_TOKEN,
-            options: { timeout: 5000 }
-        });
-        mercadopagoClient = client;
-        console.log('✅ Mercado Pago SDK inicializado');
-    } catch (error) {
-        console.error('❌ Erro ao inicializar Mercado Pago:', error.message);
-    }
+    mercadopago.configure({
+        access_token: MERCADO_PAGO_ACCESS_TOKEN
+    });
+    console.log('✅ Mercado Pago SDK configurado');
 }
 
 // ========== RATE LIMITING ==========
@@ -57,9 +45,7 @@ const adminLimiter = rateLimit({
     message: {
         success: false,
         error: 'Muitas tentativas de admin. Aguarde 15 minutos.'
-    },
-    standardHeaders: true,
-    legacyHeaders: false
+    }
 });
 
 const paymentLimiter = rateLimit({
@@ -77,14 +63,11 @@ app.use(cors({
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: [
-        'Content-Type', 
-        'Authorization', 
-        'x-admin-password', 
+        'Content-Type',
+        'Authorization',
+        'x-admin-password',
         'x-admin-key',
-        'Cache-Control',
-        'X-Requested-With',
-        'Accept',
-        'x-meli-session-id'
+        'Cache-Control'
     ]
 }));
 
@@ -94,14 +77,11 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // ========== LOG DE INICIALIZAÇÃO ==========
 console.log('='.repeat(70));
-console.log('🍹 BEBCOM DELIVERY API - PRODUÇÃO AZURE');
+console.log('🍹 BEBCOM DELIVERY API');
 console.log('='.repeat(70));
 console.log(`📅 Inicialização: ${new Date().toISOString()}`);
 console.log(`🌍 Ambiente: ${NODE_ENV}`);
-console.log(`🔌 Porta: ${PORT}`);
 console.log(`📦 Versão: ${API_VERSION}`);
-console.log(`💳 Mercado Pago: ${MERCADO_PAGO_ACCESS_TOKEN ? '✅ Configurado' : '❌ Não configurado'}`);
-console.log('='.repeat(70));
 
 // ========== HEALTH CHECKS ==========
 app.get('/health', (req, res) => {
@@ -111,7 +91,6 @@ app.get('/health', (req, res) => {
         version: API_VERSION,
         timestamp: new Date().toISOString(),
         uptime: process.uptime(),
-        memory: process.memoryUsage(),
         node: process.version,
         environment: NODE_ENV,
         dbStatus: app.locals.isDBConnected ? 'connected' : 'disconnected',
@@ -120,15 +99,13 @@ app.get('/health', (req, res) => {
 });
 
 app.get('/health/liveness', (req, res) => {
-    res.status(200).json({ status: 'alive', timestamp: new Date().toISOString() });
+    res.status(200).json({ status: 'alive' });
 });
 
 app.get('/health/readiness', (req, res) => {
     const isReady = app.locals.isDBConnected !== false;
     res.status(isReady ? 200 : 503).json({
-        status: isReady ? 'ready' : 'not_ready',
-        db: app.locals.isDBConnected ? 'connected' : 'disconnected',
-        timestamp: new Date().toISOString()
+        status: isReady ? 'ready' : 'not_ready'
     });
 });
 
@@ -164,57 +141,21 @@ app.get('/', (req, res) => {
         success: true,
         service: 'BebCom Delivery API',
         version: API_VERSION,
-        environment: NODE_ENV,
         status: 'operational',
-        timestamp: new Date().toISOString(),
         endpoints: {
             health: '/health',
             config: '/api/config',
-            docs: '/api/docs',
             products: '/api/product-availability',
             flavors: '/api/flavor-availability',
-            admin: '/api/admin/*',
-            payment: '/api/create-payment',
-            webhook: '/api/webhooks/mercadopago'
+            payment: '/api/create-payment'
         }
-    });
-});
-
-// ========== DOCUMENTAÇÃO ==========
-app.get('/api/docs', (req, res) => {
-    res.json({
-        api: 'BebCom Delivery API',
-        version: API_VERSION,
-        baseUrl: `${req.protocol}://${req.get('host')}`,
-        endpoints: {
-            public: [
-                { method: 'GET', path: '/', description: 'Status da API' },
-                { method: 'GET', path: '/health', description: 'Health check completo' },
-                { method: 'GET', path: '/health/liveness', description: 'Azure liveness probe' },
-                { method: 'GET', path: '/health/readiness', description: 'Azure readiness probe' },
-                { method: 'GET', path: '/api/config', description: 'Configuração pública do frontend' },
-                { method: 'GET', path: '/api/product-availability', description: 'Disponibilidade de produtos' },
-                { method: 'GET', path: '/api/flavor-availability', description: 'Disponibilidade de sabores' },
-                { method: 'GET', path: '/api/sync-all', description: 'Sincronizar todos os dados' },
-                { method: 'POST', path: '/api/create-payment', description: 'Criar pagamento Mercado Pago' }
-            ],
-            webhooks: [
-                { method: 'POST', path: '/api/webhooks/mercadopago', description: 'Webhook de notificação MP' }
-            ],
-            admin: [
-                { method: 'POST', path: '/api/admin/verify', description: 'Verificar senha admin' },
-                { method: 'POST', path: '/api/admin/product-availability/bulk', description: 'Atualizar produtos' },
-                { method: 'POST', path: '/api/admin/flavor-availability/bulk', description: 'Atualizar sabores' }
-            ]
-        },
-        timestamp: new Date().toISOString()
     });
 });
 
 // ========== ROTA DE VERIFICAÇÃO ADMIN ==========
 app.post('/api/admin/verify', adminLimiter, (req, res) => {
     const { password } = req.body;
-    
+
     if (!password) {
         return res.status(400).json({
             success: false,
@@ -227,21 +168,21 @@ app.post('/api/admin/verify', adminLimiter, (req, res) => {
         .createHash('sha256')
         .update(ADMIN_PASSWORD)
         .digest('hex');
-    
+
     const hashWithSalt = crypto
         .createHash('sha256')
         .update(ADMIN_PASSWORD + 'bebcom_' + currentYear)
         .digest('hex');
 
-    if (password === ADMIN_PASSWORD || 
-        password === expectedHash || 
+    if (password === ADMIN_PASSWORD ||
+        password === expectedHash ||
         password === hashWithSalt) {
-        
+
         const token = crypto
             .createHash('sha256')
             .update(ADMIN_PASSWORD + Date.now() + crypto.randomBytes(16).toString('hex'))
             .digest('hex');
-        
+
         return res.json({
             success: true,
             token: token,
@@ -266,12 +207,9 @@ app.post('/api/create-payment', paymentLimiter, async (req, res) => {
             deliveryFee,
             deliveryType,
             paymentMethod,
-            address,
-            notificationUrl,
-            redirectUrls
+            address
         } = req.body;
 
-        // Validações básicas
         if (!items || !Array.isArray(items) || items.length === 0) {
             return res.status(400).json({
                 success: false,
@@ -286,17 +224,15 @@ app.post('/api/create-payment', paymentLimiter, async (req, res) => {
             });
         }
 
-        // Se não tiver Mercado Pago configurado, retorna erro
-        if (!mercadopagoClient) {
+        if (!MERCADO_PAGO_ACCESS_TOKEN) {
             return res.status(503).json({
                 success: false,
-                error: 'Mercado Pago não configurado no servidor'
+                error: 'Mercado Pago não configurado'
             });
         }
 
-        // Formata itens para o Mercado Pago
+        // Formata itens
         const mpItems = items.map(item => ({
-            id: item.id || `item-${Date.now()}`,
             title: item.title,
             description: item.description || item.title,
             quantity: Number(item.quantity),
@@ -304,91 +240,48 @@ app.post('/api/create-payment', paymentLimiter, async (req, res) => {
             currency_id: 'BRL'
         }));
 
-        // Adiciona taxa de entrega como um item separado
         if (deliveryType === 'delivery' && deliveryFee > 0) {
             mpItems.push({
-                id: 'delivery-fee',
                 title: 'Taxa de Entrega',
-                description: `Entrega em ${address?.street || 'endereço informado'}`,
+                description: 'Taxa de entrega',
                 quantity: 1,
                 unit_price: Number(deliveryFee),
                 currency_id: 'BRL'
             });
         }
 
-        // Prepara dados do comprador
-        const payer = {
-            name: customer.name,
-            email: customer.email,
-            phone: {
-                number: customer.phone.replace(/\D/g, ''),
-                area_code: customer.phone.replace(/\D/g, '').substring(0, 2)
-            }
-        };
+        // URLs de retorno
+        const successUrl = `${req.headers.origin || 'https://bebcom.com.br'}/?status=approved&order_id=${orderId}`;
+        const failureUrl = `${req.headers.origin || 'https://bebcom.com.br'}/?status=failure`;
+        const pendingUrl = `${req.headers.origin || 'https://bebcom.com.br'}/?status=pending`;
 
-        // Adiciona endereço se disponível
-        if (address && address.street) {
-            payer.address = {
-                street_name: address.street,
-                street_number: address.number || 's/n',
-                complement: address.complement || ''
-            };
-        }
-
-        // URLs de retorno (frontend)
-        const successUrl = redirectUrls?.success || 
-            `${req.headers.origin || 'https://bebcom.com.br'}/?status=approved&order_id=${orderId}`;
-        const failureUrl = redirectUrls?.failure || 
-            `${req.headers.origin || 'https://bebcom.com.br'}/?status=failure`;
-        const pendingUrl = redirectUrls?.pending || 
-            `${req.headers.origin || 'https://bebcom.com.br'}/?status=pending`;
-
-        // Cria a preferência
-        const preference = new Preference(mercadopagoClient);
-        
-        const preferenceData = {
-            body: {
-                items: mpItems,
-                payer: payer,
-                external_reference: orderId,
-                back_urls: {
-                    success: successUrl,
-                    failure: failureUrl,
-                    pending: pendingUrl
-                },
-                auto_return: 'approved',
-                notification_url: notificationUrl || `${req.protocol}://${req.get('host')}/api/webhooks/mercadopago`,
-                payment_methods: {
-                    excluded_payment_methods: [],
-                    excluded_payment_types: [],
-                    installments: 12
-                },
-                statement_descriptor: 'BEBCOM DELIVERY',
-                metadata: {
-                    order_id: orderId,
-                    delivery_type: deliveryType,
-                    customer_name: customer.name,
-                    customer_phone: customer.phone
+        // Cria preferência
+        const preference = {
+            items: mpItems,
+            payer: {
+                name: customer.name,
+                email: customer.email,
+                phone: {
+                    number: customer.phone.replace(/\D/g, '')
                 }
-            }
+            },
+            external_reference: orderId,
+            back_urls: {
+                success: successUrl,
+                failure: failureUrl,
+                pending: pendingUrl
+            },
+            auto_return: 'approved',
+            notification_url: `${req.protocol}://${req.get('host')}/api/webhooks/mercadopago`,
+            statement_descriptor: 'BEBCOM DELIVERY'
         };
 
-        // Se for PIX, configura para exibir apenas PIX
-        if (paymentMethod === 'pix') {
-            preferenceData.body.payment_methods = {
-                excluded_payment_methods: [],
-                excluded_payment_types: [{ id: 'credit_card' }, { id: 'debit_card' }, { id: 'ticket' }],
-                installments: 1
-            };
-        }
+        const response = await mercadopago.preferences.create(preference);
 
-        const result = await preference.create(preferenceData);
-
-        // Salva no banco de dados (se conectado)
         if (app.locals.db) {
             await app.locals.db.collection('orders').insertOne({
                 orderId: orderId,
-                preferenceId: result.id,
+                preferenceId: response.body.id,
                 customer: customer,
                 items: items,
                 total: total,
@@ -397,28 +290,21 @@ app.post('/api/create-payment', paymentLimiter, async (req, res) => {
                 address: address,
                 status: 'pending',
                 createdAt: new Date(),
-                updatedAt: new Date(),
-                initPoint: result.init_point,
-                sandboxInitPoint: result.sandbox_init_point
+                initPoint: response.body.init_point
             });
         }
 
-        // Retorna os links de pagamento
         res.json({
             success: true,
-            preferenceId: result.id,
-            initPoint: result.init_point,
-            sandboxInitPoint: result.sandbox_init_point,
-            orderId: orderId
+            preferenceId: response.body.id,
+            initPoint: response.body.init_point
         });
 
     } catch (error) {
-        console.error('❌ Erro ao criar pagamento:', error);
-        
+        console.error('❌ Erro no pagamento:', error);
         res.status(500).json({
             success: false,
-            error: 'Erro ao criar pagamento',
-            details: error.message
+            error: 'Erro ao criar pagamento'
         });
     }
 });
@@ -427,36 +313,22 @@ app.post('/api/create-payment', paymentLimiter, async (req, res) => {
 app.post('/api/webhooks/mercadopago', async (req, res) => {
     try {
         const { type, data } = req.body;
-        
         console.log('📩 Webhook recebido:', { type, data });
 
-        // Responde imediatamente para o Mercado Pago
         res.status(200).json({ received: true });
 
-        // Processa em background
-        setTimeout(async () => {
-            try {
-                if (type === 'payment' && data.id) {
-                    console.log(`💳 Pagamento ${data.id} recebido`);
-                    
-                    if (app.locals.db) {
-                        // Atualiza status no banco
-                        await app.locals.db.collection('orders').updateOne(
-                            { preferenceId: data.id },
-                            { 
-                                $set: { 
-                                    status: 'approved',
-                                    payment_id: data.id,
-                                    updatedAt: new Date()
-                                } 
-                            }
-                        );
+        if (type === 'payment' && data.id && app.locals.db) {
+            await app.locals.db.collection('orders').updateOne(
+                { preferenceId: data.id },
+                {
+                    $set: {
+                        status: 'approved',
+                        payment_id: data.id,
+                        updatedAt: new Date()
                     }
                 }
-            } catch (err) {
-                console.error('❌ Erro no processamento do webhook:', err);
-            }
-        }, 100);
+            );
+        }
 
     } catch (error) {
         console.error('❌ Erro no webhook:', error);
@@ -464,16 +336,11 @@ app.post('/api/webhooks/mercadopago', async (req, res) => {
     }
 });
 
-// ========== ROTAS DE DISPONIBILIDADE (MONGODB) ==========
+// ========== ROTAS DE DISPONIBILIDADE ==========
 app.get('/api/product-availability', async (req, res) => {
     try {
         if (!app.locals.db) {
-            return res.json({
-                success: true,
-                productAvailability: {},
-                offline: true,
-                dbStatus: 'disconnected'
-            });
+            return res.json({ success: true, productAvailability: {}, offline: true });
         }
 
         const productData = await app.locals.db.collection('products')
@@ -481,32 +348,17 @@ app.get('/api/product-availability', async (req, res) => {
 
         res.json({
             success: true,
-            productAvailability: productData?.data || {},
-            lastUpdated: productData?.lastUpdated || new Date().toISOString(),
-            offline: false,
-            dbStatus: 'connected'
+            productAvailability: productData?.data || {}
         });
     } catch (error) {
-        console.error('❌ Erro ao buscar produtos:', error);
-        res.status(500).json({
-            success: false,
-            error: 'Erro ao buscar produtos',
-            productAvailability: {},
-            offline: true,
-            dbStatus: 'error'
-        });
+        res.status(500).json({ success: false, error: 'Erro ao buscar produtos' });
     }
 });
 
 app.get('/api/flavor-availability', async (req, res) => {
     try {
         if (!app.locals.db) {
-            return res.json({
-                success: true,
-                flavorAvailability: {},
-                offline: true,
-                dbStatus: 'disconnected'
-            });
+            return res.json({ success: true, flavorAvailability: {}, offline: true });
         }
 
         const flavorData = await app.locals.db.collection('flavors')
@@ -514,55 +366,10 @@ app.get('/api/flavor-availability', async (req, res) => {
 
         res.json({
             success: true,
-            flavorAvailability: flavorData?.data || {},
-            lastUpdated: flavorData?.lastUpdated || new Date().toISOString(),
-            offline: false,
-            dbStatus: 'connected'
+            flavorAvailability: flavorData?.data || {}
         });
     } catch (error) {
-        console.error('❌ Erro ao buscar sabores:', error);
-        res.status(500).json({
-            success: false,
-            error: 'Erro ao buscar sabores',
-            flavorAvailability: {},
-            offline: true,
-            dbStatus: 'error'
-        });
-    }
-});
-
-app.get('/api/sync-all', async (req, res) => {
-    try {
-        if (!app.locals.db) {
-            return res.json({
-                success: true,
-                productAvailability: {},
-                flavorAvailability: {},
-                offline: true,
-                dbStatus: 'disconnected'
-            });
-        }
-
-        const [products, flavors] = await Promise.all([
-            app.locals.db.collection('products').findOne({ type: 'availability' }),
-            app.locals.db.collection('flavors').findOne({ type: 'availability' })
-        ]);
-
-        res.json({
-            success: true,
-            productAvailability: products?.data || {},
-            flavorAvailability: flavors?.data || {},
-            lastSync: new Date().toISOString(),
-            offline: false,
-            dbStatus: 'connected'
-        });
-    } catch (error) {
-        console.error('❌ Erro na sincronização:', error);
-        res.status(500).json({
-            success: false,
-            error: 'Erro na sincronização',
-            dbStatus: 'error'
-        });
+        res.status(500).json({ success: false, error: 'Erro ao buscar sabores' });
     }
 });
 
@@ -570,38 +377,17 @@ app.get('/api/sync-all', async (req, res) => {
 function authenticateAdmin(req, res, next) {
     const directPassword = req.body.password ||
         req.headers['x-admin-password'] ||
-        req.headers['x-admin-key'] ||
         req.query.adminPassword;
-    
-    let token = null;
-    const authHeader = req.headers['authorization'] || req.headers['Authorization'];
-    if (authHeader && authHeader.startsWith('Bearer ')) {
-        token = authHeader.substring(7);
-    }
-    
-    // Se tem token, verifica (formato SHA256 - 64 caracteres hex)
+
+    const authHeader = req.headers['authorization'];
+    const token = authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : null;
+
     if (token && token.length === 64 && /^[a-f0-9]+$/i.test(token)) {
         return next();
     }
-    
-    // Verifica senha direta
-    if (directPassword) {
-        const currentYear = new Date().getFullYear();
-        const expectedHash = crypto
-            .createHash('sha256')
-            .update(ADMIN_PASSWORD)
-            .digest('hex');
 
-        const hashWithSalt = crypto
-            .createHash('sha256')
-            .update(ADMIN_PASSWORD + 'bebcom_' + currentYear)
-            .digest('hex');
-
-        if (directPassword === ADMIN_PASSWORD ||
-            directPassword === expectedHash ||
-            directPassword === hashWithSalt) {
-            return next();
-        }
+    if (directPassword && directPassword === ADMIN_PASSWORD) {
+        return next();
     }
 
     return res.status(401).json({
@@ -610,122 +396,46 @@ function authenticateAdmin(req, res, next) {
     });
 }
 
-// ========== ROTAS ADMIN (MONGODB) ==========
+// ========== ROTAS ADMIN ==========
 app.post('/api/admin/product-availability/bulk', adminLimiter, authenticateAdmin, async (req, res) => {
     try {
         if (!app.locals.db) {
-            return res.status(503).json({
-                success: false,
-                error: 'Banco de dados indisponível'
-            });
+            return res.status(503).json({ success: false, error: 'Banco de dados indisponível' });
         }
 
-        const { productAvailability, adminName, source } = req.body;
+        const { productAvailability } = req.body;
 
-        if (!productAvailability || typeof productAvailability !== 'object') {
-            return res.status(400).json({
-                success: false,
-                error: 'Dados inválidos'
-            });
-        }
-
-        const result = await app.locals.db.collection('products').updateOne(
+        await app.locals.db.collection('products').updateOne(
             { type: 'availability' },
-            {
-                $set: {
-                    data: productAvailability,
-                    lastUpdated: new Date().toISOString(),
-                    updatedAt: new Date(),
-                    updatedBy: adminName || 'Admin BebCom',
-                    source: source || 'direct',
-                    version: API_VERSION
-                }
-            },
+            { $set: { data: productAvailability, lastUpdated: new Date() } },
             { upsert: true }
         );
 
-        await app.locals.db.collection('admin_logs').insertOne({
-            action: 'update_products',
-            admin: adminName || 'Admin BebCom',
-            count: Object.keys(productAvailability).length,
-            source: source || 'direct',
-            timestamp: new Date(),
-            version: API_VERSION
-        });
-
-        res.json({
-            success: true,
-            message: 'Produtos atualizados com sucesso',
-            timestamp: new Date().toISOString(),
-            count: Object.keys(productAvailability).length,
-            upserted: result.upsertedId ? true : false
-        });
+        res.json({ success: true, message: 'Produtos atualizados' });
 
     } catch (error) {
-        console.error('❌ Erro ao salvar produtos:', error);
-        res.status(500).json({
-            success: false,
-            error: `Erro ao salvar produtos: ${error.message}`
-        });
+        res.status(500).json({ success: false, error: error.message });
     }
 });
 
 app.post('/api/admin/flavor-availability/bulk', adminLimiter, authenticateAdmin, async (req, res) => {
     try {
         if (!app.locals.db) {
-            return res.status(503).json({
-                success: false,
-                error: 'Banco de dados indisponível'
-            });
+            return res.status(503).json({ success: false, error: 'Banco de dados indisponível' });
         }
 
-        const { flavorAvailability, adminName, source } = req.body;
+        const { flavorAvailability } = req.body;
 
-        if (!flavorAvailability || typeof flavorAvailability !== 'object') {
-            return res.status(400).json({
-                success: false,
-                error: 'Dados inválidos'
-            });
-        }
-
-        const result = await app.locals.db.collection('flavors').updateOne(
+        await app.locals.db.collection('flavors').updateOne(
             { type: 'availability' },
-            {
-                $set: {
-                    data: flavorAvailability,
-                    lastUpdated: new Date().toISOString(),
-                    updatedAt: new Date(),
-                    updatedBy: adminName || 'Admin BebCom',
-                    source: source || 'direct',
-                    version: API_VERSION
-                }
-            },
+            { $set: { data: flavorAvailability, lastUpdated: new Date() } },
             { upsert: true }
         );
 
-        await app.locals.db.collection('admin_logs').insertOne({
-            action: 'update_flavors',
-            admin: adminName || 'Admin BebCom',
-            count: Object.keys(flavorAvailability).length,
-            source: source || 'direct',
-            timestamp: new Date(),
-            version: API_VERSION
-        });
-
-        res.json({
-            success: true,
-            message: 'Sabores atualizados com sucesso',
-            timestamp: new Date().toISOString(),
-            count: Object.keys(flavorAvailability).length,
-            upserted: result.upsertedId ? true : false
-        });
+        res.json({ success: true, message: 'Sabores atualizados' });
 
     } catch (error) {
-        console.error('❌ Erro ao salvar sabores:', error);
-        res.status(500).json({
-            success: false,
-            error: `Erro ao salvar sabores: ${error.message}`
-        });
+        res.status(500).json({ success: false, error: error.message });
     }
 });
 
@@ -733,28 +443,15 @@ app.post('/api/admin/flavor-availability/bulk', adminLimiter, authenticateAdmin,
 async function initializeMongoDB() {
     try {
         if (!MONGODB_URI) {
-            console.error('❌ CRÍTICO: MONGODB_URI não configurada!');
-            app.locals.isDBConnected = false;
-            app.locals.db = null;
+            console.error('❌ MONGODB_URI não configurada');
             return;
         }
 
-        console.log('🔌 Conectando ao MongoDB Atlas...');
+        console.log('🔌 Conectando ao MongoDB...');
 
         const client = new MongoClient(MONGODB_URI, {
-            serverApi: {
-                version: ServerApiVersion.v1,
-                strict: true,
-                deprecationErrors: true
-            },
-            serverSelectionTimeoutMS: 8000,
-            connectTimeoutMS: 15000,
-            socketTimeoutMS: 45000,
-            maxPoolSize: 50,
-            minPoolSize: 5,
-            maxIdleTimeMS: 10000,
-            retryWrites: true,
-            retryReads: true
+            connectTimeoutMS: 10000,
+            socketTimeoutMS: 45000
         });
 
         await client.connect();
@@ -762,142 +459,47 @@ async function initializeMongoDB() {
 
         const db = client.db(DB_NAME);
 
-        console.log('✅ MongoDB Atlas CONECTADO com sucesso!');
+        console.log('✅ MongoDB conectado!');
         console.log(`📊 Database: ${DB_NAME}`);
 
         app.locals.db = db;
         app.locals.mongoClient = client;
         app.locals.isDBConnected = true;
 
-        await initializeCollections(db);
-        setupGracefulShutdown();
+        // Cria collections se não existirem
+        const collections = ['products', 'flavors', 'orders', 'admin_logs'];
+        for (const name of collections) {
+            try {
+                await db.createCollection(name);
+                console.log(`📦 Collection criada: ${name}`);
+            } catch (e) {
+                // Collection já existe
+            }
+        }
 
     } catch (error) {
         console.error('❌ Falha na conexão MongoDB:', error.message);
         app.locals.isDBConnected = false;
-        app.locals.db = null;
-
-        setTimeout(() => {
-            console.log('🔄 Tentando reconectar ao MongoDB...');
-            initializeMongoDB();
-        }, 30000);
-    }
-}
-
-async function initializeCollections(db) {
-    try {
-        const collections = await db.listCollections().toArray();
-        const existingNames = collections.map(c => c.name);
-
-        const requiredCollections = [
-            'products',
-            'flavors',
-            'orders',
-            'admin_logs',
-            'sync_queue',
-            'customers',
-            'payments'
-        ];
-
-        for (const name of requiredCollections) {
-            if (!existingNames.includes(name)) {
-                await db.createCollection(name);
-                console.log(`📦 Collection criada: ${name}`);
-
-                if (name === 'products' || name === 'flavors') {
-                    await db.collection(name).createIndex({ type: 1 });
-                    await db.collection(name).createIndex({ lastUpdated: -1 });
-                }
-
-                if (name === 'orders') {
-                    await db.collection(name).createIndex({ orderId: 1 }, { unique: true });
-                    await db.collection(name).createIndex({ timestamp: -1 });
-                    await db.collection(name).createIndex({ customerPhone: 1 });
-                    await db.collection(name).createIndex({ preferenceId: 1 });
-                    await db.collection(name).createIndex({ status: 1 });
-                }
-
-                if (name === 'payments') {
-                    await db.collection(name).createIndex({ paymentId: 1 }, { unique: true });
-                    await db.collection(name).createIndex({ orderId: 1 });
-                    await db.collection(name).createIndex({ status: 1 });
-                    await db.collection(name).createIndex({ createdAt: -1 });
-                }
-
-                if (name === 'admin_logs') {
-                    await db.collection(name).createIndex({ timestamp: -1 });
-                    await db.collection(name).createIndex({ admin: 1 });
-                }
-            }
-        }
-
-        console.log('✅ Collections e índices configurados');
-    } catch (error) {
-        console.error('⚠️ Erro ao configurar collections:', error.message);
     }
 }
 
 // ========== GRACEFUL SHUTDOWN ==========
-function setupGracefulShutdown() {
-    const gracefulShutdown = async (signal) => {
-        console.log(`\n👋 Recebido ${signal}, encerrando graciosamente...`);
-
-        server.close(() => {
-            console.log('✅ Servidor HTTP encerrado');
-        });
-
-        if (app.locals.mongoClient) {
-            try {
-                await app.locals.mongoClient.close();
-                console.log('✅ Conexão MongoDB encerrada');
-            } catch (err) {
-                console.error('❌ Erro ao encerrar MongoDB:', err);
-            }
-        }
-
-        setTimeout(() => {
-            console.log('👋 Encerrando processo');
-            process.exit(0);
-        }, 3000);
-    };
-
-    process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
-    process.on('SIGINT', () => gracefulShutdown('SIGINT'));
-    process.on('SIGHUP', () => gracefulShutdown('SIGHUP'));
-}
-
-// ========== ERROR HANDLERS ==========
-process.on('uncaughtException', (error) => {
-    console.error('💥 ERRO NÃO CAPTURADO:', error);
-    console.error('Stack:', error.stack);
-});
-
-process.on('unhandledRejection', (reason, promise) => {
-    console.error('💥 PROMESSA REJEITADA NÃO TRATADA:', reason);
-    console.error('Promise:', promise);
+process.on('SIGTERM', () => {
+    console.log('👋 Encerrando...');
+    if (app.locals.mongoClient) {
+        app.locals.mongoClient.close();
+    }
+    process.exit(0);
 });
 
 // ========== INICIAR SERVIDOR ==========
 const server = app.listen(PORT, '0.0.0.0', () => {
-    console.log('='.repeat(70));
-    console.log('🚀 SERVIDOR BEBCOM INICIADO NO AZURE');
-    console.log('='.repeat(70));
-    console.log(`📡 Endereço: http://0.0.0.0:${PORT}`);
-    console.log(`🩺 Health: http://0.0.0.0:${PORT}/health`);
+    console.log(`🚀 Servidor rodando na porta ${PORT}`);
+    console.log(`📡 Health: http://0.0.0.0:${PORT}/health`);
     console.log(`⚙️  Config: http://0.0.0.0:${PORT}/api/config`);
-    console.log(`💳 Pagamento: http://0.0.0.0:${PORT}/api/create-payment`);
-    console.log(`📚 Docs: http://0.0.0.0:${PORT}/api/docs`);
-    console.log(`🔐 Admin Verify: http://0.0.0.0:${PORT}/api/admin/verify`);
-    console.log(`🌍 Ambiente: ${NODE_ENV}`);
-    console.log(`🕒 Início: ${new Date().toISOString()}`);
-    console.log(`🔒 Rate Limit Admin: 5 tentativas / 15 minutos`);
     console.log('='.repeat(70));
 
     setTimeout(initializeMongoDB, 1000);
 });
-
-server.timeout = 120000;
-server.keepAliveTimeout = 65000;
-server.headersTimeout = 66000;
 
 module.exports = app;
