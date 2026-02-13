@@ -67,7 +67,8 @@ app.use(cors({
         'Authorization',
         'x-admin-password',
         'x-admin-key',
-        'Cache-Control'
+        'Cache-Control',
+        'Accept'  // ✅ ÚNICA CORREÇÃO NECESSÁRIA
     ]
 }));
 
