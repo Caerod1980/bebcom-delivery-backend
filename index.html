@@ -24,7 +24,7 @@
     <!-- Favicon -->
     <link rel="icon" type="image/png" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🍹</text></svg>">
     
-    <!-- Mercado Pago SDK -->
+    <!-- Mercado Pago SDK (para redirecionamento, não precisa mais da SDK de cartão) -->
     <script src="https://sdk.mercadopago.com/js/v2"></script>
     
     <style>
@@ -611,6 +611,11 @@
             border-left-color: var(--danger);
         }
 
+        .payment-status.info {
+            background: rgba(23, 162, 184, 0.1);
+            border-left-color: #17a2b8;
+        }
+
         .loading-spinner {
             display: inline-block;
             width: 20px;
@@ -1089,6 +1094,10 @@
                     <span>Taxa de Entrega:</span>
                     <span>R$ <span id="deliveryFee">0.00</span></span>
                 </div>
+                <div class="total-row" id="distanceRow" style="display: none;">
+                    <span>Distância:</span>
+                    <span><span id="distanceValue">0.0</span> km</span>
+                </div>
                 <div class="total-row grand-total">
                     <span>Total:</span>
                     <span>R$ <span id="totalAmount">0.00</span></span>
@@ -1105,6 +1114,10 @@
                     <label class="form-label">📱 WhatsApp *</label>
                     <input type="tel" class="form-input" id="customerPhone" placeholder="(14) 99999-9999" autocomplete="tel">
                 </div>
+                <div class="form-group">
+                    <label class="form-label">✉️ E-mail (para pagamento)</label>
+                    <input type="email" class="form-input" id="customerEmail" placeholder="seu@email.com" autocomplete="email">
+                </div>
             </div>
 
             <!-- Tipo de Pedido -->
@@ -1117,22 +1130,17 @@
 
                 <div id="addressFields" style="display: none;">
                     <div class="form-group">
-                        <label class="form-label">📍 Endereço *</label>
-                        <div style="display: grid; grid-template-columns: 3fr 1fr; gap: 10px;">
-                            <input type="text" class="form-input" id="street" placeholder="Rua/Avenida">
-                            <input type="text" class="form-input" id="number" placeholder="Nº">
-                        </div>
-                    </div>
-                    <div class="form-group">
-                        <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 10px;">
-                            <input type="text" class="form-input" id="neighborhood" placeholder="Bairro">
-                            <input type="text" class="form-input" id="city" placeholder="Cidade" value="Bauru">
-                        </div>
+                        <label class="form-label">📍 Endereço Completo *</label>
+                        <input type="text" class="form-input" id="fullAddress" placeholder="Rua, Número, Bairro, Cidade" autocomplete="street-address">
                     </div>
                     <div class="form-group">
                         <label class="form-label">🏠 Complemento</label>
                         <input type="text" class="form-input" id="addressComplement" placeholder="Apto, Bloco, Referência">
                     </div>
+                    <div class="form-group">
+                        <button class="secondary-button" id="calculateDeliveryBtn" onclick="calculateDeliveryFee()" style="padding: 12px; font-size: 14px;">🧮 Calcular Entrega</button>
+                    </div>
+                    <div id="deliveryCalculationStatus" style="font-size: 14px; margin-top: 5px; color: #ffc107;"></div>
                 </div>
             </div>
 
@@ -1144,7 +1152,7 @@
                         <div class="payment-icon">🧾</div>
                         <div>PIX</div>
                     </div>
-                    <div class="payment-method" onclick="selectPaymentMethod('card_online')">
+                    <div class="payment-method" onclick="selectPaymentMethod('credit_card')">
                         <div class="payment-icon">💳</div>
                         <div>Cartão</div>
                     </div>
@@ -1153,11 +1161,11 @@
                 <div id="paymentStatus" class="payment-status" style="display: none;"></div>
 
                 <button class="primary-button" id="payButton" disabled onclick="processPayment()">
-                    💰 Realizar Pagamento
+                    💰 Pagar com Mercado Pago
                 </button>
 
                 <button class="secondary-button" id="whatsappButton" disabled onclick="sendToWhatsApp()">
-                    📱 Enviar Pedido
+                    📱 Enviar Pedido (Aguardando Pagamento)
                 </button>
 
                 <button class="clear-button" onclick="clearCart()">
@@ -1225,8 +1233,8 @@
             backendUrl: 'https://bebcom-delivery-api-1980-bchkauhjf0djajag.brazilsouth-01.azurewebsites.net',
             whatsappNumber: '5514996130369',
             mercadoPago: {
-                publicKey: null,
-                testMode: true
+                publicKey: null, // Será carregado do backend
+                testMode: false // Mude para false em produção
             },
             storeLocation: {
                 lat: -22.35892,
@@ -1240,7 +1248,7 @@
                 minDistance: 0.5,
                 freeDeliveryMin: 100.00
             },
-            version: '3.5.0-azure-secure',
+            version: '4.0.0-azure-producao',
             environment: 'production'
         };
 
@@ -1443,7 +1451,7 @@
             cart: [],
             currentCategory: 'drinks-whisky',
             deliveryType: 'pickup',
-            paymentMethod: null,
+            paymentMethod: 'pix',
             paymentConfirmed: false,
             paymentProcessing: false,
             currentOrderId: null,
@@ -1459,7 +1467,13 @@
             backendOnline: null,
             offlineSince: null,
             syncQueue: [],
-            mpInstance: null
+            mpInstance: null,
+            // Novos estados para entrega e pagamento
+            deliveryDistance: null,
+            deliveryFee: 0,
+            preferenceId: null,
+            paymentStatus: null,
+            paymentCheckInterval: null
         };
 
         // ============================================
@@ -1467,7 +1481,7 @@
         // ============================================
         async function loadSecureConfig() {
             try {
-                const response = await fetch('/api/config', {
+                const response = await fetch(`${CONFIG.backendUrl}/api/config`, {
                     method: 'GET',
                     headers: { 'Cache-Control': 'no-cache' }
                 });
@@ -1476,15 +1490,16 @@
                     const config = await response.json();
                     CONFIG = { ...CONFIG, ...config, adminPassword: null };
                     console.log('✅ Configuração carregada do backend');
-                    if (CONFIG.mercadoPago?.publicKey) initMercadoPago();
+                    
+                    // Inicializa Mercado Pago com a chave pública (se veio do backend)
+                    if (CONFIG.mercadoPago?.publicKey) {
+                        initMercadoPago();
+                    }
                     return true;
                 }
             } catch (error) {
-                console.warn('⚠️ Backend offline, usando URL fixa do Azure');
-                CONFIG.backendUrl = 'https://bebcom-delivery-api-1980-bchkauhjf0djajag.brazilsouth-01.azurewebsites.net';
-                CONFIG.whatsappNumber = '5514996130369';
-                CONFIG.mercadoPago = { publicKey: null, testMode: true };
-                showNotification('✅ Conectado ao servidor Azure', 'info');
+                console.warn('⚠️ Backend offline, usando configuração padrão');
+                showNotification('⚠️ Servidor offline. Pagamentos podem não funcionar.', 'warning');
                 return false;
             }
         }
@@ -1495,8 +1510,13 @@
         function initMercadoPago() {
             try {
                 if (window.MercadoPago && CONFIG.mercadoPago?.publicKey) {
-                    state.mpInstance = new MercadoPago(CONFIG.mercadoPago.publicKey, { locale: 'pt-BR' });
-                    console.log('✅ Mercado Pago SDK inicializado');
+                    state.mpInstance = new MercadoPago(CONFIG.mercadoPago.publicKey, { 
+                        locale: 'pt-BR',
+                        advancedFraudPrevention: true
+                    });
+                    console.log('✅ Mercado Pago SDK inicializado em modo produção');
+                } else {
+                    console.warn('⚠️ Mercado Pago não inicializado: chave pública ausente');
                 }
             } catch (error) {
                 console.error('❌ Erro ao inicializar Mercado Pago:', error);
@@ -1558,7 +1578,39 @@
             setupEventListeners();
             setupPhoneMask();
             selectDeliveryType('pickup');
+            
+            // Verifica saúde do backend a cada 5 minutos
             setInterval(checkBackendHealth, 300000);
+            
+            // Verifica se há parâmetros de retorno de pagamento na URL
+            checkForPaymentReturn();
+        }
+
+        // ============================================
+        // VERIFICAR RETORNO DE PAGAMENTO
+        // ============================================
+        function checkForPaymentReturn() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const paymentId = urlParams.get('payment_id');
+            const status = urlParams.get('status');
+            const orderId = urlParams.get('order_id');
+            
+            if (paymentId && status === 'approved' && orderId) {
+                // Pagamento aprovado via retorno
+                state.currentOrderId = orderId;
+                state.paymentConfirmed = true;
+                
+                const statusDiv = document.getElementById('paymentStatus');
+                statusDiv.style.display = 'block';
+                statusDiv.className = 'payment-status success';
+                statusDiv.innerHTML = '✅ Pagamento aprovado! Seu pedido está confirmado.';
+                
+                document.getElementById('payButton').style.display = 'none';
+                enableWhatsAppButton();
+                
+                // Limpa os parâmetros da URL
+                window.history.replaceState({}, document.title, window.location.pathname);
+            }
         }
 
         // ============================================
@@ -1604,7 +1656,6 @@
                     state.backendOnline = true;
                     state.offlineSince = null;
                     console.log('✅ Backend online');
-                    syncPendingData();
                     return true;
                 }
             } catch (error) {
@@ -1616,13 +1667,11 @@
         }
 
         // ============================================
-        // CARREGAR DISPONIBILIDADE - ✅ CORRIGIDO: SEMPRE BUSCA DO SERVIDOR!
+        // CARREGAR DISPONIBILIDADE
         // ============================================
         async function loadAvailability() {
             try {
-                // SEMPRE tenta buscar do servidor primeiro
                 if (CONFIG.backendUrl) {
-                    // Verifica se o backend está online
                     await checkBackendHealth();
                     
                     if (state.backendOnline) {
@@ -1636,9 +1685,7 @@
                         if (productsRes.ok) {
                             const productData = await productsRes.json();
                             if (productData.success && productData.productAvailability) {
-                                // ✅ ATUALIZA o estado com os dados do servidor
                                 state.productAvailability = productData.productAvailability;
-                                // ✅ ATUALIZA o cache local
                                 localStorage.setItem('bebcom_product_availability', JSON.stringify(state.productAvailability));
                                 console.log('✅ Produtos carregados do servidor');
                             }
@@ -1647,18 +1694,14 @@
                         if (flavorsRes.ok) {
                             const flavorData = await flavorsRes.json();
                             if (flavorData.success && flavorData.flavorAvailability) {
-                                // ✅ ATUALIZA o estado com os dados do servidor
                                 state.flavorAvailability = flavorData.flavorAvailability;
-                                // ✅ ATUALIZA o cache local
                                 localStorage.setItem('bebcom_flavor_availability', JSON.stringify(state.flavorAvailability));
                                 console.log('✅ Sabores carregados do servidor');
                             }
                         }
                         
-                        // ✅ ATUALIZA a interface imediatamente
                         updateMenuAvailability();
                         
-                        // ✅ Se o admin estiver logado, recarrega o painel
                         if (document.getElementById('adminMain').style.display === 'block') {
                             loadAdminProducts();
                         }
@@ -1667,13 +1710,11 @@
                     }
                 }
                 
-                // ⚠️ Fallback: só usa cache local se servidor estiver offline
                 console.log('⚠️ Servidor offline, usando dados locais');
                 initStorage();
                 
             } catch (error) {
                 console.error('❌ Erro ao carregar disponibilidade:', error);
-                // Fallback para cache local
                 initStorage();
             }
         }
@@ -1742,7 +1783,7 @@
         }
 
         // ============================================
-        // ADICIONAR AO CARRINHO - ✅ CORRIGIDO!
+        // ADICIONAR AO CARRINHO
         // ============================================
         function handleAddToCart(productId, button) {
             const product = findProductById(productId);
@@ -1757,7 +1798,6 @@
                 state.currentFlavorStep = 'primary';
                 state.currentButton = button;
 
-                // ✅ Garante que sempre há um flavorType
                 const flavorType = product.flavorType || 'whisky_sem_sabor';
                 const flavors = FLAVOR_CATALOG[flavorType] || [];
                 const hasAvailable = flavors.some(f => isFlavorAvailable(flavorType, f));
@@ -1767,7 +1807,6 @@
                     return;
                 }
 
-                // ✅ Define o flavorType no produto (se não existir)
                 if (!product.flavorType) {
                     product.flavorType = 'whisky_sem_sabor';
                 }
@@ -1840,7 +1879,6 @@
             }, 100);
         }
 
-        // ✅ FUNÇÃO CORRIGIDA - AGORA FUNCIONA COM 2 MODAIS!
         function confirmFlavorSelection() {
             if (state.currentFlavorStep === 'primary' && !state.pendingFlavors.primary) {
                 showNotification('❌ Selecione um sabor', 'error');
@@ -1853,13 +1891,10 @@
             
             document.getElementById('flavorModal').style.display = 'none';
             
-            // ✅ Se é o primeiro modal (sabor) e o produto tem gelo, abre o modal de gelo
             if (state.currentFlavorStep === 'primary' && state.pendingProduct.nextStep === 'ice') {
-                state.currentFlavorStep = 'ice'; // ✅ Garante que o próximo passo é gelo
+                state.currentFlavorStep = 'ice';
                 openFlavorModal(state.pendingProduct, 'ice');
-            } 
-            // ✅ Se é o modal de gelo OU o produto não tem próximo passo, adiciona ao carrinho
-            else {
+            } else {
                 addToCartWithFlavors();
             }
         }
@@ -1935,12 +1970,16 @@
             const subtotalEl = document.getElementById('subtotal');
             const totalEl = document.getElementById('totalAmount');
             const deliveryRow = document.getElementById('deliveryRow');
+            const distanceRow = document.getElementById('distanceRow');
             const deliveryFeeEl = document.getElementById('deliveryFee');
+            const distanceValueEl = document.getElementById('distanceValue');
             
             let subtotal = 0;
             if (state.cart.length === 0) {
                 cartEl.innerHTML = '<div style="text-align: center; color: #aaa; padding: 40px;">Seu carrinho está vazio</div>';
-                subtotalEl.textContent = '0.00'; totalEl.textContent = '0.00'; validateForm(); return;
+                subtotalEl.textContent = '0.00'; totalEl.textContent = '0.00'; 
+                validateForm(); 
+                return;
             }
             
             cartEl.innerHTML = '';
@@ -1969,11 +2008,22 @@
             
             let deliveryFee = 0;
             if (state.deliveryType === 'delivery') {
-                deliveryFee = CONFIG.deliveryRates.baseFee;
+                deliveryFee = state.deliveryFee || 0;
                 if (subtotal >= CONFIG.deliveryRates.freeDeliveryMin) deliveryFee = 0;
+                
                 deliveryRow.style.display = 'flex';
                 deliveryFeeEl.textContent = deliveryFee.toFixed(2);
-            } else deliveryRow.style.display = 'none';
+                
+                if (state.deliveryDistance) {
+                    distanceRow.style.display = 'flex';
+                    distanceValueEl.textContent = state.deliveryDistance.toFixed(1);
+                } else {
+                    distanceRow.style.display = 'none';
+                }
+            } else {
+                deliveryRow.style.display = 'none';
+                distanceRow.style.display = 'none';
+            }
             
             const total = subtotal + deliveryFee;
             subtotalEl.textContent = subtotal.toFixed(2);
@@ -2003,6 +2053,8 @@
             if (state.cart.length === 0) return;
             if (confirm('Limpar carrinho?')) {
                 state.cart = [];
+                state.deliveryDistance = null;
+                state.deliveryFee = 0;
                 updateCart(); saveCart();
                 showNotification('🗑️ Carrinho limpo');
             }
@@ -2025,6 +2077,84 @@
         }
 
         // ============================================
+        // CÁLCULO DE TAXA DE ENTREGA
+        // ============================================
+        async function calculateDeliveryFee() {
+            const address = document.getElementById('fullAddress').value.trim();
+            if (!address) {
+                showNotification('❌ Digite o endereço completo', 'error');
+                return;
+            }
+
+            const statusEl = document.getElementById('deliveryCalculationStatus');
+            statusEl.innerHTML = '<span class="loading-spinner"></span> Calculando distância...';
+            
+            try {
+                // Geocodificação do endereço do cliente
+                const geocodeUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address + ', Bauru, SP')}&limit=1`;
+                const geocodeResponse = await fetch(geocodeUrl, {
+                    headers: { 'User-Agent': 'BebCom-Delivery/1.0' }
+                });
+                
+                if (!geocodeResponse.ok) throw new Error('Erro na geocodificação');
+                
+                const geocodeData = await geocodeResponse.json();
+                
+                if (geocodeData.length === 0) {
+                    statusEl.innerHTML = '❌ Endereço não encontrado';
+                    return;
+                }
+                
+                const clientLat = parseFloat(geocodeData[0].lat);
+                const clientLon = parseFloat(geocodeData[0].lon);
+                
+                // Calcula distância usando fórmula de Haversine (simplificada)
+                const distance = calculateDistance(
+                    CONFIG.storeLocation.lat, 
+                    CONFIG.storeLocation.lng,
+                    clientLat, 
+                    clientLon
+                );
+                
+                if (distance > CONFIG.deliveryRates.maxDistance) {
+                    statusEl.innerHTML = `❌ Distância de ${distance.toFixed(1)}km excede o limite de ${CONFIG.deliveryRates.maxDistance}km`;
+                    state.deliveryDistance = null;
+                    state.deliveryFee = 0;
+                    updateCart();
+                    return;
+                }
+                
+                if (distance < CONFIG.deliveryRates.minDistance) {
+                    state.deliveryFee = CONFIG.deliveryRates.baseFee;
+                } else {
+                    state.deliveryFee = CONFIG.deliveryRates.baseFee + (distance * CONFIG.deliveryRates.perKm);
+                }
+                
+                state.deliveryDistance = distance;
+                
+                statusEl.innerHTML = `✅ Distância: ${distance.toFixed(1)}km - Taxa: R$ ${state.deliveryFee.toFixed(2)}`;
+                updateCart();
+                
+            } catch (error) {
+                console.error('Erro ao calcular distância:', error);
+                statusEl.innerHTML = '❌ Erro ao calcular distância. Tente novamente.';
+            }
+        }
+
+        // Fórmula de Haversine para calcular distância entre coordenadas
+        function calculateDistance(lat1, lon1, lat2, lon2) {
+            const R = 6371; // Raio da Terra em km
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLon = (lon2 - lon1) * Math.PI / 180;
+            const a = 
+                Math.sin(dLat/2) * Math.sin(dLat/2) +
+                Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+                Math.sin(dLon/2) * Math.sin(dLon/2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            return R * c;
+        }
+
+        // ============================================
         // ENTREGA E PAGAMENTO
         // ============================================
         function selectDeliveryType(type) {
@@ -2035,20 +2165,32 @@
             const paymentLabel = document.getElementById('paymentLabel');
             const paymentMethods = document.getElementById('paymentMethods');
             const payButton = document.getElementById('payButton');
+            const whatsappBtn = document.getElementById('whatsappButton');
             
             if (type === 'pickup') {
                 pickupBtn.classList.add('selected'); deliveryBtn.classList.remove('selected');
                 addressFields.style.display = 'none'; paymentLabel.style.display = 'none';
-                paymentMethods.style.display = 'none'; payButton.disabled = true;
+                paymentMethods.style.display = 'none'; 
+                payButton.disabled = true;
                 payButton.innerHTML = '🏪 Retirada no Local';
-                state.paymentMethod = null; state.paymentConfirmed = false;
+                state.paymentMethod = null; 
+                state.paymentConfirmed = false;
+                whatsappBtn.innerHTML = '📱 Enviar Pedido';
+                whatsappBtn.disabled = true;
+                
+                // Esconde linhas de entrega
+                document.getElementById('deliveryRow').style.display = 'none';
+                document.getElementById('distanceRow').style.display = 'none';
             } else {
                 pickupBtn.classList.remove('selected'); deliveryBtn.classList.add('selected');
                 addressFields.style.display = 'block'; paymentLabel.style.display = 'block';
-                paymentMethods.style.display = 'grid'; payButton.disabled = false;
+                paymentMethods.style.display = 'grid'; 
+                payButton.disabled = false;
                 selectPaymentMethod('pix');
+                payButton.innerHTML = '💰 Pagar com Mercado Pago';
             }
-            updateCart(); validateForm();
+            updateCart(); 
+            validateForm();
         }
 
         function selectPaymentMethod(method) {
@@ -2057,30 +2199,43 @@
             document.querySelectorAll('.payment-method').forEach(el => el.classList.remove('selected'));
             const selected = document.querySelector(`.payment-method:nth-child(${method === 'pix' ? 1 : 2})`);
             if (selected) selected.classList.add('selected');
-            const payBtn = document.getElementById('payButton');
-            payBtn.innerHTML = method === 'pix' ? '🧾 Pagar com PIX' : '💳 Pagar com Cartão';
         }
 
         function validateForm() {
             const name = document.getElementById('customerName').value.trim();
             const phone = document.getElementById('customerPhone').value.trim();
+            const email = document.getElementById('customerEmail').value.trim();
             const whatsappBtn = document.getElementById('whatsappButton');
             let isValid = true;
+            
             if (name.length < 3) isValid = false;
+            
             const phoneClean = phone.replace(/\D/g, '');
             if (phoneClean.length < 10 || phoneClean.length > 11) isValid = false;
-            if (state.cart.length === 0) isValid = false;
+            
             if (state.deliveryType === 'delivery') {
-                const street = document.getElementById('street').value.trim();
-                const number = document.getElementById('number').value.trim();
-                const neighborhood = document.getElementById('neighborhood').value.trim();
-                if (!street || street.length < 3) isValid = false;
-                if (!number) isValid = false;
-                if (!neighborhood || neighborhood.length < 3) isValid = false;
-                if (!state.paymentMethod) isValid = false;
-                if (!state.paymentConfirmed) isValid = false;
+                // Para delivery, precisa de email e endereço calculado
+                if (!email || !email.includes('@') || !email.includes('.')) isValid = false;
+                
+                const address = document.getElementById('fullAddress').value.trim();
+                if (!address || address.length < 10) isValid = false;
+                
+                if (!state.deliveryDistance) isValid = false;
+                
+                // Se já houve confirmação de pagamento, habilita WhatsApp
+                if (state.paymentConfirmed) {
+                    whatsappBtn.disabled = false;
+                    whatsappBtn.innerHTML = '📱 Enviar Pedido (Pago)';
+                } else {
+                    whatsappBtn.disabled = true;
+                    whatsappBtn.innerHTML = '📱 Enviar Pedido (Aguardando Pagamento)';
+                }
+            } else {
+                // Para retirada, só precisa de nome e telefone
+                whatsappBtn.disabled = !(state.cart.length > 0 && name.length >= 3 && phoneClean.length >= 10);
+                whatsappBtn.innerHTML = '📱 Enviar Pedido';
             }
-            whatsappBtn.disabled = !isValid;
+            
             return isValid;
         }
 
@@ -2088,188 +2243,218 @@
             const errors = [];
             const name = document.getElementById('customerName').value.trim();
             const phone = document.getElementById('customerPhone').value.trim();
+            const email = document.getElementById('customerEmail').value.trim();
+            
             if (!name) errors.push('• Nome obrigatório');
             if (!phone || phone.replace(/\D/g, '').length < 10) errors.push('• WhatsApp inválido');
             if (state.cart.length === 0) errors.push('• Carrinho vazio');
+            
             if (state.deliveryType === 'delivery') {
-                if (!document.getElementById('street').value.trim()) errors.push('• Rua obrigatória');
-                if (!document.getElementById('number').value.trim()) errors.push('• Número obrigatório');
-                if (!document.getElementById('neighborhood').value.trim()) errors.push('• Bairro obrigatório');
-                if (!state.paymentMethod) errors.push('• Selecione pagamento');
-                if (!state.paymentConfirmed) errors.push('• Confirme o pagamento');
+                if (!email || !email.includes('@') || !email.includes('.')) errors.push('• E-mail válido obrigatório');
+                
+                const address = document.getElementById('fullAddress').value.trim();
+                if (!address) errors.push('• Endereço obrigatório');
+                
+                if (!state.deliveryDistance) errors.push('• Calcule a taxa de entrega');
             }
+            
             return errors;
         }
 
         function prepareOrderData() {
-            const items = state.cart.map(item => ({ name: item.name, quantity: item.quantity, price: item.price, flavors: item.flavors || null }));
-            const subtotal = items.reduce((sum, i) => sum + (i.quantity * i.price), 0);
+            const items = state.cart.map(item => ({
+                id: item.productId,
+                title: item.name,
+                description: item.flavors ? `Sabor: ${JSON.stringify(item.flavors)}` : '',
+                quantity: item.quantity,
+                unit_price: item.price
+            }));
+            
+            const subtotal = items.reduce((sum, i) => sum + (i.quantity * i.unit_price), 0);
             let deliveryFee = 0;
+            let total = subtotal;
+            
             if (state.deliveryType === 'delivery') {
-                deliveryFee = CONFIG.deliveryRates.baseFee;
+                deliveryFee = state.deliveryFee || 0;
                 if (subtotal >= CONFIG.deliveryRates.freeDeliveryMin) deliveryFee = 0;
+                total = subtotal + deliveryFee;
             }
-            return { items, subtotal, deliveryFee, total: subtotal + deliveryFee };
+            
+            return { items, subtotal, deliveryFee, total };
         }
 
         // ============================================
-        // PROCESSAMENTO DE PAGAMENTO
+        // PROCESSAMENTO DE PAGAMENTO COM MERCADO PAGO
         // ============================================
         async function processPayment() {
             if (state.deliveryType === 'pickup') {
                 showNotification('✅ Pagamento será realizado na retirada', 'info');
+                enableWhatsAppButton();
                 return;
             }
+            
             if (state.paymentProcessing) return;
+            
             const errors = validateOrder();
-            if (errors.length > 0) { showNotification(errors.join('\n'), 'error'); return; }
+            if (errors.length > 0) { 
+                showNotification(errors.join('\n'), 'error'); 
+                return; 
+            }
+            
+            if (!state.backendOnline) {
+                showNotification('⚠️ Servidor offline. Pagamento não disponível no momento.', 'error');
+                return;
+            }
             
             state.paymentProcessing = true;
             const button = document.getElementById('payButton');
             const original = button.innerHTML;
             const statusDiv = document.getElementById('paymentStatus');
-            button.innerHTML = '<span class="loading-spinner"></span> Processando...';
+            
+            button.innerHTML = '<span class="loading-spinner"></span> Gerando pagamento...';
             button.disabled = true;
             statusDiv.style.display = 'block';
-            statusDiv.className = 'payment-status';
-            statusDiv.innerHTML = '🔄 Processando pagamento...';
+            statusDiv.className = 'payment-status info';
+            statusDiv.innerHTML = '🔄 Gerando link de pagamento...';
             
             try {
                 const orderData = prepareOrderData();
-                state.currentOrderId = 'BEB' + Date.now().toString().slice(-8);
-                if (state.backendOnline && CONFIG.backendUrl) {
-                    const response = await fetch(`${CONFIG.backendUrl}/api/create-payment`, {
-                        method: 'POST', headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            orderId: state.currentOrderId,
-                            customer: { name: document.getElementById('customerName').value.trim(), phone: document.getElementById('customerPhone').value.trim() },
-                            items: orderData.items, total: orderData.total,
-                            deliveryType: state.deliveryType, paymentMethod: state.paymentMethod
-                        })
-                    });
-                    if (response.ok) {
-                        const data = await response.json();
-                        if (data.success) {
-                            if (data.qrCode) showPixPayment(data.qrCode, data.copyPasteKey);
-                            else if (data.paymentUrl) { window.open(data.paymentUrl, '_blank'); setTimeout(() => confirmPayment(), 3000); }
-                            else confirmPayment();
-                            return;
-                        }
-                    }
+                const orderId = 'BEB' + Date.now().toString().slice(-8);
+                state.currentOrderId = orderId;
+                
+                const customer = {
+                    name: document.getElementById('customerName').value.trim(),
+                    email: document.getElementById('customerEmail').value.trim(),
+                    phone: document.getElementById('customerPhone').value.trim()
+                };
+                
+                let address = null;
+                if (state.deliveryType === 'delivery') {
+                    address = {
+                        street: document.getElementById('fullAddress').value.trim(),
+                        complement: document.getElementById('addressComplement').value.trim()
+                    };
                 }
-                showManualPixPayment();
+                
+                const paymentData = {
+                    orderId: orderId,
+                    customer: customer,
+                    items: orderData.items,
+                    total: orderData.total,
+                    deliveryFee: orderData.deliveryFee,
+                    deliveryType: state.deliveryType,
+                    paymentMethod: state.paymentMethod,
+                    address: address,
+                    notificationUrl: `${CONFIG.backendUrl}/api/webhooks/mercadopago`,
+                    redirectUrls: {
+                        success: `${window.location.origin}${window.location.pathname}?status=approved&order_id=${orderId}`,
+                        failure: `${window.location.origin}${window.location.pathname}?status=failure`,
+                        pending: `${window.location.origin}${window.location.pathname}?status=pending`
+                    }
+                };
+                
+                const response = await fetch(`${CONFIG.backendUrl}/api/create-payment`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(paymentData)
+                });
+                
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || 'Erro ao criar pagamento');
+                }
+                
+                const data = await response.json();
+                
+                if (data.success && data.initPoint) {
+                    // Redireciona para o Mercado Pago
+                    statusDiv.innerHTML = '🔄 Redirecionando para o Mercado Pago...';
+                    
+                    // Salva o preferenceId para consulta futura
+                    state.preferenceId = data.preferenceId;
+                    
+                    // Redireciona
+                    window.location.href = data.initPoint;
+                } else {
+                    throw new Error('Resposta inválida do servidor');
+                }
+                
             } catch (error) {
-                console.error('Erro no pagamento:', error);
-                showManualPixPayment();
-            } finally {
+                console.error('❌ Erro no pagamento:', error);
+                statusDiv.className = 'payment-status error';
+                statusDiv.innerHTML = `❌ Erro: ${error.message}`;
                 button.innerHTML = original;
                 button.disabled = false;
                 state.paymentProcessing = false;
             }
         }
 
-        function showPixPayment(qrCode, copyKey) {
-            const statusDiv = document.getElementById('paymentStatus');
-            const total = prepareOrderData().total;
-            const escapedCopyKey = copyKey.replace(/'/g, "\\'").replace(/"/g, '&quot;');
-            statusDiv.className = 'payment-status';
-            statusDiv.innerHTML = `
-                <div style="text-align: center;">
-                    <h4 style="margin-bottom: 15px; color: #ffd93d;">🧾 PIX</h4>
-                    <p>Valor: <strong style="font-size: 22px;">R$ ${total.toFixed(2)}</strong></p>
-                    <div style="margin: 20px 0;"><img src="${qrCode}" alt="QR Code" style="width: 200px; height: 200px; border-radius: 12px; border: 2px solid #28a745;"></div>
-                    <div style="background: rgba(0,0,0,0.5); padding: 15px; border-radius: 10px; margin: 15px 0;">
-                        <small style="color: #aaa;">Chave PIX:</small><br>
-                        <span style="font-family: monospace; word-break: break-all; color: white;">${escapedCopyKey}</span>
-                        <button onclick="navigator.clipboard.writeText('${escapedCopyKey}'); showNotification('Chave copiada!')" style="margin-top: 10px; background: #3b82f6; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer;">📋 Copiar</button>
-                    </div>
-                    <button onclick="confirmPayment()" style="background: #28a745; color: white; border: none; padding: 14px 28px; border-radius: 10px; margin: 10px; font-weight: bold; cursor: pointer;">✅ Já Paguei</button>
-                    <button onclick="cancelPayment()" style="background: #dc3545; color: white; border: none; padding: 14px 28px; border-radius: 10px; margin: 10px; font-weight: bold; cursor: pointer;">❌ Cancelar</button>
-                </div>
-            `;
-            document.getElementById('payButton').style.display = 'none';
-        }
-
-        function showManualPixPayment() {
-            const statusDiv = document.getElementById('paymentStatus');
-            const total = prepareOrderData().total;
-            statusDiv.className = 'payment-status';
-            statusDiv.innerHTML = `
-                <div style="text-align: center;">
-                    <h4 style="margin-bottom: 15px; color: #ffd93d;">🧾 PIX Manual</h4>
-                    <p>Valor: <strong style="font-size: 22px;">R$ ${total.toFixed(2)}</strong></p>
-                    <div style="background: rgba(0,0,0,0.5); padding: 20px; border-radius: 10px; margin: 20px 0;">
-                        <strong>Chave PIX (CNPJ):</strong><br>
-                        <span style="font-family: monospace; font-size: 18px; color: #4d96ff;">12.345.678/0001-90</span>
-                    </div>
-                    <p style="color: #aaa;">Após pagar, envie o comprovante pelo WhatsApp</p>
-                    <button onclick="confirmPayment()" style="background: #28a745; color: white; border: none; padding: 14px 28px; border-radius: 10px; margin: 10px; font-weight: bold; cursor: pointer;">✅ Já Paguei</button>
-                    <button onclick="cancelPayment()" style="background: #dc3545; color: white; border: none; padding: 14px 28px; border-radius: 10px; margin: 10px; font-weight: bold; cursor: pointer;">❌ Cancelar</button>
-                </div>
-            `;
-            document.getElementById('payButton').style.display = 'none';
-        }
-
-        function cancelPayment() {
-            state.paymentConfirmed = false;
-            document.getElementById('paymentStatus').style.display = 'none';
-            document.getElementById('payButton').style.display = 'block';
-        }
-
-        function confirmPayment() {
+        function enableWhatsAppButton() {
             state.paymentConfirmed = true;
-            const statusDiv = document.getElementById('paymentStatus');
-            statusDiv.className = 'payment-status success';
-            statusDiv.innerHTML = '✅ Pagamento confirmado!';
-            document.getElementById('payButton').innerHTML = '✅ Pagamento Confirmado';
-            document.getElementById('payButton').disabled = true;
-            document.getElementById('whatsappButton').disabled = false;
-            showNotification('✅ Pagamento confirmado! Envie o pedido.');
+            const whatsappBtn = document.getElementById('whatsappButton');
+            whatsappBtn.disabled = false;
+            whatsappBtn.innerHTML = '📱 Enviar Pedido (Pago)';
+            validateForm();
         }
 
         // ============================================
         // WHATSAPP
         // ============================================
         function sendToWhatsApp() {
-            if (!validateForm()) { showNotification('Complete todas as informações', 'error'); return; }
+            if (!validateForm()) { 
+                showNotification('Complete todas as informações', 'error'); 
+                return; 
+            }
+            
+            // Para delivery, só permite enviar se pagamento confirmado
+            if (state.deliveryType === 'delivery' && !state.paymentConfirmed) {
+                showNotification('❌ Complete o pagamento antes de enviar', 'error');
+                return;
+            }
+            
             const name = document.getElementById('customerName').value.trim();
             const phone = document.getElementById('customerPhone').value.trim();
-            const street = document.getElementById('street').value.trim();
-            const number = document.getElementById('number').value.trim();
-            const neighborhood = document.getElementById('neighborhood').value.trim();
+            const email = document.getElementById('customerEmail').value.trim();
+            const address = document.getElementById('fullAddress').value.trim();
             const complement = document.getElementById('addressComplement').value.trim();
             const order = prepareOrderData();
             const orderId = state.currentOrderId || 'BEB' + Date.now().toString().slice(-8);
             
-            let msg = `*🍹 PEDIDO BEBCOM DELIVERY*\n━━━━━━━━━━━━━━━━\n📋 *Pedido:* ${orderId}\n👤 *Cliente:* ${name}\n📱 *WhatsApp:* ${phone}\n📦 *Tipo:* ${state.deliveryType === 'delivery' ? 'ENTREGA' : 'RETIRADA'}\n`;
+            let msg = `*🍹 PEDIDO BEBCOM DELIVERY*\n━━━━━━━━━━━━━━━━\n📋 *Pedido:* ${orderId}\n👤 *Cliente:* ${name}\n📱 *WhatsApp:* ${phone}\n✉️ *E-mail:* ${email}\n📦 *Tipo:* ${state.deliveryType === 'delivery' ? 'ENTREGA' : 'RETIRADA'}\n`;
+            
             if (state.deliveryType === 'delivery') {
-                msg += `📍 *Endereço:* ${street}, ${number} - ${neighborhood}, Bauru\n`;
+                msg += `📍 *Endereço:* ${address}\n`;
                 if (complement) msg += `🏠 *Complemento:* ${complement}\n`;
-                msg += `💳 *Pagamento:* ${state.paymentMethod === 'pix' ? 'PIX' : 'Cartão'} ${state.paymentConfirmed ? '✅ PAGO' : ''}\n`;
+                msg += `📏 *Distância:* ${state.deliveryDistance ? state.deliveryDistance.toFixed(1) + 'km' : 'N/A'}\n`;
+                msg += `💳 *Pagamento:* ${state.paymentMethod === 'pix' ? 'PIX' : 'Cartão'} ✅ PAGO (Mercado Pago)\n`;
+            } else {
+                msg += `💳 *Pagamento:* Na retirada\n`;
             }
+            
             msg += `🕒 *Data:* ${new Date().toLocaleString('pt-BR')}\n━━━━━━━━━━━━━━━━\n\n*🛒 ITENS:*\n`;
+            
             order.items.forEach((item, i) => {
-                const total = item.price * item.quantity;
-                msg += `\n${i+1}. ${item.name}\n`;
-                if (item.flavors) {
-                    if (item.flavors.primary) msg += `   🍹 Sabor: ${item.flavors.primary}\n`;
-                    if (item.flavors.ice) msg += `   🧊 Gelo: ${item.flavors.ice}\n`;
-                }
-                msg += `   ${item.quantity}x R$ ${item.price.toFixed(2)} = R$ ${total.toFixed(2)}\n`;
+                const total = item.quantity * item.unit_price;
+                msg += `\n${i+1}. ${item.title}\n`;
+                if (item.description) msg += `   📝 ${item.description}\n`;
+                msg += `   ${item.quantity}x R$ ${item.unit_price.toFixed(2)} = R$ ${total.toFixed(2)}\n`;
             });
+            
             msg += `\n━━━━━━━━━━━━━━━━\n💰 *Subtotal:* R$ ${order.subtotal.toFixed(2)}\n`;
             if (state.deliveryType === 'delivery') msg += `🚚 *Entrega:* R$ ${order.deliveryFee.toFixed(2)}\n`;
-            msg += `💵 *TOTAL:* R$ ${order.total.toFixed(2)}\n━━━━━━━━━━━━━━━━\n✅ *Pedido confirmado!*\n🎉 Obrigado pela preferência!`;
+            msg += `💵 *TOTAL:* R$ ${order.total.toFixed(2)}\n━━━━━━━━━━━━━━━━\n✅ *Pedido confirmado e PAGO!*\n🎉 Obrigado pela preferência!`;
             
             window.open(`https://wa.me/${CONFIG.whatsappNumber}?text=${encodeURIComponent(msg)}`, '_blank');
             showNotification('✅ Pedido enviado!');
-            state.paymentConfirmed = false;
-            document.getElementById('paymentStatus').style.display = 'none';
-            document.getElementById('payButton').style.display = 'block';
+            
+            // Se for retirada, limpa o estado de pagamento
+            if (state.deliveryType === 'pickup') {
+                state.paymentConfirmed = false;
+            }
         }
 
         // ============================================
-        // ADMINISTRAÇÃO SEGURA - ✅ CORRIGIDO!
+        // ADMINISTRAÇÃO SEGURA
         // ============================================
         function initAdminSystem() {
             const adminBtn = document.getElementById('adminButton');
@@ -2522,7 +2707,6 @@
             showNotification(isAvailable ? '✅ Todos disponíveis' : '❌ Todos indisponíveis');
         }
 
-        // ✅ CORRIGIDO: Salvar no MongoDB AGORA FUNCIONA!
         async function saveAvailability() {
             if (!isAdminAuthenticated()) {
                 showNotification('🔐 Sessão expirada. Faça login novamente.', 'error');
@@ -2537,19 +2721,15 @@
             btn.disabled = true;
             
             try {
-                // Sempre salva localmente primeiro
                 localStorage.setItem('bebcom_product_availability', JSON.stringify(state.productAvailability));
                 localStorage.setItem('bebcom_flavor_availability', JSON.stringify(state.flavorAvailability));
                 
-                // Tenta salvar no backend
                 if (CONFIG.backendUrl) {
-                    // Verifica se o backend está online
                     await checkBackendHealth();
                     
                     if (state.backendOnline) {
                         const headers = getAdminHeaders();
                         
-                        // Salva produtos
                         const prodRes = await fetch(`${CONFIG.backendUrl}/api/admin/product-availability/bulk`, {
                             method: 'POST',
                             headers: headers,
@@ -2560,7 +2740,6 @@
                             })
                         });
                         
-                        // Salva sabores
                         const flavRes = await fetch(`${CONFIG.backendUrl}/api/admin/flavor-availability/bulk`, {
                             method: 'POST',
                             headers: headers,
@@ -2573,11 +2752,7 @@
                         
                         if (prodRes.ok && flavRes.ok) {
                             showNotification('✅ Dados salvos no servidor (MongoDB)!');
-                            
-                            // ✅ RECARREGA a disponibilidade imediatamente
                             await loadAvailability();
-                            
-                            // ✅ Fecha o painel após 1.5 segundos
                             setTimeout(() => closeAdminPanel(), 1500);
                         } else {
                             const prodError = prodRes.ok ? '' : ' produtos';
@@ -2697,102 +2872,104 @@
                 btn.disabled = false;
             }
         }
-     // ============================================
-// GERENCIAMENTO DE SABORES - FUNÇÕES FALTANTES!
-// ============================================
-function openFlavorManagement() {
-    if (!isAdminAuthenticated()) {
-        showNotification('🔐 Sessão expirada. Faça login novamente.', 'error');
-        openAdminPanel();
-        return;
-    }
-    
-    const container = document.getElementById('adminMain');
-    container.innerHTML = `
-        <div style="margin-bottom: 30px;">
-            <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 25px;">
-                <button onclick="loadAdminProducts()" style="background: #3b82f6; color: white; border: none; border-radius: 8px; padding: 10px 15px; cursor: pointer;">
-                    ↩️ Voltar
-                </button>
-                <h3 style="color: #60a5fa; margin: 0;">🍹 Gerenciar Sabores</h3>
-            </div>
+
+        // ============================================
+        // GERENCIAMENTO DE SABORES
+        // ============================================
+        function openFlavorManagement() {
+            if (!isAdminAuthenticated()) {
+                showNotification('🔐 Sessão expirada. Faça login novamente.', 'error');
+                openAdminPanel();
+                return;
+            }
             
-            <select id="flavorTypeSelect" style="width: 100%; padding: 15px; background: rgba(255,255,255,0.1); border: 1px solid #444; border-radius: 8px; color: white; margin-bottom: 20px;" onchange="loadFlavorsForType(this.value)">
-                <option value="">-- Selecione um tipo --</option>
-                ${Object.entries(FLAVOR_TYPES).map(([key, name]) => `<option value="${key}">${name}</option>`).join('')}
-            </select>
+            const container = document.getElementById('adminMain');
+            container.innerHTML = `
+                <div style="margin-bottom: 30px;">
+                    <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 25px;">
+                        <button onclick="loadAdminProducts()" style="background: #3b82f6; color: white; border: none; border-radius: 8px; padding: 10px 15px; cursor: pointer;">
+                            ↩️ Voltar
+                        </button>
+                        <h3 style="color: #60a5fa; margin: 0;">🍹 Gerenciar Sabores</h3>
+                    </div>
+                    
+                    <select id="flavorTypeSelect" style="width: 100%; padding: 15px; background: rgba(255,255,255,0.1); border: 1px solid #444; border-radius: 8px; color: white; margin-bottom: 20px;" onchange="loadFlavorsForType(this.value)">
+                        <option value="">-- Selecione um tipo --</option>
+                        ${Object.entries(FLAVOR_TYPES).map(([key, name]) => `<option value="${key}">${name}</option>`).join('')}
+                    </select>
+                    
+                    <div id="flavorManagementSection" style="display: none;"></div>
+                </div>
+            `;
+        }
+
+        function loadFlavorsForType(flavorType) {
+            const section = document.getElementById('flavorManagementSection');
             
-            <div id="flavorManagementSection" style="display: none;"></div>
-        </div>
-    `;
-}
+            if (!flavorType) {
+                section.style.display = 'none';
+                return;
+            }
+            
+            const flavors = FLAVOR_CATALOG[flavorType] || [];
+            const typeName = FLAVOR_TYPES[flavorType] || flavorType;
+            
+            let html = `
+                <div style="background: rgba(0,0,0,0.3); padding: 20px; border-radius: 12px;">
+                    <h4 style="color: #94a3b8; margin-bottom: 15px;">Gerenciando: ${typeName}</h4>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 10px;">
+            `;
+            
+            flavors.forEach(flavor => {
+                const key = `${flavorType}_${flavor}`;
+                const available = state.flavorAvailability[key] !== false;
+                
+                html += `
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 15px; background: ${available ? 'rgba(16,185,129,0.1)' : 'rgba(239,68,68,0.1)'}; border-radius: 8px; border: 1px solid ${available ? '#10b981' : '#ef4444'};">
+                        <span style="color: white; font-weight: 500;">${flavor}</span>
+                        <label style="position: relative; display: inline-block; width: 50px; height: 24px;">
+                            <input type="checkbox" style="opacity: 0; width: 0; height: 0;" 
+                                   ${available ? 'checked' : ''}
+                                   onchange="toggleFlavorAvailability('${flavorType}', '${flavor}', this.checked)">
+                            <span style="position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: ${available ? '#10b981' : '#dc2626'}; transition: .4s; border-radius: 24px;"></span>
+                            <span style="position: absolute; content: ''; height: 18px; width: 18px; left: 3px; bottom: 3px; background-color: white; transition: .4s; border-radius: 50%; transform: ${available ? 'translateX(26px)' : 'none'};"></span>
+                        </label>
+                    </div>
+                `;
+            });
+            
+            html += `
+                    </div>
+                    <div style="display: flex; gap: 10px; margin-top: 20px;">
+                        <button onclick="setAllFlavorsAvailable('${flavorType}', true)" style="flex: 1; padding: 12px; background: #10b981; color: white; border: none; border-radius: 8px; cursor: pointer;">✅ Todos</button>
+                        <button onclick="setAllFlavorsAvailable('${flavorType}', false)" style="flex: 1; padding: 12px; background: #ef4444; color: white; border: none; border-radius: 8px; cursor: pointer;">❌ Nenhum</button>
+                    </div>
+                </div>
+            `;
+            
+            section.innerHTML = html;
+            section.style.display = 'block';
+        }
 
-function loadFlavorsForType(flavorType) {
-    const section = document.getElementById('flavorManagementSection');
-    
-    if (!flavorType) {
-        section.style.display = 'none';
-        return;
-    }
-    
-    const flavors = FLAVOR_CATALOG[flavorType] || [];
-    const typeName = FLAVOR_TYPES[flavorType] || flavorType;
-    
-    let html = `
-        <div style="background: rgba(0,0,0,0.3); padding: 20px; border-radius: 12px;">
-            <h4 style="color: #94a3b8; margin-bottom: 15px;">Gerenciando: ${typeName}</h4>
-            <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 10px;">
-    `;
-    
-    flavors.forEach(flavor => {
-        const key = `${flavorType}_${flavor}`;
-        const available = state.flavorAvailability[key] !== false;
-        
-        html += `
-            <div style="display: flex; justify-content: space-between; align-items: center; padding: 15px; background: ${available ? 'rgba(16,185,129,0.1)' : 'rgba(239,68,68,0.1)'}; border-radius: 8px; border: 1px solid ${available ? '#10b981' : '#ef4444'};">
-                <span style="color: white; font-weight: 500;">${flavor}</span>
-                <label style="position: relative; display: inline-block; width: 50px; height: 24px;">
-                    <input type="checkbox" style="opacity: 0; width: 0; height: 0;" 
-                           ${available ? 'checked' : ''}
-                           onchange="toggleFlavorAvailability('${flavorType}', '${flavor}', this.checked)">
-                    <span style="position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: ${available ? '#10b981' : '#dc2626'}; transition: .4s; border-radius: 24px;"></span>
-                    <span style="position: absolute; content: ''; height: 18px; width: 18px; left: 3px; bottom: 3px; background-color: white; transition: .4s; border-radius: 50%; transform: ${available ? 'translateX(26px)' : 'none'};"></span>
-                </label>
-            </div>
-        `;
-    });
-    
-    html += `
-            </div>
-            <div style="display: flex; gap: 10px; margin-top: 20px;">
-                <button onclick="setAllFlavorsAvailable('${flavorType}', true)" style="flex: 1; padding: 12px; background: #10b981; color: white; border: none; border-radius: 8px; cursor: pointer;">✅ Todos</button>
-                <button onclick="setAllFlavorsAvailable('${flavorType}', false)" style="flex: 1; padding: 12px; background: #ef4444; color: white; border: none; border-radius: 8px; cursor: pointer;">❌ Nenhum</button>
-            </div>
-        </div>
-    `;
-    
-    section.innerHTML = html;
-    section.style.display = 'block';
-}
+        function toggleFlavorAvailability(flavorType, flavorName, isAvailable) {
+            const key = `${flavorType}_${flavorName}`;
+            state.flavorAvailability[key] = isAvailable;
+            localStorage.setItem('bebcom_flavor_availability', JSON.stringify(state.flavorAvailability));
+            loadFlavorsForType(flavorType);
+            showNotification(`Sabor ${flavorName} ${isAvailable ? '✅ disponível' : '❌ indisponível'}`, 'info');
+        }
 
-function toggleFlavorAvailability(flavorType, flavorName, isAvailable) {
-    const key = `${flavorType}_${flavorName}`;
-    state.flavorAvailability[key] = isAvailable;
-    localStorage.setItem('bebcom_flavor_availability', JSON.stringify(state.flavorAvailability));
-    loadFlavorsForType(flavorType);
-    showNotification(`Sabor ${flavorName} ${isAvailable ? '✅ disponível' : '❌ indisponível'}`, 'info');
-}
+        function setAllFlavorsAvailable(flavorType, makeAvailable) {
+            const flavors = FLAVOR_CATALOG[flavorType] || [];
+            flavors.forEach(flavor => {
+                const key = `${flavorType}_${flavor}`;
+                state.flavorAvailability[key] = makeAvailable;
+            });
+            localStorage.setItem('bebcom_flavor_availability', JSON.stringify(state.flavorAvailability));
+            loadFlavorsForType(flavorType);
+            showNotification(`Todos os sabores ${makeAvailable ? '✅ disponíveis' : '❌ indisponíveis'}`, 'info');
+        }
 
-function setAllFlavorsAvailable(flavorType, makeAvailable) {
-    const flavors = FLAVOR_CATALOG[flavorType] || [];
-    flavors.forEach(flavor => {
-        const key = `${flavorType}_${flavor}`;
-        state.flavorAvailability[key] = makeAvailable;
-    });
-    localStorage.setItem('bebcom_flavor_availability', JSON.stringify(state.flavorAvailability));
-    loadFlavorsForType(flavorType);
-    showNotification(`Todos os sabores ${makeAvailable ? '✅ disponíveis' : '❌ indisponíveis'}`, 'info');
-}
         function syncPendingData() {
             console.log('🔄 Sincronização pendente...');
         }
@@ -2829,12 +3006,13 @@ function setAllFlavorsAvailable(flavorType, makeAvailable) {
         // UTILITÁRIOS
         // ============================================
         function setupEventListeners() {
-            const inputs = ['customerName', 'customerPhone', 'street', 'number', 'neighborhood'];
+            const inputs = ['customerName', 'customerPhone', 'customerEmail', 'fullAddress'];
             inputs.forEach(id => {
                 const el = document.getElementById(id);
                 if (el) el.addEventListener('input', validateForm);
             });
-            document.getElementById('number').addEventListener('input', function(e) {
+            
+            document.getElementById('number')?.addEventListener('input', function(e) {
                 this.value = this.value.replace(/[^0-9]/g, '');
             });
         }
@@ -2873,38 +3051,40 @@ function setAllFlavorsAvailable(flavorType, makeAvailable) {
         // INICIALIZAÇÃO PRINCIPAL
         // ============================================
         document.addEventListener('DOMContentLoaded', async () => {
-            console.log('🚀 BebCom Delivery - Azure Production');
+            console.log('🚀 BebCom Delivery - Produção com Mercado Pago');
             await loadSecureConfig();
             initStorage();
             initAdminSystem();
             initAgeVerification();
             setTimeout(checkBackendHealth, 2000);
         });
-// ============================================
-// EXPOR FUNÇÕES GLOBAIS - ✅ CORRIGIDO!
-// ============================================
-window.showCategory = showCategory;
-window.handleAddToCart = handleAddToCart;
-window.updateQuantity = updateQuantity;
-window.removeFromCart = removeFromCart;
-window.clearCart = clearCart;
-window.selectDeliveryType = selectDeliveryType;
-window.selectPaymentMethod = selectPaymentMethod;
-window.processPayment = processPayment;
-window.sendToWhatsApp = sendToWhatsApp;
-window.confirmFlavorSelection = confirmFlavorSelection;
-window.cancelFlavorSelection = cancelFlavorSelection;
-window.checkAdminPassword = checkAdminPassword;
-window.setAllAvailable = setAllAvailable;
-window.saveAvailability = saveAvailability;
-window.resetAvailability = resetAvailability;
-window.openFlavorManagement = openFlavorManagement;        // ✅ ADICIONADO!
-window.loadFlavorsForType = loadFlavorsForType;            // ✅ ADICIONADO!
-window.toggleFlavorAvailability = toggleFlavorAvailability;
-window.setAllFlavorsAvailable = setAllFlavorsAvailable;
-window.syncAllFromServer = syncAllFromServer;
-window.adminToggleProductAvailability = adminToggleProductAvailability;
-window.loadAdminProducts = loadAdminProducts;
+
+        // ============================================
+        // EXPOR FUNÇÕES GLOBAIS
+        // ============================================
+        window.showCategory = showCategory;
+        window.handleAddToCart = handleAddToCart;
+        window.updateQuantity = updateQuantity;
+        window.removeFromCart = removeFromCart;
+        window.clearCart = clearCart;
+        window.selectDeliveryType = selectDeliveryType;
+        window.selectPaymentMethod = selectPaymentMethod;
+        window.processPayment = processPayment;
+        window.sendToWhatsApp = sendToWhatsApp;
+        window.confirmFlavorSelection = confirmFlavorSelection;
+        window.cancelFlavorSelection = cancelFlavorSelection;
+        window.checkAdminPassword = checkAdminPassword;
+        window.setAllAvailable = setAllAvailable;
+        window.saveAvailability = saveAvailability;
+        window.resetAvailability = resetAvailability;
+        window.openFlavorManagement = openFlavorManagement;
+        window.loadFlavorsForType = loadFlavorsForType;
+        window.toggleFlavorAvailability = toggleFlavorAvailability;
+        window.setAllFlavorsAvailable = setAllFlavorsAvailable;
+        window.syncAllFromServer = syncAllFromServer;
+        window.adminToggleProductAvailability = adminToggleProductAvailability;
+        window.loadAdminProducts = loadAdminProducts;
+        window.calculateDeliveryFee = calculateDeliveryFee;
     </script>
 </body>
 </html>
