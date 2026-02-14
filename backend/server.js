@@ -251,6 +251,9 @@ app.post('/api/create-payment', paymentLimiter, async (req, res) => {
             });
         }
 
+        // ✅ CORREÇÃO: Limpa o CPF se existir
+        const cleanCpf = customer.cpf ? customer.cpf.replace(/\D/g, '') : '';
+
         // Formata itens
         const mpItems = items.map(item => ({
             title: item.title,
@@ -270,13 +273,13 @@ app.post('/api/create-payment', paymentLimiter, async (req, res) => {
             });
         }
 
-        // URLs de retorno
-        const baseUrl = req.headers.origin || 'ttps://caerod1980.github.io/bebcom-delivery-backend';
+        // URLs de retorno - CORRIGIDO com https
+        const baseUrl = 'https://caerod1980.github.io/bebcom-delivery-backend';
         const successUrl = `${baseUrl}?status=approved&order_id=${orderId}`;
         const failureUrl = `${baseUrl}?status=failure`;
         const pendingUrl = `${baseUrl}?status=pending`;
 
-        // Cria preferência - AGORA COM O NÚMERO LIMPO
+        // Cria preferência - AGORA COM CPF (se disponível)
         const preference = {
             items: mpItems,
             payer: {
@@ -284,7 +287,13 @@ app.post('/api/create-payment', paymentLimiter, async (req, res) => {
                 email: customer.email,
                 phone: {
                     number: Number(cleanPhone)  // ✅ Converte para número
-                }
+                },
+                ...(cleanCpf && {
+                    identification: {
+                        type: 'CPF',
+                        number: cleanCpf
+                    }
+                })
             },
             external_reference: orderId,
             back_urls: {
