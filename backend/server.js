@@ -38,16 +38,11 @@ if (MERCADO_PAGO_ACCESS_TOKEN) {
     console.log('✅ Mercado Pago SDK configurado');
 }
 
-// ========== RATE LIMITING CORRIGIDO ==========
+// ========== RATE LIMITING ==========
 const adminLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
     max: 5,
     skipSuccessfulRequests: true,
-    keyGenerator: (req) => {
-        // Remove a porta do IP se presente (ex: 179.108.3.177:4280 -> 179.108.3.177)
-        const ip = req.ip || req.connection.remoteAddress;
-        return ip.replace(/:\d+[^:]*$/, '');
-    },
     message: {
         success: false,
         error: 'Muitas tentativas de admin. Aguarde 15 minutos.'
