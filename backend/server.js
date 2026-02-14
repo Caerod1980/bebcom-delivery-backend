@@ -271,7 +271,7 @@ app.post('/api/create-payment', paymentLimiter, async (req, res) => {
         }
 
         // URLs de retorno
-        const baseUrl = req.headers.origin || 'https://bebcom.com.br';
+        const baseUrl = req.headers.origin || 'ttps://caerod1980.github.io/bebcom-delivery-backend';
         const successUrl = `${baseUrl}?status=approved&order_id=${orderId}`;
         const failureUrl = `${baseUrl}?status=failure`;
         const pendingUrl = `${baseUrl}?status=pending`;
