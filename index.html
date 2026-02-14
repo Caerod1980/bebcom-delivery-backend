@@ -1496,7 +1496,9 @@
             deliveryFee: 0,
             preferenceId: null,
             paymentStatus: null,
-            paymentCheckInterval: null
+            paymentCheckInterval: null,
+            // NOVO: Flag para controlar se já enviou WhatsApp
+            whatsappSent: false
         };
 
         // ============================================
@@ -1605,8 +1607,96 @@
             setupCpfMask();
             selectDeliveryType('pickup');
             
+            // NOVO: Carregar dados salvos do cliente se existirem
+            loadSavedCustomerData();
+            
             setInterval(checkBackendHealth, 300000);
             checkForPaymentReturn();
+        }
+
+        // ============================================
+        // NOVO: SALVAR DADOS DO CLIENTE ANTES DO PAGAMENTO
+        // ============================================
+        function saveCustomerDataBeforePayment() {
+            const customerData = {
+                name: document.getElementById('customerName').value.trim(),
+                phone: document.getElementById('customerPhone').value.trim(),
+                email: document.getElementById('customerEmail').value.trim(),
+                cpf: document.getElementById('customerCpf').value.trim(),
+                deliveryType: state.deliveryType,
+                deliveryDistance: state.deliveryDistance,
+                deliveryFee: state.deliveryFee,
+                address: {
+                    street: document.getElementById('street')?.value.trim() || '',
+                    number: document.getElementById('number')?.value.trim() || '',
+                    neighborhood: document.getElementById('neighborhood')?.value.trim() || '',
+                    city: document.getElementById('city')?.value.trim() || 'Bauru',
+                    complement: document.getElementById('addressComplement')?.value.trim() || ''
+                }
+            };
+            
+            sessionStorage.setItem('bebcom_customer_data', JSON.stringify({
+                data: customerData,
+                timestamp: Date.now()
+            }));
+            
+            console.log('✅ Dados do cliente salvos antes do pagamento');
+        }
+
+        // ============================================
+        // NOVO: CARREGAR DADOS SALVOS DO CLIENTE
+        // ============================================
+        function loadSavedCustomerData() {
+            try {
+                const saved = sessionStorage.getItem('bebcom_customer_data');
+                if (!saved) return;
+                
+                const { data, timestamp } = JSON.parse(saved);
+                
+                // Verificar se os dados não expiraram (1 hora)
+                if (Date.now() - timestamp > 60 * 60 * 1000) {
+                    sessionStorage.removeItem('bebcom_customer_data');
+                    return;
+                }
+                
+                console.log('🔄 Recuperando dados salvos do cliente');
+                
+                // Preencher campos
+                document.getElementById('customerName').value = data.name || '';
+                document.getElementById('customerPhone').value = data.phone || '';
+                document.getElementById('customerEmail').value = data.email || '';
+                document.getElementById('customerCpf').value = data.cpf || '';
+                
+                if (data.deliveryType === 'delivery') {
+                    selectDeliveryType('delivery');
+                    
+                    // Restaurar endereço
+                    if (data.address) {
+                        document.getElementById('street').value = data.address.street || '';
+                        document.getElementById('number').value = data.address.number || '';
+                        document.getElementById('neighborhood').value = data.address.neighborhood || '';
+                        document.getElementById('city').value = data.address.city || 'Bauru';
+                        document.getElementById('addressComplement').value = data.address.complement || '';
+                    }
+                    
+                    // Restaurar dados de entrega
+                    if (data.deliveryDistance && data.deliveryFee) {
+                        state.deliveryDistance = data.deliveryDistance;
+                        state.deliveryFee = data.deliveryFee;
+                        
+                        const statusEl = document.getElementById('deliveryCalculationStatus');
+                        statusEl.innerHTML = `✅ Distância: ${data.deliveryDistance.toFixed(1)}km - Taxa: R$ ${data.deliveryFee.toFixed(2)}`;
+                        
+                        updateCart();
+                    }
+                }
+                
+                validateForm();
+                
+            } catch (e) {
+                console.warn('Erro ao carregar dados salvos:', e);
+                sessionStorage.removeItem('bebcom_customer_data');
+            }
         }
 
         // ============================================
@@ -1695,6 +1785,9 @@
                 confirmed: true,
                 timestamp: Date.now()
             }));
+            
+            // NOVO: Resetar flag de WhatsApp enviado
+            state.whatsappSent = false;
         }
 
         // ============================================
@@ -2365,7 +2458,7 @@
                 if (!state.deliveryDistance) isValid = false;
                 
                 if (state.paymentConfirmed) {
-                    whatsappBtn.disabled = false;
+                    whatsappBtn.disabled = state.whatsappSent; // NOVO: Desabilitar se já enviou
                     whatsappBtn.innerHTML = '📱 Enviar Pedido (Pago)';
                 } else {
                     whatsappBtn.disabled = true;
@@ -2454,6 +2547,9 @@
                 showNotification('⚠️ Servidor offline. Pagamento não disponível no momento.', 'error');
                 return;
             }
+            
+            // NOVO: Salvar dados do cliente antes de redirecionar
+            saveCustomerDataBeforePayment();
             
             state.paymentProcessing = true;
             const button = document.getElementById('payButton');
@@ -2553,6 +2649,7 @@
 
         function enableWhatsAppButton() {
             state.paymentConfirmed = true;
+            state.whatsappSent = false; // NOVO: Resetar flag quando pagamento confirmado
             const whatsappBtn = document.getElementById('whatsappButton');
             whatsappBtn.disabled = false;
             whatsappBtn.innerHTML = '📱 Enviar Pedido (Pago)';
@@ -2570,6 +2667,12 @@
             
             if (state.deliveryType === 'delivery' && !state.paymentConfirmed) {
                 showNotification('❌ Complete o pagamento antes de enviar', 'error');
+                return;
+            }
+            
+            // NOVO: Impedir envio duplicado
+            if (state.whatsappSent) {
+                showNotification('⚠️ Pedido já foi enviado!', 'warning');
                 return;
             }
             
@@ -2614,6 +2717,13 @@
             msg += `💵 *TOTAL:* R$ ${order.total.toFixed(2)}\n━━━━━━━━━━━━━━━━\n✅ *Pedido confirmado e PAGO!*\n🎉 Obrigado pela preferência!`;
             
             window.open(`https://wa.me/${CONFIG.whatsappNumber}?text=${encodeURIComponent(msg)}`, '_blank');
+            
+            // NOVO: Marcar como enviado e desabilitar botão
+            state.whatsappSent = true;
+            const whatsappBtn = document.getElementById('whatsappButton');
+            whatsappBtn.disabled = true;
+            whatsappBtn.innerHTML = '✅ Pedido Enviado';
+            
             showNotification('✅ Pedido enviado!');
             
             if (state.deliveryType === 'pickup') {
