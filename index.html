@@ -1497,8 +1497,7 @@
             preferenceId: null,
             paymentStatus: null,
             paymentCheckInterval: null,
-            // NOVO: Flag para controlar se já enviou WhatsApp
-            whatsappSent: false
+            whatsappSent: false // NOVO: Flag para controlar se já enviou WhatsApp
         };
 
         // ============================================
@@ -1592,6 +1591,39 @@
         }
 
         // ============================================
+        // FUNÇÃO PARA CRIAR O GRID DE CATEGORIAS
+        // ============================================
+        function showCategoriesGrid() {
+            const grid = document.getElementById('categoriesGrid');
+            grid.innerHTML = '';
+            
+            const categories = [
+                { id: 'drinks-whisky', name: '🥃 Drinks Whisky' },
+                { id: 'drinks-gin', name: '🍸 Drinks Gin' },
+                { id: 'drinks-vodka', name: '🍸 Drinks Vodka' },
+                { id: 'drinks-vinho', name: '🍷 Drinks Vinho' },
+                { id: 'cervejas', name: '🍺 Cervejas' },
+                { id: 'destilados', name: '🥃 Destilados' },
+                { id: 'aguas', name: '💧 Águas' },
+                { id: 'refri-latas', name: '🥤 Refri Latas' },
+                { id: 'refri-pet', name: '🥤 Refri PET' },
+                { id: 'sucos', name: '🧃 Sucos' },
+                { id: 'energeticos', name: '⚡ Energéticos' },
+                { id: 'gelo-carvao', name: '🧊 Gelo/Carvão' },
+                { id: 'salgadinhos', name: '🥨 Salgadinhos' },
+                { id: 'doces', name: '🍬 Doces' }
+            ];
+            
+            categories.forEach(cat => {
+                const btn = document.createElement('button');
+                btn.className = 'category-button';
+                btn.textContent = cat.name;
+                btn.onclick = () => showCategory(cat.id);
+                grid.appendChild(btn);
+            });
+        }
+
+        // ============================================
         // INICIALIZAÇÃO PÓS-VERIFICAÇÃO DE IDADE
         // ============================================
         async function initAfterAgeVerification() {
@@ -1601,6 +1633,7 @@
             
             await loadAvailability();
             loadCart();
+            showCategoriesGrid(); // CORRIGIDO: Adicionada a função que estava faltando
             showCategory('drinks-whisky');
             setupEventListeners();
             setupPhoneMask();
@@ -2383,6 +2416,24 @@
         }
 
         // ============================================
+        // MÁSCARA PARA TELEFONE
+        // ============================================
+        function setupPhoneMask() {
+            const phone = document.getElementById('customerPhone');
+            phone.addEventListener('input', function(e) {
+                let v = e.target.value.replace(/\D/g, '');
+                if (v.length > 11) v = v.substring(0, 11);
+                if (v.length > 0) {
+                    if (v.length <= 2) v = `(${v}`;
+                    else if (v.length <= 6) v = `(${v.substring(0, 2)}) ${v.substring(2)}`;
+                    else v = `(${v.substring(0, 2)}) ${v.substring(2, 6)}-${v.substring(6, 11)}`;
+                }
+                e.target.value = v;
+                validateForm();
+            });
+        }
+
+        // ============================================
         // ENTREGA E PAGAMENTO
         // ============================================
         function selectDeliveryType(type) {
@@ -2526,7 +2577,7 @@
         }
 
         // ============================================
-        // PROCESSAMENTO DE PAGAMENTO COM MERCADO PAGO - ATUALIZADO COM CPF
+        // PROCESSAMENTO DE PAGAMENTO COM MERCADO PAGO
         // ============================================
         async function processPayment() {
             if (state.deliveryType === 'pickup') {
@@ -2931,7 +2982,7 @@
                     const btn = el.querySelector('button');
                     if (btn) {
                         btn.disabled = false;
-                        btn.innerHTML = product?.requiresFlavorSelection ? '⚡ Escolher Sabores' : '🛒 Adicionar';
+                        btn.innerHTML = product?.requiresFlavorSelection ? '⚡ Sabores' : '🛒 Adicionar';
                     }
                 } else {
                     el.classList.add('unavailable');
@@ -2967,7 +3018,7 @@
                             const btn = el.querySelector('button');
                             if (btn) {
                                 btn.disabled = false;
-                                btn.innerHTML = p.requiresFlavorSelection ? '⚡ Escolher Sabores' : '🛒 Adicionar';
+                                btn.innerHTML = p.requiresFlavorSelection ? '⚡ Sabores' : '🛒 Adicionar';
                             }
                         } else {
                             el.classList.add('unavailable');
@@ -3292,21 +3343,6 @@
             
             document.getElementById('number')?.addEventListener('input', function(e) {
                 this.value = this.value.replace(/[^0-9]/g, '');
-            });
-        }
-
-        function setupPhoneMask() {
-            const phone = document.getElementById('customerPhone');
-            phone.addEventListener('input', function(e) {
-                let v = e.target.value.replace(/\D/g, '');
-                if (v.length > 11) v = v.substring(0, 11);
-                if (v.length > 0) {
-                    if (v.length <= 2) v = `(${v}`;
-                    else if (v.length <= 6) v = `(${v.substring(0, 2)}) ${v.substring(2)}`;
-                    else v = `(${v.substring(0, 2)}) ${v.substring(2, 6)}-${v.substring(6, 11)}`;
-                }
-                e.target.value = v;
-                validateForm();
             });
         }
 
