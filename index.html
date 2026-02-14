@@ -1868,7 +1868,7 @@
                 if (!available) {
                     btnText = '❌ Indisponível';
                 } else if (hasFlavors) {
-                    btnText = '⚡ Escolher Sabores';
+                    btnText = '⚡ Sabores';
                     btnClass += ' has-flavors';
                 }
                 
@@ -3094,7 +3094,7 @@
                             const btn = el.querySelector('button');
                             if (btn) {
                                 btn.disabled = false;
-                                btn.innerHTML = hasFlavors ? '⚡ Escolher Sabores' : '🛒 Adicionar';
+                                btn.innerHTML = hasFlavors ? '⚡ Sabores' : '🛒 Adicionar';
                             }
                         } else {
                             el.classList.add('unavailable');
