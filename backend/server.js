@@ -271,9 +271,10 @@ app.post('/api/create-payment', paymentLimiter, async (req, res) => {
         }
 
         // URLs de retorno
-        const successUrl = `${req.headers.origin || 'https://bebcom.com.br'}/?status=approved&order_id=${orderId}`;
-        const failureUrl = `${req.headers.origin || 'https://bebcom.com.br'}/?status=failure`;
-        const pendingUrl = `${req.headers.origin || 'https://bebcom.com.br'}/?status=pending`;
+        const baseUrl = req.headers.origin || 'https://bebcom.com.br';
+        const successUrl = `${baseUrl}?status=approved&order_id=${orderId}`;
+        const failureUrl = `${baseUrl}?status=failure`;
+        const pendingUrl = `${baseUrl}?status=pending`;
 
         // Cria preferência - AGORA COM O NÚMERO LIMPO
         const preference = {
@@ -330,26 +331,80 @@ app.post('/api/create-payment', paymentLimiter, async (req, res) => {
     }
 });
 
-// ========== WEBHOOK DO MERCADO PAGO ==========
+// ========== WEBHOOK DO MERCADO PAGO - CORRIGIDO ==========
 app.post('/api/webhooks/mercadopago', async (req, res) => {
     try {
         const { type, data } = req.body;
-        console.log('📩 Webhook recebido:', { type, data });
+        console.log('📩 Webhook recebido:', JSON.stringify({ type, data }, null, 2));
 
+        // Responde imediatamente para o Mercado Pago (200 OK)
         res.status(200).json({ received: true });
 
-        if (type === 'payment' && data.id && app.locals.db) {
-            await app.locals.db.collection('orders').updateOne(
-                { preferenceId: data.id },
-                {
-                    $set: {
-                        status: 'approved',
-                        payment_id: data.id,
-                        updatedAt: new Date()
+        // Se não tem data ou type, ignora
+        if (!data || !data.id) {
+            console.log('⚠️ Webhook sem dados, ignorando');
+            return;
+        }
+
+        // Processa em background (não bloqueia a resposta)
+        setTimeout(async () => {
+            try {
+                if (!app.locals.db) {
+                    console.log('⚠️ Banco de dados indisponível');
+                    return;
+                }
+
+                // Busca o pedido pelo payment_id (se for webhook de pagamento)
+                if (type === 'payment') {
+                    console.log(`💳 Processando pagamento ID: ${data.id}`);
+                    
+                    // Primeiro tenta encontrar pelo payment_id
+                    let order = await app.locals.db.collection('orders').findOne({ 
+                        payment_id: data.id 
+                    });
+                    
+                    // Se não encontrou, tenta pelo preferenceId (para compatibilidade)
+                    if (!order) {
+                        order = await app.locals.db.collection('orders').findOne({ 
+                            preferenceId: data.id 
+                        });
+                    }
+                    
+                    if (order) {
+                        console.log(`📦 Pedido encontrado: ${order.orderId}`);
+                        
+                        await app.locals.db.collection('orders').updateOne(
+                            { _id: order._id },
+                            { 
+                                $set: { 
+                                    status: 'approved',
+                                    payment_id: data.id,
+                                    updatedAt: new Date(),
+                                    webhookReceived: true
+                                } 
+                            }
+                        );
+                        console.log(`✅ Pedido ${order.orderId} atualizado para approved`);
+                    } else {
+                        console.log(`❌ Pedido não encontrado para payment_id: ${data.id}`);
+                        
+                        // Cria collection webhooks se não existir (para salvar notificações não processadas)
+                        try {
+                            await app.locals.db.collection('webhooks').insertOne({
+                                type,
+                                paymentId: data.id,
+                                receivedAt: new Date(),
+                                processed: false
+                            });
+                        } catch (e) {
+                            // Collection pode não existir, ignora
+                        }
                     }
                 }
-            );
-        }
+            } catch (err) {
+                console.error('❌ Erro no processamento do webhook:', err);
+            }
+        }, 100);
 
     } catch (error) {
         console.error('❌ Erro no webhook:', error);
@@ -459,10 +514,14 @@ app.post('/api/admin/flavor-availability/bulk', adminLimiter, authenticateAdmin,
         res.status(500).json({ success: false, error: error.message });
     }
 });
-// ========== ROTA PARA VERIFICAR STATUS DO PAGAMENTO ==========
+
+// ========== ROTA PARA VERIFICAR STATUS DO PAGAMENTO - MELHORADA ==========
 app.get('/api/payment-status/:orderId', async (req, res) => {
     try {
         const { orderId } = req.params;
+        const { paymentId } = req.query; // Pode vir da URL também
+        
+        console.log(`🔍 Verificando status do pedido: ${orderId}`);
         
         if (!app.locals.db) {
             return res.json({ 
@@ -473,14 +532,33 @@ app.get('/api/payment-status/:orderId', async (req, res) => {
         }
 
         // Busca o pedido no banco
-        const order = await app.locals.db.collection('orders').findOne({ orderId: orderId });
+        let order = await app.locals.db.collection('orders').findOne({ orderId: orderId });
         
         if (!order) {
-            return res.json({ 
-                success: false, 
-                error: 'Pedido não encontrado',
-                status: 'pending' 
-            });
+            // Tenta buscar pelo paymentId se foi fornecido
+            if (paymentId) {
+                order = await app.locals.db.collection('orders').findOne({ 
+                    payment_id: paymentId 
+                });
+            }
+            
+            if (!order) {
+                return res.json({ 
+                    success: false, 
+                    error: 'Pedido não encontrado',
+                    status: 'pending' 
+                });
+            }
+        }
+
+        // Se o status ainda é pending mas já passou muito tempo, marca como expired
+        const timeSinceCreation = Date.now() - new Date(order.createdAt).getTime();
+        if (order.status === 'pending' && timeSinceCreation > 30 * 60 * 1000) { // 30 minutos
+            await app.locals.db.collection('orders').updateOne(
+                { _id: order._id },
+                { $set: { status: 'expired', updatedAt: new Date() } }
+            );
+            order.status = 'expired';
         }
 
         // Retorna o status atual
@@ -489,6 +567,7 @@ app.get('/api/payment-status/:orderId', async (req, res) => {
             status: order.status || 'pending',
             orderId: order.orderId,
             paymentId: order.payment_id,
+            createdAt: order.createdAt,
             updatedAt: order.updatedAt
         });
 
@@ -501,6 +580,7 @@ app.get('/api/payment-status/:orderId', async (req, res) => {
         });
     }
 });
+
 // ========== INICIALIZAÇÃO DO MONGODB ==========
 async function initializeMongoDB() {
     try {
@@ -537,6 +617,14 @@ async function initializeMongoDB() {
             } catch (e) {
                 // Collection já existe
             }
+        }
+
+        // Tenta criar collection webhooks (se não existir)
+        try {
+            await db.createCollection('webhooks');
+            console.log('📦 Collection webhooks criada');
+        } catch (e) {
+            // Já existe, ignora
         }
 
     } catch (error) {
