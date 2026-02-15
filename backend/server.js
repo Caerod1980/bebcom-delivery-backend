@@ -38,11 +38,26 @@ if (MERCADO_PAGO_ACCESS_TOKEN) {
     console.log('✅ Mercado Pago SDK configurado');
 }
 
-// ========== RATE LIMITING ==========
+// ========== RATE LIMITING - CORRIGIDO ==========
+const extractIp = (req) => {
+    // Pega o IP do proxy (Azure) ou do req.ip
+    const ip = req.headers['x-forwarded-for']?.split(',').shift() || 
+               req.ip || 
+               req.connection.remoteAddress;
+    
+    // Remove a porta se existir (ex: "179.225.249.130:49309" -> "179.225.249.130")
+    if (ip && ip.includes(':')) {
+        return ip.split(':')[0];
+    }
+    
+    return ip || '0.0.0.0';
+};
+
 const adminLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
     max: 5,
     skipSuccessfulRequests: true,
+    keyGenerator: extractIp,  // ← CORREÇÃO: função personalizada para extrair IP
     message: {
         success: false,
         error: 'Muitas tentativas de admin. Aguarde 15 minutos.'
@@ -52,6 +67,7 @@ const adminLimiter = rateLimit({
 const paymentLimiter = rateLimit({
     windowMs: 5 * 60 * 1000,
     max: 10,
+    keyGenerator: extractIp,  // ← CORREÇÃO: mesma função aqui
     message: {
         success: false,
         error: 'Muitas tentativas de pagamento. Aguarde 5 minutos.'
