@@ -177,28 +177,32 @@ app.get('/', (req, res) => {
     });
 });
 
-// ========== ROTA DE VERIFICAÇÃO ADMIN - CORRIGIDA ==========
+/ ========== ROTA DE VERIFICAÇÃO ADMIN ==========
 app.post('/api/admin/verify', adminLimiter, (req, res) => {
     const { password } = req.body;
-    
-    console.log('🔑 Tentativa de autenticação:', {
-        hasPassword: !!password,
-        passwordLength: password?.length,
-        timestamp: new Date().toISOString()
-    });
 
     if (!password) {
-        console.log('❌ Senha não fornecida');
         return res.status(400).json({
             success: false,
             error: 'Senha não fornecida'
         });
     }
 
-    // Verificação SIMPLES e DIRETA da senha
-    if (password === ADMIN_PASSWORD) {
-        console.log('✅ Autenticação bem-sucedida');
-        
+    const currentYear = new Date().getFullYear();
+    const expectedHash = crypto
+        .createHash('sha256')
+        .update(ADMIN_PASSWORD)
+        .digest('hex');
+
+    const hashWithSalt = crypto
+        .createHash('sha256')
+        .update(ADMIN_PASSWORD + 'bebcom_' + currentYear)
+        .digest('hex');
+
+    if (password === ADMIN_PASSWORD ||
+        password === expectedHash ||
+        password === hashWithSalt) {
+
         const token = crypto
             .createHash('sha256')
             .update(ADMIN_PASSWORD + Date.now() + crypto.randomBytes(16).toString('hex'))
@@ -211,7 +215,6 @@ app.post('/api/admin/verify', adminLimiter, (req, res) => {
         });
     }
 
-    console.log('❌ Senha incorreta');
     return res.status(401).json({
         success: false,
         error: 'Senha administrativa incorreta'
