@@ -177,7 +177,7 @@ app.get('/', (req, res) => {
     });
 });
 
-/ ========== ROTA DE VERIFICAÇÃO ADMIN ==========
+// ========== ROTA DE VERIFICAÇÃO ADMIN ==========
 app.post('/api/admin/verify', adminLimiter, (req, res) => {
     const { password } = req.body;
 
