@@ -12,6 +12,7 @@
     <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
     
     <style>
+        /* ESTILOS IGUAIS - MANTIDOS */
         * {
             margin: 0;
             padding: 0;
@@ -491,7 +492,7 @@
         <div class="header">
             <h1>
                 📊 <span>BebCom</span> Admin Panel
-                <small style="font-size: 14px; color: var(--gray); margin-left: 10px;">v4.0</small>
+                <small style="font-size: 14px; color: var(--gray); margin-left: 10px;">v4.1</small>
             </h1>
             <div class="header-actions">
                 <button class="header-btn btn-refresh" onclick="refreshDashboard()">
@@ -514,6 +515,9 @@
                 </button>
                 <button class="header-btn btn-stats" onclick="showQuickStats()">
                     ⚡ Stats Rápidas
+                </button>
+                <button class="header-btn btn-debug" onclick="debugStatus()" style="background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%);">
+                    🔍 Debug
                 </button>
                 <button class="header-btn btn-clear" onclick="confirmClearAll()">
                     🗑️ Limpar Dados
@@ -817,23 +821,38 @@
                 const data = await response.json();
                 
                 if (data.success && data.orders) {
-                    allOrders = data.orders.map(order => ({
-                        // Mapear campos do MongoDB para o formato do painel
-                        id: order.orderId || order._id,
-                        date: order.createdAt,
-                        timestamp: new Date(order.createdAt).getTime(),
-                        customer: order.customer || {},
-                        type: order.deliveryType || 'pickup',
-                        items: order.items || [],
-                        subtotal: order.items?.reduce((s, i) => s + (i.quantity * i.unit_price), 0) || 0,
-                        deliveryFee: order.deliveryFee || 0,
-                        total: order.total || 0,
-                        address: order.address || null,
-                        paymentConfirmed: order.status === 'approved',
-                        distance: order.distance
-                    }));
+                    allOrders = data.orders.map(order => {
+                        // Log para debug
+                        console.log('🔄 Processando pedido:', {
+                            orderId: order.orderId,
+                            status: order.status,
+                            paymentConfirmed: order.status === 'approved'
+                        });
+                        
+                        return {
+                            id: order.orderId || order._id,
+                            date: order.createdAt,
+                            timestamp: new Date(order.createdAt).getTime(),
+                            customer: order.customer || {},
+                            type: order.deliveryType || 'pickup',
+                            items: order.items || [],
+                            subtotal: order.items?.reduce((s, i) => s + (i.quantity * i.unit_price), 0) || 0,
+                            deliveryFee: order.deliveryFee || 0,
+                            total: order.total || 0,
+                            address: order.address || null,
+                            paymentConfirmed: order.status === 'approved', // ← VERIFICAÇÃO CORRETA
+                            status: order.status, // Guardar status original para debug
+                            distance: order.distance
+                        };
+                    });
                     
                     console.log(`📦 ${allOrders.length} pedidos carregados do servidor`);
+                    console.log('📊 Resumo de status:', {
+                        total: allOrders.length,
+                        pagos: allOrders.filter(o => o.paymentConfirmed).length,
+                        pendentes: allOrders.filter(o => !o.paymentConfirmed).length,
+                        primeiros: allOrders.slice(0, 3)
+                    });
                     
                     // Salvar backup local
                     saveLocalBackup(allOrders);
@@ -851,6 +870,26 @@
                 return loadFromIndexedDB();
             }
         }
+
+        // ============================================
+        // FUNÇÃO DE DEBUG
+        // ============================================
+        window.debugStatus = function() {
+            console.log('📊 VERIFICANDO STATUS DOS PEDIDOS:');
+            console.log('Total de pedidos:', allOrders.length);
+            console.log('Pagos:', allOrders.filter(o => o.paymentConfirmed).length);
+            console.log('Pendentes:', allOrders.filter(o => !o.paymentConfirmed).length);
+            
+            allOrders.forEach((order, i) => {
+                console.log(`${i+1}. ${order.id}:`, {
+                    statusMongo: order.status,
+                    paymentConfirmed: order.paymentConfirmed,
+                    raw: order
+                });
+            });
+            
+            alert(`${allOrders.length} pedidos - ${allOrders.filter(o => o.paymentConfirmed).length} pagos, ${allOrders.filter(o => !o.paymentConfirmed).length} pendentes. Verifique o console (F12)`);
+        };
 
         // ============================================
         // FALLBACK: CARREGAR DO INDEXEDDB
@@ -943,7 +982,8 @@
                     subtotal: 39.00,
                     deliveryFee: 5.00,
                     total: 44.00,
-                    paymentConfirmed: true
+                    paymentConfirmed: true,
+                    status: 'approved' // Para debug
                 },
                 {
                     id: 'BEB' + (Date.now() - 172800000),
@@ -956,7 +996,28 @@
                     subtotal: 51.00,
                     deliveryFee: 0,
                     total: 51.00,
-                    paymentConfirmed: true
+                    paymentConfirmed: true,
+                    status: 'approved' // Para debug
+                },
+                {
+                    id: 'BEB' + (Date.now() - 259200000),
+                    date: new Date(Date.now() - 259200000).toISOString(),
+                    timestamp: Date.now() - 259200000,
+                    customer: { name: 'Pedro Oliveira', phone: '(14) 97777-3333', email: 'pedro@email.com' },
+                    type: 'delivery',
+                    address: {
+                        street: 'Av. Rodrigues Alves',
+                        number: '1560',
+                        neighborhood: 'Jardim América',
+                        city: 'Bauru',
+                        complement: ''
+                    },
+                    items: [{ title: 'Whisky Red Label', quantity: 2, unit_price: 25.00 }],
+                    subtotal: 50.00,
+                    deliveryFee: 8.50,
+                    total: 58.50,
+                    paymentConfirmed: false,
+                    status: 'pending' // Para debug
                 }
             ];
             
