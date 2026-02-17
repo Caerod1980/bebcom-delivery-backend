@@ -57,7 +57,7 @@ const adminLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
     max: 5,
     skipSuccessfulRequests: true,
-    keyGenerator: extractIp,  // ← CORREÇÃO: função personalizada para extrair IP
+    keyGenerator: extractIp,
     message: {
         success: false,
         error: 'Muitas tentativas de admin. Aguarde 15 minutos.'
@@ -67,7 +67,7 @@ const adminLimiter = rateLimit({
 const paymentLimiter = rateLimit({
     windowMs: 5 * 60 * 1000,
     max: 10,
-    keyGenerator: extractIp,  // ← CORREÇÃO: mesma função aqui
+    keyGenerator: extractIp,
     message: {
         success: false,
         error: 'Muitas tentativas de pagamento. Aguarde 5 minutos.'
@@ -85,7 +85,7 @@ app.use(cors({
         'x-admin-password',
         'x-admin-key',
         'Cache-Control',
-        'Accept'  // ✅ ÚNICA CORREÇÃO NECESSÁRIA
+        'Accept'
     ]
 }));
 
@@ -137,7 +137,7 @@ app.get('/api/config', (req, res) => {
         : `${protocol}://${host}`;
 
     res.json({
-        backendUrl: backendUrl,  // ✅ AGORA SEMPRE HTTPS
+        backendUrl: backendUrl,
         whatsappNumber: process.env.WHATSAPP_NUMBER || '',
         mercadoPago: {
             publicKey: process.env.MERCADO_PAGO_PUBLIC_KEY || null,
@@ -172,7 +172,9 @@ app.get('/', (req, res) => {
             config: '/api/config',
             products: '/api/product-availability',
             flavors: '/api/flavor-availability',
-            payment: '/api/create-payment'
+            payment: '/api/create-payment',
+            adminOrders: '/api/admin/orders',
+            adminStats: '/api/admin/orders/stats'
         }
     });
 });
@@ -302,7 +304,7 @@ app.post('/api/create-payment', paymentLimiter, async (req, res) => {
                 name: customer.name,
                 email: customer.email,
                 phone: {
-                    number: Number(cleanPhone)  // ✅ Converte para número
+                    number: Number(cleanPhone)
                 },
                 ...(cleanCpf && {
                     identification: {
@@ -474,6 +476,194 @@ app.get('/api/flavor-availability', async (req, res) => {
     }
 });
 
+// ========== NOVO ENDPOINT: GET /api/admin/orders (LISTAR PEDIDOS) ==========
+app.get('/api/admin/orders', async (req, res) => {
+    try {
+        if (!app.locals.db) {
+            return res.status(503).json({ 
+                success: false, 
+                error: 'Banco de dados indisponível' 
+            });
+        }
+
+        const orders = app.locals.db.collection('orders');
+        
+        // Parâmetros de consulta (filtros)
+        const { 
+            type,           // 'delivery' ou 'pickup'
+            status,         // 'paid', 'pending', 'all'
+            startDate,      // formato: YYYY-MM-DD
+            endDate,        // formato: YYYY-MM-DD
+            search,         // nome, whatsapp ou orderId
+            page = 1,
+            limit = 50
+        } = req.query;
+        
+        // Construir filtro MongoDB
+        const filter = {};
+        
+        if (type && type !== 'all') filter.deliveryType = type;
+        
+        if (status === 'paid') filter.status = 'approved';
+        else if (status === 'pending') filter.status = 'pending';
+        
+        if (startDate || endDate) {
+            filter.createdAt = {};
+            if (startDate) filter.createdAt.$gte = new Date(startDate);
+            if (endDate) {
+                const end = new Date(endDate);
+                end.setHours(23, 59, 59, 999);
+                filter.createdAt.$lte = end;
+            }
+        }
+        
+        if (search) {
+            filter.$or = [
+                { 'customer.name': { $regex: search, $options: 'i' } },
+                { 'customer.phone': { $regex: search, $options: 'i' } },
+                { 'customer.email': { $regex: search, $options: 'i' } },
+                { 'orderId': { $regex: search, $options: 'i' } }
+            ];
+        }
+        
+        // Paginação
+        const skip = (parseInt(page) - 1) * parseInt(limit);
+        
+        // Buscar pedidos (ordenados do mais recente)
+        const allOrders = await orders
+            .find(filter)
+            .sort({ createdAt: -1 })
+            .skip(skip)
+            .limit(parseInt(limit))
+            .toArray();
+        
+        // Total de pedidos (para paginação)
+        const total = await orders.countDocuments(filter);
+        
+        // Estatísticas rápidas
+        const stats = {
+            total: allOrders.length,
+            totalRevenue: allOrders.reduce((sum, o) => sum + (o.total || 0), 0),
+            deliveries: allOrders.filter(o => o.deliveryType === 'delivery').length,
+            pickups: allOrders.filter(o => o.deliveryType === 'pickup').length,
+            paid: allOrders.filter(o => o.status === 'approved').length,
+            pending: allOrders.filter(o => o.status === 'pending').length
+        };
+        
+        res.json({
+            success: true,
+            page: parseInt(page),
+            totalPages: Math.ceil(total / parseInt(limit)),
+            totalOrders: total,
+            stats,
+            orders: allOrders
+        });
+        
+    } catch (error) {
+        console.error('❌ Erro ao buscar pedidos:', error);
+        res.status(500).json({ 
+            success: false, 
+            error: error.message 
+        });
+    }
+});
+
+// ========== NOVO ENDPOINT: GET /api/admin/orders/stats (ESTATÍSTICAS) ==========
+app.get('/api/admin/orders/stats', async (req, res) => {
+    try {
+        if (!app.locals.db) {
+            return res.status(503).json({ 
+                success: false, 
+                error: 'Banco de dados indisponível' 
+            });
+        }
+
+        const orders = app.locals.db.collection('orders');
+        
+        // Data de hoje (início do dia)
+        const hoje = new Date();
+        hoje.setHours(0, 0, 0, 0);
+        
+        const amanha = new Date(hoje);
+        amanha.setDate(amanha.getDate() + 1);
+        
+        // Pipeline de agregação para estatísticas
+        const stats = await orders.aggregate([
+            {
+                $facet: {
+                    geral: [
+                        {
+                            $group: {
+                                _id: null,
+                                totalPedidos: { $sum: 1 },
+                                faturamentoTotal: { $sum: "$total" },
+                                ticketMedio: { $avg: "$total" }
+                            }
+                        }
+                    ],
+                    hoje: [
+                        {
+                            $match: {
+                                createdAt: { $gte: hoje, $lt: amanha }
+                            }
+                        },
+                        {
+                            $group: {
+                                _id: null,
+                                quantidade: { $sum: 1 },
+                                faturamento: { $sum: "$total" }
+                            }
+                        }
+                    ],
+                    porTipo: [
+                        {
+                            $group: {
+                                _id: "$deliveryType",
+                                count: { $sum: 1 }
+                            }
+                        }
+                    ],
+                    porStatus: [
+                        {
+                            $group: {
+                                _id: "$status",
+                                count: { $sum: 1 }
+                            }
+                        }
+                    ]
+                }
+            }
+        ]).toArray();
+        
+        const result = stats[0] || {};
+        
+        res.json({
+            success: true,
+            stats: {
+                total: result.geral[0]?.totalPedidos || 0,
+                faturamentoTotal: result.geral[0]?.faturamentoTotal || 0,
+                ticketMedio: result.geral[0]?.ticketMedio || 0,
+                
+                hoje: result.hoje[0]?.quantidade || 0,
+                faturamentoHoje: result.hoje[0]?.faturamento || 0,
+                
+                entregas: result.porTipo?.find(t => t._id === 'delivery')?.count || 0,
+                retiradas: result.porTipo?.find(t => t._id === 'pickup')?.count || 0,
+                
+                pagos: result.porStatus?.find(s => s._id === 'approved')?.count || 0,
+                pendentes: result.porStatus?.find(s => s._id === 'pending')?.count || 0
+            }
+        });
+        
+    } catch (error) {
+        console.error('❌ Erro nas estatísticas:', error);
+        res.status(500).json({ 
+            success: false, 
+            error: error.message 
+        });
+    }
+});
+
 // ========== MIDDLEWARE DE AUTENTICAÇÃO ADMIN ==========
 function authenticateAdmin(req, res, next) {
     const directPassword = req.body.password ||
@@ -540,11 +730,11 @@ app.post('/api/admin/flavor-availability/bulk', adminLimiter, authenticateAdmin,
     }
 });
 
-// ========== ROTA PARA VERIFICAR STATUS DO PAGAMENTO - MELHORADA ==========
+// ========== ROTA PARA VERIFICAR STATUS DO PAGAMENTO ==========
 app.get('/api/payment-status/:orderId', async (req, res) => {
     try {
         const { orderId } = req.params;
-        const { paymentId } = req.query; // Pode vir da URL também
+        const { paymentId } = req.query;
         
         console.log(`🔍 Verificando status do pedido: ${orderId}`);
         
@@ -559,26 +749,23 @@ app.get('/api/payment-status/:orderId', async (req, res) => {
         // Busca o pedido no banco
         let order = await app.locals.db.collection('orders').findOne({ orderId: orderId });
         
+        if (!order && paymentId) {
+            order = await app.locals.db.collection('orders').findOne({ 
+                payment_id: paymentId 
+            });
+        }
+        
         if (!order) {
-            // Tenta buscar pelo paymentId se foi fornecido
-            if (paymentId) {
-                order = await app.locals.db.collection('orders').findOne({ 
-                    payment_id: paymentId 
-                });
-            }
-            
-            if (!order) {
-                return res.json({ 
-                    success: false, 
-                    error: 'Pedido não encontrado',
-                    status: 'pending' 
-                });
-            }
+            return res.json({ 
+                success: false, 
+                error: 'Pedido não encontrado',
+                status: 'pending' 
+            });
         }
 
         // Se o status ainda é pending mas já passou muito tempo, marca como expired
         const timeSinceCreation = Date.now() - new Date(order.createdAt).getTime();
-        if (order.status === 'pending' && timeSinceCreation > 30 * 60 * 1000) { // 30 minutos
+        if (order.status === 'pending' && timeSinceCreation > 30 * 60 * 1000) {
             await app.locals.db.collection('orders').updateOne(
                 { _id: order._id },
                 { $set: { status: 'expired', updatedAt: new Date() } }
@@ -586,7 +773,6 @@ app.get('/api/payment-status/:orderId', async (req, res) => {
             order.status = 'expired';
         }
 
-        // Retorna o status atual
         res.json({
             success: true,
             status: order.status || 'pending',
@@ -672,6 +858,7 @@ const server = app.listen(PORT, '0.0.0.0', () => {
     console.log(`🚀 Servidor rodando na porta ${PORT}`);
     console.log(`📡 Health: http://0.0.0.0:${PORT}/health`);
     console.log(`⚙️  Config: http://0.0.0.0:${PORT}/api/config`);
+    console.log(`📋 Admin Orders: http://0.0.0.0:${PORT}/api/admin/orders`);
     console.log('='.repeat(70));
 
     setTimeout(initializeMongoDB, 1000);
