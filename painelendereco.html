@@ -101,11 +101,6 @@
             color: white;
         }
 
-        .btn-clear {
-            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
-            color: white;
-        }
-
         .btn-refresh {
             background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
             color: white;
@@ -492,7 +487,7 @@
         <div class="header">
             <h1>
                 📊 <span>BebCom</span> Admin Panel
-                <small style="font-size: 14px; color: var(--gray); margin-left: 10px;">v4.1</small>
+                <small style="font-size: 14px; color: var(--gray); margin-left: 10px;">v4.2</small>
             </h1>
             <div class="header-actions">
                 <button class="header-btn btn-refresh" onclick="refreshDashboard()">
@@ -515,12 +510,6 @@
                 </button>
                 <button class="header-btn btn-stats" onclick="showQuickStats()">
                     ⚡ Stats Rápidas
-                </button>
-                <button class="header-btn btn-debug" onclick="debugStatus()" style="background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%);">
-                    🔍 Debug
-                </button>
-                <button class="header-btn btn-clear" onclick="confirmClearAll()">
-                    🗑️ Limpar Dados
                 </button>
             </div>
         </div>
@@ -657,12 +646,11 @@
                             <th onclick="sortBy('deliveryFee')">Taxa 🚚</th>
                             <th onclick="sortBy('type')">Tipo 📦</th>
                             <th onclick="sortBy('paymentConfirmed')">Status 💳</th>
-                            <th>Ações ⚙️</th>
                         </tr>
                     </thead>
                     <tbody id="tableBody">
                         <tr>
-                            <td colspan="11" class="loading">
+                            <td colspan="10" class="loading">
                                 <div class="loading-spinner"></div>
                                 <div>Carregando pedidos...</div>
                             </td>
@@ -822,13 +810,6 @@
                 
                 if (data.success && data.orders) {
                     allOrders = data.orders.map(order => {
-                        // Log para debug
-                        console.log('🔄 Processando pedido:', {
-                            orderId: order.orderId,
-                            status: order.status,
-                            paymentConfirmed: order.status === 'approved'
-                        });
-                        
                         return {
                             id: order.orderId || order._id,
                             date: order.createdAt,
@@ -840,19 +821,13 @@
                             deliveryFee: order.deliveryFee || 0,
                             total: order.total || 0,
                             address: order.address || null,
-                            paymentConfirmed: order.status === 'approved', // ← VERIFICAÇÃO CORRETA
-                            status: order.status, // Guardar status original para debug
+                            paymentConfirmed: order.status === 'approved',
+                            status: order.status,
                             distance: order.distance
                         };
                     });
                     
                     console.log(`📦 ${allOrders.length} pedidos carregados do servidor`);
-                    console.log('📊 Resumo de status:', {
-                        total: allOrders.length,
-                        pagos: allOrders.filter(o => o.paymentConfirmed).length,
-                        pendentes: allOrders.filter(o => !o.paymentConfirmed).length,
-                        primeiros: allOrders.slice(0, 3)
-                    });
                     
                     // Salvar backup local
                     saveLocalBackup(allOrders);
@@ -870,26 +845,6 @@
                 return loadFromIndexedDB();
             }
         }
-
-        // ============================================
-        // FUNÇÃO DE DEBUG
-        // ============================================
-        window.debugStatus = function() {
-            console.log('📊 VERIFICANDO STATUS DOS PEDIDOS:');
-            console.log('Total de pedidos:', allOrders.length);
-            console.log('Pagos:', allOrders.filter(o => o.paymentConfirmed).length);
-            console.log('Pendentes:', allOrders.filter(o => !o.paymentConfirmed).length);
-            
-            allOrders.forEach((order, i) => {
-                console.log(`${i+1}. ${order.id}:`, {
-                    statusMongo: order.status,
-                    paymentConfirmed: order.paymentConfirmed,
-                    raw: order
-                });
-            });
-            
-            alert(`${allOrders.length} pedidos - ${allOrders.filter(o => o.paymentConfirmed).length} pagos, ${allOrders.filter(o => !o.paymentConfirmed).length} pendentes. Verifique o console (F12)`);
-        };
 
         // ============================================
         // FALLBACK: CARREGAR DO INDEXEDDB
@@ -983,7 +938,7 @@
                     deliveryFee: 5.00,
                     total: 44.00,
                     paymentConfirmed: true,
-                    status: 'approved' // Para debug
+                    status: 'approved'
                 },
                 {
                     id: 'BEB' + (Date.now() - 172800000),
@@ -997,7 +952,7 @@
                     deliveryFee: 0,
                     total: 51.00,
                     paymentConfirmed: true,
-                    status: 'approved' // Para debug
+                    status: 'approved'
                 },
                 {
                     id: 'BEB' + (Date.now() - 259200000),
@@ -1017,7 +972,7 @@
                     deliveryFee: 8.50,
                     total: 58.50,
                     paymentConfirmed: false,
-                    status: 'pending' // Para debug
+                    status: 'pending'
                 }
             ];
             
@@ -1277,7 +1232,7 @@
             const tbody = document.getElementById('tableBody');
             
             if (filteredOrders.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="11" style="text-align: center; padding: 50px;">🕒 Nenhum pedido encontrado</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="10" style="text-align: center; padding: 50px;">🕒 Nenhum pedido encontrado</td></tr>';
                 return;
             }
             
@@ -1306,10 +1261,6 @@
                         <td>R$ ${(order.deliveryFee || 0).toFixed(2)}</td>
                         <td><span class="badge ${typeClass}">${typeText}</span></td>
                         <td><span class="badge ${statusClass}">${statusText}</span></td>
-                        <td>
-                            <button onclick="viewOrderDetails('${order.id}')" style="background: none; border: none; color: var(--secondary); cursor: pointer;">👁️</button>
-                            <button onclick="deleteOrder('${order.id}')" style="background: none; border: none; color: var(--danger); cursor: pointer; margin-left: 5px;">🗑️</button>
-                        </td>
                     </tr>
                 `;
             }).join('');
@@ -1391,32 +1342,6 @@ ${addr.complement ? `Complemento: ${addr.complement}` : ''}
                 💳 Pagamento: ${order.paymentConfirmed ? 'Pago' : 'Pendente'}
                 📅 Data: ${new Date(order.date || order.timestamp).toLocaleString('pt-BR')}
             `);
-        }
-
-        function deleteOrder(orderId) {
-            if (!confirm('Tem certeza que deseja excluir este pedido?')) return;
-            
-            if (!db) {
-                try {
-                    const backup = JSON.parse(localStorage.getItem('bebcom_orders_backup') || '[]');
-                    const newBackup = backup.filter(o => o.id !== orderId);
-                    localStorage.setItem('bebcom_orders_backup', JSON.stringify(newBackup));
-                    showNotification('✅ Pedido excluído', 'success');
-                    refreshDashboard();
-                } catch (e) {
-                    showNotification('❌ Erro ao excluir', 'error');
-                }
-                return;
-            }
-            
-            const transaction = db.transaction([STORE_NAME], 'readwrite');
-            const store = transaction.objectStore(STORE_NAME);
-            const request = store.delete(orderId);
-            
-            request.onsuccess = () => {
-                showNotification('✅ Pedido excluído', 'success');
-                refreshDashboard();
-            };
         }
 
         // ============================================
@@ -1638,49 +1563,6 @@ ${addr.complement ? `Complemento: ${addr.complement}` : ''}
         }
 
         // ============================================
-        // LIMPAR DADOS
-        // ============================================
-        function confirmClearAll() {
-            if (!confirm('⚠️ TEM CERTEZA? Isso vai apagar TODOS os pedidos permanentemente!')) return;
-            
-            const confirmText = prompt('Digite "CONFIRMAR" para prosseguir:');
-            if (confirmText !== 'CONFIRMAR') {
-                showNotification('Operação cancelada', 'warning');
-                return;
-            }
-            
-            if (!db) {
-                localStorage.removeItem('bebcom_orders_backup');
-                showNotification('✅ Dados limpos!', 'success');
-                refreshDashboard();
-                return;
-            }
-            
-            const transaction = db.transaction([STORE_NAME], 'readwrite');
-            const store = transaction.objectStore(STORE_NAME);
-            const request = store.clear();
-            
-            request.onsuccess = () => {
-                showNotification('✅ Todos os dados foram limpos!', 'success');
-                refreshDashboard();
-            };
-        }
-
-        // ============================================
-        // RESETAR FILTROS
-        // ============================================
-        function resetFilters() {
-            document.getElementById('periodFilter').value = 'week';
-            document.getElementById('typeFilter').value = 'all';
-            document.getElementById('statusFilter').value = 'all';
-            document.getElementById('searchFilter').value = '';
-            document.getElementById('customDateRange').style.display = 'none';
-            document.getElementById('startDate').value = '';
-            document.getElementById('endDate').value = '';
-            applyFilters();
-        }
-
-        // ============================================
         // STATS RÁPIDAS
         // ============================================
         function showQuickStats() {
@@ -1776,13 +1658,11 @@ ${addr.complement ? `Complemento: ${addr.complement}` : ''}
         window.sortBy = sortBy;
         window.changePage = changePage;
         window.viewOrderDetails = viewOrderDetails;
-        window.deleteOrder = deleteOrder;
         window.exportToCSV = exportToCSV;
         window.exportToExcel = exportToExcel;
         window.exportToJSON = exportToJSON;
         window.importFromCSV = importFromCSV;
         window.importFromJSON = importFromJSON;
-        window.confirmClearAll = confirmClearAll;
         window.refreshDashboard = refreshDashboard;
         window.showQuickStats = showQuickStats;
     </script>
