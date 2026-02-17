@@ -1245,6 +1245,7 @@
                 <button class="admin-action-btn reset-btn" onclick="resetAvailability()">🔄 Restaurar Padrão</button>
                 <button class="admin-action-btn" onclick="openFlavorManagement()" style="background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);">🍹 Gerenciar Sabores</button>
                 <button class="admin-action-btn" onclick="syncAllFromServer()" style="background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);">🔄 Sincronizar do Servidor</button>
+                <button class="admin-action-btn" onclick="openOrdersPanel()" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);">📊 Painel de Pedidos</button>
             </div>
         </div>
     </div>
@@ -3363,6 +3364,12 @@
         window.adminToggleProductAvailability = adminToggleProductAvailability;
         window.loadAdminProducts = loadAdminProducts;
         window.calculateDeliveryFee = calculateDeliveryFee;
+ // ============================================
+// NOVA FUNÇÃO: ABRIR PAINEL DE PEDIDOS
+// ============================================
+function openOrdersPanel() {
+    window.open('painelendereco.html', '_blank');
+}
     </script>
 </body>
 </html>
