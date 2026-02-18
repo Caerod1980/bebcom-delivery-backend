@@ -1443,7 +1443,13 @@
                 { id: 'dom-feliciano', name: 'Dom Feliciano', description: 'Licor gaúcho', price: 20.00 },
                 { id: 'cantinho-do-valle', name: 'Cantinho do Valle', description: 'Bebida ready to drink', price: 8.00 },
                 { id: 'stempel-355ml', name: 'Stempel 355ml', description: 'Cerveja artesanal em garrafa', price: 8.00 },
-                { id: 'stempel-600ml', name: 'Stempel 600ml', description: 'Cerveja artesanal 600ml', price: 12.00 }
+                { id: 'stempel-600ml', name: 'Stempel 600ml', description: 'Cerveja artesanal 600ml', price: 12.00 },
+                { id: 'askov-ice', name: 'Askov Ice', description: 'Ice de vodka', price: 12.00, requiresFlavorSelection: true, flavorType: 'ice_askov' },
+                { id: '51-ice', name: '51 Ice', description: 'Ice de cachaça', price: 10.00, requiresFlavorSelection: true, flavorType: 'ice_51' },
+                { id: 'ice-leev', name: 'Ice Leev', description: 'Ice de vodka', price: 12.00, requiresFlavorSelection: true, flavorType: 'ice_leev' },
+                { id: 'beats-lata', name: 'Beats Lata', description: 'Energético', price: 9.00, requiresFlavorSelection: true, flavorType: 'beats' },
+                { id: 'smirnoff-long', name: 'Smirnoff Long', description: 'Ice de vodka premium', price: 15.00, requiresFlavorSelection: true, flavorType: 'smirnoff_long' }
+    ],
             ],
             'aguas': [
                 { id: 'agua-500ml', name: 'Água 500ml', description: 'Água mineral', price: 3.00 },
@@ -1530,28 +1536,30 @@
             ]
         };
 
-        // ============================================
-        // CATÁLOGO DE SABORES
-        // ============================================
-        const FLAVOR_CATALOG = {
-            'whisky_oldstar': ['Old Star Tradicional', 'Old Star Maçã-Verde'],
-            'whisky_jack': ['Jack Tradicional', 'Jack Mel', 'Jack Maçã-Verde'],
-            'whisky_sem_sabor': ['Tradicional'],
-            'gin_sabores': ['Tropical', 'Melancia', 'Morango', 'Maçã-Verde'],
-            'corote_sabores': ['Morango', 'Melância', 'Maracujá', 'Pêssego', 'Blueberry', 'Limão', 'Canelinha'],
-            'vodka_sabores': ['Frutas Vermelhas', 'Maracujá', 'Frutas Roxas', 'Kiwi', 'Pêssego', 'Limão', 'Blueberry'],
-            'ice_askov': ['Maracujá', 'Limão', 'Frutas Vermelhas', 'Pina Colada'],
-            'ice_leev': ['Morango', 'Limão', 'Melância', 'Maracujá', 'Abacaxi com Hortelã', 'Maçã-Verde'],
-            'beats': ['Sense', 'GT', 'Red Mix', 'Green Mix'],
-            'h2o_sabores': ['Limão', 'Limoneto'],
-            'suco_delvalle': ['Laranja', 'Manga', 'Maracujá', 'Caju', 'Uva', 'Pêssego'],
-            'suco_kapo': ['Uva', 'Morango', 'Maracujá', 'Laranja'],
-            'suco_life': ['Uva', 'Laranja'],
-            'energetico_monster': ['Tradicional', 'Zero', 'Uva', 'Mango Loco', 'Melancia', 'Cereja', 'Pêssego'],
-            'energetico_bally': ['Tradicional', 'Morango/Pêssego', 'Melancia', 'Tropical'],
-            'gelo_sabores': ['Melancia', 'Morango', 'Limão', 'Côco', 'Maçã-Verde', 'Abacaxi/Hortelã', 'Maracujá', 'Laranja']
-        };
-
+      // ============================================
+// CATÁLOGO DE SABORES (ATUALIZADO)
+// ============================================
+const FLAVOR_CATALOG = {
+    'whisky_oldstar': ['Old Star Tradicional', 'Old Star Maçã-Verde'],
+    'whisky_jack': ['Jack Tradicional', 'Jack Mel', 'Jack Maçã-Verde'],
+    'whisky_sem_sabor': ['Tradicional'],
+    'gin_sabores': ['Tropical', 'Melancia', 'Morango', 'Maçã-Verde'],
+    'corote_sabores': ['Morango', 'Melância', 'Maracujá', 'Pêssego', 'Blueberry', 'Limão', 'Canelinha'],
+    'vodka_sabores': ['Frutas Vermelhas', 'Maracujá', 'Frutas Roxas', 'Kiwi', 'Pêssego', 'Limão', 'Blueberry'],
+    'ice_askov': ['Maracujá', 'Limão', 'Frutas Vermelhas', 'Pina Colada'],
+    'ice_51': ['Limão', 'Balada'], // NOVO
+    'ice_leev': ['Morango', 'Limão', 'Melância', 'Maracujá', 'Abacaxi com Hortelã', 'Maçã-Verde'],
+    'beats': ['Sense', 'GT', 'Red Mix', 'Green Mix'],
+    'smirnoff_long': ['Maçã Verde', 'Tropical'], // NOVO
+    'h2o_sabores': ['Limão', 'Limoneto'],
+    'suco_delvalle': ['Laranja', 'Manga', 'Maracujá', 'Caju', 'Uva', 'Pêssego'],
+    'suco_kapo': ['Uva', 'Morango', 'Maracujá', 'Laranja'],
+    'suco_life': ['Uva', 'Laranja'],
+    'energetico_monster': ['Tradicional', 'Zero', 'Uva', 'Mango Loco', 'Melancia', 'Cereja', 'Pêssego'],
+    'energetico_bally': ['Tradicional', 'Morango/Pêssego', 'Melancia', 'Tropical'],
+    'gelo_sabores': ['Melancia', 'Morango', 'Limão', 'Côco', 'Maçã-Verde', 'Abacaxi/Hortelã', 'Maracujá', 'Laranja']
+};
+        
         const FLAVOR_TYPES = {
             'whisky_oldstar': 'Old Star',
             'whisky_jack': 'Jack Daniels',
@@ -1569,6 +1577,8 @@
             'energetico_monster': 'Monster',
             'energetico_bally': 'Bally',
             'gelo_sabores': 'Gelo'
+            'smirnoff_long': 'Smirnoff Long', // NOVO
+            'ice_51': '51 Ice', // NOVO
         };
 
         // ============================================
