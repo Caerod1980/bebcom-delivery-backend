@@ -182,6 +182,72 @@
             padding-bottom: 15px;
         }
 
+        /* ===== NOVO ESTILO PARA BARRA DE PESQUISA ===== */
+        .search-container {
+            margin-bottom: 20px;
+            position: relative;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 16px 20px 16px 50px;
+            background: rgba(45, 45, 45, 0.8);
+            border: 2px solid #444;
+            border-radius: 50px;
+            color: white;
+            font-size: 16px;
+            transition: all 0.3s ease;
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: var(--secondary);
+            background: rgba(45, 45, 45, 0.95);
+            box-shadow: 0 0 0 3px rgba(77, 150, 255, 0.2);
+        }
+
+        .search-input::placeholder {
+            color: #888;
+        }
+
+        .search-icon {
+            position: absolute;
+            left: 18px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 20px;
+            color: var(--secondary);
+            pointer-events: none;
+        }
+
+        .search-results-info {
+            margin: 10px 0;
+            padding: 10px 15px;
+            background: rgba(77, 150, 255, 0.1);
+            border-radius: 8px;
+            color: var(--secondary);
+            font-size: 14px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .clear-search-btn {
+            background: rgba(220, 38, 38, 0.2);
+            color: var(--primary);
+            border: 1px solid var(--primary);
+            padding: 5px 12px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+
+        .clear-search-btn:hover {
+            background: rgba(220, 38, 38, 0.3);
+        }
+
         .categories-grid {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
@@ -1062,30 +1128,38 @@
     </div>
 
     <div class="nav-container">
-        <button class="nav-button" onclick="showCategory('drinks-whisky')">🥃 Drinks Whisky</button>
-        <button class="nav-button" onclick="showCategory('drinks-gin')">🍸 Drinks Gin</button>
-        <button class="nav-button" onclick="showCategory('drinks-vodka')">🍸 Drinks Vodka</button>
-        <button class="nav-button" onclick="showCategory('drinks-vinho')">🍷 Drinks Vinho</button>
-        <button class="nav-button" onclick="showCategory('cervejas')">🍺 Cervejas</button>
-        <button class="nav-button" onclick="showCategory('destilados')">🥃 Destilados</button>
-        <button class="nav-button" onclick="showCategory('aguas')">💧 Águas</button>
-        <button class="nav-button" onclick="showCategory('refri-latas')">🥤 Refri Latas</button>
-        <button class="nav-button" onclick="showCategory('refri-pet')">🥤 Refri PET</button>
-        <button class="nav-button" onclick="showCategory('sucos')">🧃 Sucos</button>
-        <button class="nav-button" onclick="showCategory('energeticos')">⚡ Energéticos</button>
-        <button class="nav-button" onclick="showCategory('gelo-carvao')">🧊 Gelo/Carvão</button>
-        <button class="nav-button" onclick="showCategory('salgadinhos')">🥨 Salgadinhos</button>
-        <button class="nav-button" onclick="showCategory('doces')">🍬 Doces</button>
+        <button class="nav-button" onclick="showCategory('drinks-whisky'); clearSearch()">🥃 Drinks Whisky</button>
+        <button class="nav-button" onclick="showCategory('drinks-gin'); clearSearch()">🍸 Drinks Gin</button>
+        <button class="nav-button" onclick="showCategory('drinks-vodka'); clearSearch()">🍸 Drinks Vodka</button>
+        <button class="nav-button" onclick="showCategory('drinks-vinho'); clearSearch()">🍷 Drinks Vinho</button>
+        <button class="nav-button" onclick="showCategory('cervejas'); clearSearch()">🍺 Cervejas</button>
+        <button class="nav-button" onclick="showCategory('destilados'); clearSearch()">🥃 Destilados</button>
+        <button class="nav-button" onclick="showCategory('aguas'); clearSearch()">💧 Águas</button>
+        <button class="nav-button" onclick="showCategory('refri-latas'); clearSearch()">🥤 Refri Latas</button>
+        <button class="nav-button" onclick="showCategory('refri-pet'); clearSearch()">🥤 Refri PET</button>
+        <button class="nav-button" onclick="showCategory('sucos'); clearSearch()">🧃 Sucos</button>
+        <button class="nav-button" onclick="showCategory('energeticos'); clearSearch()">⚡ Energéticos</button>
+        <button class="nav-button" onclick="showCategory('gelo-carvao'); clearSearch()">🧊 Gelo/Carvão</button>
+        <button class="nav-button" onclick="showCategory('salgadinhos'); clearSearch()">🥨 Salgadinhos</button>
+        <button class="nav-button" onclick="showCategory('doces'); clearSearch()">🍬 Doces</button>
     </div>
 
     <div class="main-container">
         <!-- CARDÁPIO -->
         <div class="menu-section">
             <h2 class="section-title">📋 Cardápio</h2>
+            
+            <!-- NOVA BARRA DE PESQUISA -->
+            <div class="search-container">
+                <span class="search-icon">🔍</span>
+                <input type="text" class="search-input" id="searchInput" placeholder="Buscar qualquer produto..." oninput="handleSearch(this.value)">
+            </div>
+            <div id="searchResultsInfo" class="search-results-info" style="display: none;"></div>
+            
             <div class="categories-grid" id="categoriesGrid"></div>
             <div class="products-grid" id="productsGrid">
                 <div style="text-align: center; color: #aaa; padding: 50px; grid-column: 1/-1;">
-                    🍹 Selecione uma categoria para ver os produtos
+                    🍹 Selecione uma categoria ou busque por produtos
                 </div>
             </div>
         </div>
@@ -1499,8 +1573,165 @@
             paymentStatus: null,
             paymentCheckInterval: null,
             // NOVO: Flag para controlar se já enviou WhatsApp
-            whatsappSent: false
+            whatsappSent: false,
+            // NOVO: Estado para busca
+            searchActive: false,
+            searchQuery: ''
         };
+
+        // ============================================
+        // NOVAS FUNÇÕES DE BUSCA
+        // ============================================
+        
+        // Função para buscar produtos em todas as categorias
+        function searchProducts(query) {
+            if (!query || query.trim().length < 2) {
+                return [];
+            }
+            
+            const searchTerm = query.toLowerCase().trim();
+            const results = [];
+            
+            // Percorre todas as categorias
+            Object.keys(products).forEach(categoryId => {
+                products[categoryId].forEach(product => {
+                    // Verifica se o nome do produto contém o termo de busca
+                    if (product.name.toLowerCase().includes(searchTerm) || 
+                        product.description.toLowerCase().includes(searchTerm)) {
+                        results.push({
+                            ...product,
+                            categoryId: categoryId // Adiciona a categoria para referência
+                        });
+                    }
+                });
+            });
+            
+            return results;
+        }
+
+        // Função principal de busca chamada no input
+        function handleSearch(query) {
+            state.searchQuery = query;
+            
+            if (!query || query.trim().length < 2) {
+                // Se busca vazia ou muito curta, volta para a categoria atual
+                state.searchActive = false;
+                document.getElementById('searchResultsInfo').style.display = 'none';
+                showCategory(state.currentCategory);
+                return;
+            }
+            
+            const results = searchProducts(query);
+            
+            if (results.length > 0) {
+                state.searchActive = true;
+                displaySearchResults(results, query);
+            } else {
+                // Nenhum resultado encontrado
+                state.searchActive = true;
+                displayNoResults(query);
+            }
+        }
+
+        // Exibe os resultados da busca
+        function displaySearchResults(results, query) {
+            const grid = document.getElementById('productsGrid');
+            const searchInfo = document.getElementById('searchResultsInfo');
+            
+            grid.innerHTML = '';
+            
+            results.forEach(product => {
+                const available = isProductAvailable(product.id);
+                const hasFlavors = product.requiresFlavorSelection || false;
+                
+                const card = document.createElement('div');
+                card.className = `product-card ${!available ? 'unavailable' : ''} ${hasFlavors ? 'with-flavors' : ''}`;
+                card.setAttribute('data-product-id', product.id);
+                
+                let btnText = '🛒 Adicionar';
+                let btnClass = 'add-to-cart-btn';
+                if (!available) {
+                    btnText = '❌ Indisponível';
+                } else if (hasFlavors) {
+                    btnText = '⚡ Sabores';
+                    btnClass += ' has-flavors';
+                }
+                
+                // Adiciona badge da categoria
+                const categoryNames = {
+                    'drinks-whisky': '🥃 Whisky',
+                    'drinks-gin': '🍸 Gin',
+                    'drinks-vodka': '🍸 Vodka',
+                    'drinks-vinho': '🍷 Vinho',
+                    'cervejas': '🍺 Cerveja',
+                    'destilados': '🥃 Destilado',
+                    'aguas': '💧 Água',
+                    'refri-latas': '🥤 Refri Lata',
+                    'refri-pet': '🥤 Refri PET',
+                    'sucos': '🧃 Suco',
+                    'energeticos': '⚡ Energético',
+                    'gelo-carvao': '🧊 Gelo/Carvão',
+                    'salgadinhos': '🥨 Salgado',
+                    'doces': '🍬 Doce'
+                };
+                
+                card.innerHTML = `
+                    ${hasFlavors ? '<div class="flavor-badge">⚡</div>' : ''}
+                    <div style="position: absolute; top: 12px; left: 12px; background: rgba(77, 150, 255, 0.2); padding: 4px 8px; border-radius: 12px; font-size: 11px; color: var(--secondary); border: 1px solid var(--secondary);">
+                        ${categoryNames[product.categoryId] || product.categoryId}
+                    </div>
+                    <div class="product-name">${product.name}</div>
+                    <div class="product-info">${product.description}</div>
+                    <div class="product-price">R$ ${product.price.toFixed(2)}</div>
+                    <button class="${btnClass}" onclick="handleAddToCart('${product.id}', this)" ${!available ? 'disabled' : ''}>
+                        ${btnText}
+                    </button>
+                `;
+                grid.appendChild(card);
+            });
+            
+            // Mostra informações da busca
+            searchInfo.style.display = 'flex';
+            searchInfo.innerHTML = `
+                <span>🔍 Encontrados ${results.length} produto(s) para "${query}"</span>
+                <button class="clear-search-btn" onclick="clearSearch()">Limpar busca ✕</button>
+            `;
+            
+            // Esconde as categorias durante a busca
+            document.getElementById('categoriesGrid').style.display = 'none';
+        }
+
+        // Exibe mensagem quando não há resultados
+        function displayNoResults(query) {
+            const grid = document.getElementById('productsGrid');
+            const searchInfo = document.getElementById('searchResultsInfo');
+            
+            grid.innerHTML = `
+                <div style="text-align: center; color: #aaa; padding: 50px; grid-column: 1/-1;">
+                    <div style="font-size: 48px; margin-bottom: 20px;">😕</div>
+                    <div style="font-size: 18px; margin-bottom: 10px;">Nenhum produto encontrado para "${query}"</div>
+                    <div style="font-size: 14px; color: #666;">Tente buscar por outro termo</div>
+                </div>
+            `;
+            
+            searchInfo.style.display = 'flex';
+            searchInfo.innerHTML = `
+                <span>🔍 Nenhum resultado para "${query}"</span>
+                <button class="clear-search-btn" onclick="clearSearch()">Limpar busca ✕</button>
+            `;
+            
+            document.getElementById('categoriesGrid').style.display = 'none';
+        }
+
+        // Limpa a busca e volta para a categoria atual
+        function clearSearch() {
+            state.searchActive = false;
+            state.searchQuery = '';
+            document.getElementById('searchInput').value = '';
+            document.getElementById('searchResultsInfo').style.display = 'none';
+            document.getElementById('categoriesGrid').style.display = 'grid';
+            showCategory(state.currentCategory);
+        }
 
         // ============================================
         // CARREGAR CONFIGURAÇÃO SEGURA DO BACKEND
@@ -1945,9 +2176,15 @@
         }
 
         // ============================================
-        // EXIBIR CATEGORIA
+        // EXIBIR CATEGORIA (MODIFICADO PARA RESPEITAR A BUSCA)
         // ============================================
         function showCategory(categoryId) {
+            // Se a busca estiver ativa, não muda a visualização
+            if (state.searchActive) {
+                state.currentCategory = categoryId; // Apenas atualiza a referência
+                return;
+            }
+            
             state.currentCategory = categoryId;
             const grid = document.getElementById('productsGrid');
             grid.innerHTML = '';
@@ -3172,7 +3409,7 @@
                         <h3 style="color: #60a5fa; margin: 0;">🍹 Gerenciar Sabores</h3>
                     </div>
                     
-                    <select id="flavorTypeSelect" style="width: 100%; padding: 15px; background: rgba(255,255,255,0.1); border: 1px solid #444; border-radius: 8px; color: black; margin-bottom: 20px;" onchange="loadFlavorsForType(this.value)">
+                    <select id="flavorTypeSelect" style="width: 100%; padding: 15px; background: white; border: 1px solid #444; border-radius: 8px; color: black; margin-bottom: 20px;" onchange="loadFlavorsForType(this.value)">
                         <option value="">-- Selecione um tipo --</option>
                         ${Object.entries(FLAVOR_TYPES).map(([key, name]) => `<option value="${key}">${name}</option>`).join('')}
                     </select>
@@ -3364,12 +3601,15 @@
         window.adminToggleProductAvailability = adminToggleProductAvailability;
         window.loadAdminProducts = loadAdminProducts;
         window.calculateDeliveryFee = calculateDeliveryFee;
- // ============================================
-// NOVA FUNÇÃO: ABRIR PAINEL DE PEDIDOS
-// ============================================
-function openOrdersPanel() {
-    window.open('painelendereco.html', '_blank');
-}
+        window.handleSearch = handleSearch;
+        window.clearSearch = clearSearch;
+
+        // ============================================
+        // NOVA FUNÇÃO: ABRIR PAINEL DE PEDIDOS
+        // ============================================
+        function openOrdersPanel() {
+            window.open('painelendereco.html', '_blank');
+        }
     </script>
 </body>
 </html>
