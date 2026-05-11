@@ -2002,34 +2002,29 @@ const FLAVOR_CATALOG = {
         // ============================================
         // VERIFICAR RETORNO DE PAGAMENTO
         // ============================================
-        function checkForPaymentReturn() {
-            const urlParams = new URLSearchParams(window.location.search);
-            const paymentId = urlParams.get('payment_id');
-            const status = urlParams.get('status');
-            const orderId = urlParams.get('order_id');
-            const collectionId = urlParams.get('collection_id');
-            const preferenceId = urlParams.get('preference_id');
-            
-            console.log('🔍 Parâmetros de retorno:', { paymentId, status, orderId, collectionId, preferenceId });
-            
-            if ((paymentId || collectionId) && orderId) {
-                const actualPaymentId = paymentId || collectionId;
-                
-                const statusDiv = document.getElementById('paymentStatus');
-                statusDiv.style.display = 'block';
-                statusDiv.className = 'payment-status info';
-                statusDiv.innerHTML = '🔄 Verificando pagamento...';
-                
-                if (status === 'approved') {
-                    confirmPaymentSuccess(orderId, actualPaymentId);
-                } else {
-                    checkPaymentStatus(orderId, actualPaymentId);
-                }
-                
-                window.history.replaceState({}, document.title, window.location.pathname);
-            }
-        }
+       function checkForPaymentReturn() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const paymentId = urlParams.get('payment_id');
+    const status = urlParams.get('status');
+    const orderId = urlParams.get('order_id');
+    const collectionId = urlParams.get('collection_id');
+    const preferenceId = urlParams.get('preference_id');
 
+    console.log('🔍 Parâmetros de retorno:', { paymentId, status, orderId, collectionId, preferenceId });
+
+    if (orderId) {
+        const actualPaymentId = paymentId || collectionId || null;
+
+        const statusDiv = document.getElementById('paymentStatus');
+        statusDiv.style.display = 'block';
+        statusDiv.className = 'payment-status info';
+        statusDiv.innerHTML = '🔄 Verificando pagamento.';
+
+        checkPaymentStatus(orderId, actualPaymentId);
+
+        window.history.replaceState({}, document.title, window.location.pathname);
+    }
+}
         // ============================================
         // FUNÇÃO PARA CONFIRMAR PAGAMENTO COM SUCESSO
         // ============================================
@@ -2065,7 +2060,11 @@ const FLAVOR_CATALOG = {
             try {
                 console.log('🔄 Verificando status do pagamento...');
                 
-                const response = await fetch(`${CONFIG.backendUrl}/api/payment-status/${orderId}`);
+               const url = paymentId
+                   ? `${CONFIG.backendUrl}/api/payment-status/${orderId}?paymentId=${paymentId}`
+                   :`${CONFIG.backendUrl}/api/payment-status/${orderId}`;
+
+                const response = await fetch(url);
                 const data = await response.json();
                 
                 console.log('📥 Status do pedido:', data);
