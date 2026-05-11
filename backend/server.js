@@ -5,6 +5,7 @@ const crypto = require('crypto');
 const rateLimit = require('express-rate-limit');
 const { MongoClient, ObjectId } = require('mongodb');
 const mercadopago = require('mercadopago');
+const { processUberDelivery } = require('./services/uberDirectService');
 
 const app = express();
 app.set('trust proxy', 1); // Confia no primeiro proxy (Azure)
