@@ -1,5 +1,6 @@
 // services/uberDirectService.js
 
+const fetch = require('node-fetch');
 const crypto = require('crypto');
 const {
     calculateOrderWeight,
@@ -47,7 +48,7 @@ function buildFullAddress(address = {}) {
 }
 
 function createInternalTrackingUrl(orderId) {
-    return `https://bebcom-delivery.local/tracking/${orderId}`;
+    return `https://bebidasecompanhia.com.br/tracking/${orderId}`;
 }
 
 function validateOrderForDelivery(order) {
