@@ -402,17 +402,57 @@ app.post('/api/webhooks/mercadopago', async (req, res) => {
                         console.log(`📦 Pedido encontrado: ${order.orderId}`);
                         
                         await app.locals.db.collection('orders').updateOne(
-                            { _id: order._id },
-                            { 
-                                $set: { 
-                                    status: 'approved',
-                                    payment_id: data.id,
-                                    updatedAt: new Date(),
-                                    webhookReceived: true
-                                } 
-                            }
-                        );
-                        console.log(`✅ Pedido ${order.orderId} atualizado para approved`);
+    { _id: order._id },
+    { 
+        $set: { 
+            status: 'approved',
+            payment_id: data.id,
+            updatedAt: new Date(),
+            webhookReceived: true
+        } 
+    }
+);
+
+console.log(`✅ Pedido ${order.orderId} atualizado para approved`);
+
+// 🚚 AUTOMAÇÃO UBER DIRECT
+if (
+    order.deliveryType === 'delivery' &&
+    !order.uberDelivery?.deliveryId &&
+    order.uberDelivery?.status !== 'processing'
+) {
+
+    // 🔒 trava anti duplicidade
+    await app.locals.db.collection('orders').updateOne(
+        { _id: order._id },
+        {
+            $set: {
+                'uberDelivery.status': 'processing',
+                'uberDelivery.processingStartedAt': new Date()
+            }
+        }
+    );
+
+    const updatedOrder = await app.locals.db.collection('orders').findOne({
+        _id: order._id
+    });
+
+    const uberResult = await processUberDelivery(updatedOrder, app.locals.db);
+
+    console.log('🚚 Resultado Uber Direct:', {
+        orderId: order.orderId,
+        success: uberResult.success,
+        deliveryId: uberResult.deliveryId,
+        simulated: uberResult.simulated,
+        error: uberResult.error
+    });
+
+} else {
+    console.log(`ℹ️ Uber Direct ignorado para pedido ${order.orderId}`, {
+        deliveryType: order.deliveryType,
+        uberDelivery: order.uberDelivery
+    });
+}
                     } else {
                         console.log(`❌ Pedido não encontrado para payment_id: ${data.id}`);
                         
