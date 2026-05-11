@@ -387,16 +387,24 @@ app.post('/api/webhooks/mercadopago', async (req, res) => {
                     console.log(`💳 Processando pagamento ID: ${data.id}`);
                     
                     // Primeiro tenta encontrar pelo payment_id
-                    let order = await app.locals.db.collection('orders').findOne({ 
-                        payment_id: data.id 
-                    });
-                    
-                    // Se não encontrou, tenta pelo preferenceId (para compatibilidade)
-                    if (!order) {
-                        order = await app.locals.db.collection('orders').findOne({ 
-                            preferenceId: data.id 
-                        });
-                    }
+                   const paymentResponse = await mercadopago.payment.findById(data.id);
+const payment = paymentResponse.body;
+
+console.log('💳 Pagamento Mercado Pago consultado:', {
+    id: payment.id,
+    status: payment.status,
+    external_reference: payment.external_reference
+});
+
+let order = await app.locals.db.collection('orders').findOne({
+    orderId: payment.external_reference
+});
+
+if (!order) {
+    order = await app.locals.db.collection('orders').findOne({
+        payment_id: String(payment.id)
+    });
+}
                     
                     if (order) {
                         console.log(`📦 Pedido encontrado: ${order.orderId}`);
@@ -405,15 +413,23 @@ app.post('/api/webhooks/mercadopago', async (req, res) => {
     { _id: order._id },
     { 
         $set: { 
-            status: 'approved',
-            payment_id: data.id,
+            status: payment.status === 'approved' ? 'approved' : payment.status,
+            payment_id: String(payment.id),
+            paymentStatus: payment.status,
+            paymentStatusDetail: payment.status_detail,
+            paymentMethodId: payment.payment_method_id,
             updatedAt: new Date(),
             webhookReceived: true
         } 
     }
 );
 
-console.log(`✅ Pedido ${order.orderId} atualizado para approved`);
+console.log(`✅ Pedido ${order.orderId} atualizado para status: ${payment.status}`);
+
+if (payment.status !== 'approved') {
+    console.log(`⏳ Pagamento ${payment.id} ainda não aprovado: ${payment.status}`);
+    return;
+}
 
 // 🚚 AUTOMAÇÃO UBER DIRECT
 if (
