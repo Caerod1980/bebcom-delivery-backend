@@ -52,7 +52,10 @@ function calculateOrderWeight(items = []) {
             unitWeightKg = 0.37;
             rule = 'cerveja_lata';
         }
-
+if (unitWeightKg === 0) {
+    unitWeightKg = 0.5;
+    rule = 'fallback_default';
+}
         const totalItemWeight = unitWeightKg * quantity;
         totalWeightKg += totalItemWeight;
 
