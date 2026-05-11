@@ -2921,13 +2921,20 @@ const FLAVOR_CATALOG = {
         }
 
         function enableWhatsAppButton() {
-            state.paymentConfirmed = true;
-            state.whatsappSent = false; // NOVO: Resetar flag quando pagamento confirmado
-            const whatsappBtn = document.getElementById('whatsappButton');
-            whatsappBtn.disabled = false;
-            whatsappBtn.innerHTML = '📱 Enviar Pedido (Pago)';
-            validateForm();
-        }
+    state.paymentConfirmed = true;
+    state.whatsappSent = false;
+
+    const whatsappBtn = document.getElementById('whatsappButton');
+    whatsappBtn.disabled = false;
+    whatsappBtn.innerHTML = '📱 Enviar Pedido (Pago)';
+
+    const payButton = document.getElementById('payButton');
+    if (payButton) {
+        payButton.style.display = 'none';
+    }
+
+    console.log('✅ WhatsApp liberado após pagamento confirmado');
+}
 
         // ============================================
         // WHATSAPP - ATUALIZADO COM CAMPOS SEPARADOS
