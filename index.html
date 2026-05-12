@@ -1973,34 +1973,47 @@ const FLAVOR_CATALOG = {
         // ============================================
         // FUNÇÃO PARA RECUPERAR PEDIDO PENDENTE
         // ============================================
-        function recoverPendingOrder() {
-            try {
-                const saved = localStorage.getItem('bebcom_last_order');
-                if (!saved) return;
-                
-                const order = JSON.parse(saved);
-                
-                if (order.confirmed && (Date.now() - order.timestamp < 60 * 60 * 1000)) {
-                    console.log('🔄 Recuperando pedido pendente:', order);
-                    
-                    state.currentOrderId = order.orderId;
-                    state.paymentConfirmed = true;
-                    
-                    const statusDiv = document.getElementById('paymentStatus');
-                    statusDiv.style.display = 'block';
-                    statusDiv.className = 'payment-status success';
-                    statusDiv.innerHTML = '✅ Pagamento aprovado! Seu pedido está confirmado.';
-                    
-                    document.getElementById('payButton').style.display = 'none';
-                    enableWhatsAppButton();
-                } else {
-                    localStorage.removeItem('bebcom_last_order');
-                }
-            } catch (e) {
-                console.warn('Erro ao recuperar pedido:', e);
-                localStorage.removeItem('bebcom_last_order');
-            }
+       function recoverPendingOrder() {
+    try {
+        const saved = localStorage.getItem('bebcom_last_order');
+        if (!saved) return;
+
+        const order = JSON.parse(saved);
+
+        if (Date.now() - order.timestamp > 60 * 60 * 1000) {
+            localStorage.removeItem('bebcom_last_order');
+            return;
         }
+
+        console.log('🔄 Recuperando/verificando pedido:', order);
+
+        state.currentOrderId = order.orderId;
+
+        const statusDiv = document.getElementById('paymentStatus');
+        statusDiv.style.display = 'block';
+
+        if (order.confirmed) {
+            state.paymentConfirmed = true;
+
+            statusDiv.className = 'payment-status success';
+            statusDiv.innerHTML = '✅ Pagamento aprovado! Seu pedido está confirmado.';
+
+            document.getElementById('payButton').style.display = 'none';
+            enableWhatsAppButton();
+
+            return;
+        }
+
+        statusDiv.className = 'payment-status info';
+        statusDiv.innerHTML = '🔄 Verificando pagamento aprovado...';
+
+        checkPaymentStatus(order.orderId, order.paymentId || null);
+
+    } catch (e) {
+        console.warn('Erro ao recuperar pedido:', e);
+        localStorage.removeItem('bebcom_last_order');
+    }
+}
 
         // ============================================
         // VERIFICAR RETORNO DE PAGAMENTO
