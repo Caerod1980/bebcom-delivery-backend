@@ -82,7 +82,11 @@ async function getUberAccessToken() {
         throw new Error('Credenciais Uber não configuradas');
     }
 
-    const response = await fetch('https://auth.uber.com/oauth/v2/token', {
+    const authUrl = UBER_SANDBOX_MODE
+    ? 'https://sandbox-login.uber.com/oauth/v2/token'
+    : 'https://auth.uber.com/oauth/v2/token';
+
+       const response = await fetch(authUrl, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/x-www-form-urlencoded'
@@ -160,10 +164,14 @@ async function createUberDeliveryReal(order, weightInfo, vehicleInfo) {
 
     const payload = buildUberDeliveryPayload(order, weightInfo, vehicleInfo);
 
-    const baseUrl = UBER_CUSTOMER_ID
-    ? `https://api.uber.com/v1/customers/${UBER_CUSTOMER_ID}/deliveries`
-    : `https://api.uber.com/v1/deliveries`;
+   const apiBase = UBER_SANDBOX_MODE
+    ? 'https://sandbox-api.uber.com'
+    : 'https://api.uber.com';
 
+const baseUrl = UBER_CUSTOMER_ID
+    ? `${apiBase}/v1/customers/${UBER_CUSTOMER_ID}/deliveries`
+    : `${apiBase}/v1/deliveries`;
+    
 const response = await fetch(baseUrl, {
     method: 'POST',
     headers: {
