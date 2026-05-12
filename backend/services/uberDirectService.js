@@ -155,22 +155,23 @@ async function createUberDeliveryReal(order, weightInfo, vehicleInfo) {
     const token = await getUberAccessToken();
 
     if (!UBER_CUSTOMER_ID) {
-        throw new Error('UBER_CUSTOMER_ID não configurado');
+    console.warn('⚠️ UBER_CUSTOMER_ID ausente. Tentando Organization default.');
     }
 
     const payload = buildUberDeliveryPayload(order, weightInfo, vehicleInfo);
 
-    const response = await fetch(
-        `https://api.uber.com/v1/customers/${UBER_CUSTOMER_ID}/deliveries`,
-        {
-            method: 'POST',
-            headers: {
-                Authorization: `Bearer ${token}`,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(payload)
-        }
-    );
+    const baseUrl = UBER_CUSTOMER_ID
+    ? `https://api.uber.com/v1/customers/${UBER_CUSTOMER_ID}/deliveries`
+    : `https://api.uber.com/v1/deliveries`;
+
+const response = await fetch(baseUrl, {
+    method: 'POST',
+    headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(payload)
+});
 
     const data = await response.json();
 
@@ -229,11 +230,11 @@ async function processUberDelivery(order, db) {
 
         let delivery;
 
-        if (!UBER_DIRECT_ENABLED || UBER_SANDBOX_MODE) {
-            delivery = await createUberDeliverySimulation(order, weightInfo, vehicleInfo);
-        } else {
-            delivery = await createUberDeliveryReal(order, weightInfo, vehicleInfo);
-        }
+       if (!UBER_DIRECT_ENABLED) {
+          delivery = await createUberDeliverySimulation(order, weightInfo, vehicleInfo);
+       } else {
+          delivery = await createUberDeliveryReal(order, weightInfo, vehicleInfo);
+       }
 
         const trackingUrl =
             delivery.tracking_url ||
