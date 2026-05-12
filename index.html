@@ -1994,6 +1994,7 @@ const FLAVOR_CATALOG = {
 
         if (order.confirmed) {
             state.paymentConfirmed = true;
+            state.paymentProcessing = false;
 
             statusDiv.className = 'payment-status success';
             statusDiv.innerHTML = '✅ Pagamento aprovado! Seu pedido está confirmado.';
@@ -2049,6 +2050,7 @@ const FLAVOR_CATALOG = {
             
             state.currentOrderId = orderId;
             state.paymentConfirmed = true;
+            state.paymentProcessing = false;
             
             const statusDiv = document.getElementById('paymentStatus');
             statusDiv.style.display = 'block';
