@@ -2979,6 +2979,46 @@ const FLAVOR_CATALOG = {
     console.log('✅ WhatsApp liberado após pagamento confirmado');
 }
 
+        function resetAfterPaidOrderSent() {
+    localStorage.removeItem('bebcom_last_order');
+    localStorage.removeItem('bebcom_customer_data');
+
+    state.cart = [];
+    state.paymentConfirmed = false;
+    state.paymentProcessing = false;
+    state.currentOrderId = null;
+    state.preferenceId = null;
+    state.paymentStatus = null;
+    state.deliveryDistance = null;
+    state.deliveryFee = 0;
+    state.whatsappSent = false;
+
+    saveCart();
+
+    const paymentStatus = document.getElementById('paymentStatus');
+    if (paymentStatus) {
+        paymentStatus.style.display = 'none';
+        paymentStatus.innerHTML = '';
+    }
+
+    const payButton = document.getElementById('payButton');
+    if (payButton) {
+        payButton.style.display = 'flex';
+        payButton.disabled = true;
+        payButton.innerHTML = '🏪 Retirada no Local';
+    }
+
+    const whatsappBtn = document.getElementById('whatsappButton');
+    if (whatsappBtn) {
+        whatsappBtn.disabled = true;
+        whatsappBtn.innerHTML = '📱 Enviar Pedido';
+    }
+
+    selectDeliveryType('pickup');
+    updateCart();
+
+    console.log('✅ Estado resetado após envio do pedido pago');
+}
         // ============================================
         // WHATSAPP - ATUALIZADO COM CAMPOS SEPARADOS
         // ============================================
@@ -3042,10 +3082,8 @@ const FLAVOR_CATALOG = {
             window.open(`https://wa.me/${CONFIG.whatsappNumber}?text=${encodeURIComponent(msg)}`, '_blank');
             
             // NOVO: Marcar como enviado e desabilitar botão
-            state.whatsappSent = true;
-            const whatsappBtn = document.getElementById('whatsappButton');
-            whatsappBtn.disabled = true;
-            whatsappBtn.innerHTML = '✅ Pedido Enviado';
+           state.whatsappSent = true;
+           resetAfterPaidOrderSent();
             
             showNotification('✅ Pedido enviado!');
             
