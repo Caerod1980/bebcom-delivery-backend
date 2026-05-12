@@ -1862,25 +1862,28 @@ const FLAVOR_CATALOG = {
         // ============================================
         // INICIALIZAÇÃO PÓS-VERIFICAÇÃO DE IDADE
         // ============================================
-        async function initAfterAgeVerification() {
-            console.log('✅ Inicializando interface...');
-            
-            recoverPendingOrder();
-            
-            await loadAvailability();
-            loadCart();
-            showCategory('drinks-whisky');
-            setupEventListeners();
-            setupPhoneMask();
-            setupCpfMask();
-            selectDeliveryType('pickup');
-            
-            // NOVO: Carregar dados salvos do cliente se existirem
-            loadSavedCustomerData();
-            
-            setInterval(checkBackendHealth, 300000);
-            checkForPaymentReturn();
-        }
+       async function initAfterAgeVerification() {
+    console.log('✅ Inicializando interface.');
+
+    await loadAvailability();
+    loadCart();
+    showCategory('drinks-whisky');
+    setupEventListeners();
+    setupPhoneMask();
+    setupCpfMask();
+
+    loadSavedCustomerData();
+
+    checkForPaymentReturn();
+
+    if (!state.deliveryType && !localStorage.getItem('bebcom_last_order')) {
+        selectDeliveryType('pickup');
+    }
+
+    recoverPendingOrder();
+
+    setInterval(checkBackendHealth, 300000);
+}
 
         // ============================================
         // NOVO: SALVAR DADOS DO CLIENTE ANTES DO PAGAMENTO
@@ -1903,7 +1906,7 @@ const FLAVOR_CATALOG = {
                 }
             };
             
-            sessionStorage.setItem('bebcom_customer_data', JSON.stringify({
+            localStorage.setItem('bebcom_customer_data', JSON.stringify({
                 data: customerData,
                 timestamp: Date.now()
             }));
@@ -1916,14 +1919,14 @@ const FLAVOR_CATALOG = {
         // ============================================
         function loadSavedCustomerData() {
             try {
-                const saved = sessionStorage.getItem('bebcom_customer_data');
+                const saved = localStorage.getItem('bebcom_customer_data');
                 if (!saved) return;
                 
                 const { data, timestamp } = JSON.parse(saved);
                 
                 // Verificar se os dados não expiraram (1 hora)
                 if (Date.now() - timestamp > 60 * 60 * 1000) {
-                    sessionStorage.removeItem('bebcom_customer_data');
+                    localStorage.removeItem('bebcom_customer_data');
                     return;
                 }
                 
@@ -1963,7 +1966,7 @@ const FLAVOR_CATALOG = {
                 
             } catch (e) {
                 console.warn('Erro ao carregar dados salvos:', e);
-                sessionStorage.removeItem('bebcom_customer_data');
+                localStorage.removeItem('bebcom_customer_data');
             }
         }
 
@@ -1972,7 +1975,7 @@ const FLAVOR_CATALOG = {
         // ============================================
         function recoverPendingOrder() {
             try {
-                const saved = sessionStorage.getItem('bebcom_last_order');
+                const saved = localStorage.getItem('bebcom_last_order');
                 if (!saved) return;
                 
                 const order = JSON.parse(saved);
@@ -1991,11 +1994,11 @@ const FLAVOR_CATALOG = {
                     document.getElementById('payButton').style.display = 'none';
                     enableWhatsAppButton();
                 } else {
-                    sessionStorage.removeItem('bebcom_last_order');
+                    localStorage.removeItem('bebcom_last_order');
                 }
             } catch (e) {
                 console.warn('Erro ao recuperar pedido:', e);
-                sessionStorage.removeItem('bebcom_last_order');
+                localStorage.removeItem('bebcom_last_order');
             }
         }
 
@@ -2039,10 +2042,12 @@ const FLAVOR_CATALOG = {
             statusDiv.className = 'payment-status success';
             statusDiv.innerHTML = '✅ Pagamento aprovado! Seu pedido está confirmado.';
             
+           loadSavedCustomerData();
+
             document.getElementById('payButton').style.display = 'none';
             enableWhatsAppButton();
             
-            sessionStorage.setItem('bebcom_last_order', JSON.stringify({
+            localStorage.setItem('bebcom_last_order', JSON.stringify({
                 orderId: orderId,
                 paymentId: paymentId,
                 confirmed: true,
@@ -2659,40 +2664,65 @@ const FLAVOR_CATALOG = {
         // ENTREGA E PAGAMENTO
         // ============================================
         function selectDeliveryType(type) {
-            state.deliveryType = type;
-            const pickupBtn = document.querySelectorAll('.delivery-option')[0];
-            const deliveryBtn = document.querySelectorAll('.delivery-option')[1];
-            const addressFields = document.getElementById('addressFields');
-            const paymentLabel = document.getElementById('paymentLabel');
-            const paymentMethods = document.getElementById('paymentMethods');
-            const payButton = document.getElementById('payButton');
-            const whatsappBtn = document.getElementById('whatsappButton');
-            
-            if (type === 'pickup') {
-                pickupBtn.classList.add('selected'); deliveryBtn.classList.remove('selected');
-                addressFields.style.display = 'none'; paymentLabel.style.display = 'none';
-                paymentMethods.style.display = 'none'; 
-                payButton.disabled = true;
-                payButton.innerHTML = '🏪 Retirada no Local';
-                state.paymentMethod = null; 
-                state.paymentConfirmed = false;
-                whatsappBtn.innerHTML = '📱 Enviar Pedido';
-                whatsappBtn.disabled = true;
-                
-                document.getElementById('deliveryRow').style.display = 'none';
-                document.getElementById('distanceRow').style.display = 'none';
-            } else {
-                pickupBtn.classList.remove('selected'); deliveryBtn.classList.add('selected');
-                addressFields.style.display = 'block'; paymentLabel.style.display = 'block';
-                paymentMethods.style.display = 'grid'; 
-                payButton.disabled = false;
-                selectPaymentMethod('credit_card');
-                payButton.innerHTML = '💰 Pagar com Cartão ou PIX';
-            }
-            updateCart(); 
-            validateForm();
+    state.deliveryType = type;
+
+    const pickupBtn = document.querySelectorAll('.delivery-option')[0];
+    const deliveryBtn = document.querySelectorAll('.delivery-option')[1];
+    const addressFields = document.getElementById('addressFields');
+    const paymentLabel = document.getElementById('paymentLabel');
+    const paymentMethods = document.getElementById('paymentMethods');
+    const payButton = document.getElementById('payButton');
+    const whatsappBtn = document.getElementById('whatsappButton');
+
+    if (type === 'pickup') {
+        pickupBtn.classList.add('selected');
+        deliveryBtn.classList.remove('selected');
+
+        addressFields.style.display = 'none';
+        paymentLabel.style.display = 'none';
+        paymentMethods.style.display = 'none';
+
+        payButton.style.display = 'flex';
+        payButton.disabled = true;
+        payButton.innerHTML = '🏪 Retirada no Local';
+
+        state.paymentMethod = null;
+
+        if (!state.paymentConfirmed) {
+            whatsappBtn.innerHTML = '📱 Enviar Pedido';
+            whatsappBtn.disabled = true;
         }
 
+        document.getElementById('deliveryRow').style.display = 'none';
+        document.getElementById('distanceRow').style.display = 'none';
+
+    } else {
+        pickupBtn.classList.remove('selected');
+        deliveryBtn.classList.add('selected');
+
+        addressFields.style.display = 'block';
+        paymentLabel.style.display = 'block';
+        paymentMethods.style.display = 'grid';
+
+        selectPaymentMethod('credit_card');
+
+        if (state.paymentConfirmed) {
+            payButton.style.display = 'none';
+            whatsappBtn.disabled = false;
+            whatsappBtn.innerHTML = '📱 Enviar Pedido (Pago)';
+        } else {
+            payButton.style.display = 'flex';
+            payButton.disabled = false;
+            payButton.innerHTML = '💰 Pagar com Cartão ou PIX';
+
+            whatsappBtn.disabled = true;
+            whatsappBtn.innerHTML = '📱 Enviar Pedido (Aguardando Pagamento)';
+        }
+    }
+
+    updateCart();
+    validateForm();
+}
         function selectPaymentMethod(method) {
             if (state.deliveryType !== 'delivery') return;
             state.paymentMethod = method;
@@ -2897,18 +2927,18 @@ const FLAVOR_CATALOG = {
                 const data = await response.json();
                 
                 if (data.success && data.initPoint) {
-                    sessionStorage.setItem('bebcom_last_order', JSON.stringify({
-                        orderId: orderId,
-                        preferenceId: data.preferenceId,
-                        confirmed: false,
-                        timestamp: Date.now()
-                    }));
-                    
-                    statusDiv.innerHTML = '🔄 Redirecionando para o Mercado Pago...';
-                    window.location.href = data.initPoint;
-                } else {
-                    throw new Error('Resposta inválida do servidor');
-                }
+    localStorage.setItem('bebcom_last_order', JSON.stringify({
+        orderId: orderId,
+        preferenceId: data.preferenceId,
+        confirmed: false,
+        timestamp: Date.now()
+    }));
+
+    statusDiv.innerHTML = '🔄 Redirecionando para o Mercado Pago...';
+    window.location.href = data.initPoint;
+} else {
+    throw new Error('Resposta inválida do servidor');
+}
                 
             } catch (error) {
                 console.error('❌ Erro no pagamento:', error);
