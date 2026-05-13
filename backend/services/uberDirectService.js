@@ -14,7 +14,7 @@ const UBER_CLIENT_ID = process.env.UBER_CLIENT_ID;
 const UBER_CLIENT_SECRET = process.env.UBER_CLIENT_SECRET;
 const UBER_CUSTOMER_ID = process.env.UBER_CUSTOMER_ID;
 
-const STORE_NAME = process.env.STORE_NAME || 'BebCom Delivery';
+const STORE_NAME = process.env.STORE_NAME || 'Bebidas e Companhia';
 const STORE_PHONE = process.env.STORE_PHONE || process.env.WHATSAPP_NUMBER || '5514996130369';
 
 const STORE_ADDRESS = {
@@ -149,7 +149,7 @@ pickup_longitude: -49.09889888198475,
         })),
         manifest_reference: order.orderId,
         manifest_total_value: Math.round(Number(order.total || 0) * 100),
-        pickup_notes: `Pedido ${order.orderId}. Retirar na loja BebCom Delivery.`,
+        pickup_notes: `Pedido ${order.orderId}. Retirar na loja Bebidas e Companhia. Conferir fachada da loja antes de retirar.`,
         dropoff_notes: order.address.complement
             ? `Complemento/referência: ${order.address.complement}`
             : 'Entregar ao cliente informado.',
