@@ -257,14 +257,24 @@ async function processUberDelivery(order, db) {
         await db.collection('orders').updateOne(
             { _id: order._id },
             {
-                $set: {
-                    'uberDelivery.status': delivery.status || 'created',
-                    'uberDelivery.deliveryId': delivery.id,
-                    'uberDelivery.trackingUrl': trackingUrl,
-                    'uberDelivery.raw': delivery,
-                    'uberDelivery.createdAt': new Date(),
-                    'uberDelivery.error': null
-                }
+               $set: {
+    'uberDelivery.created': true,
+    'uberDelivery.status': delivery.status || 'created',
+    'uberDelivery.deliveryId': delivery.id,
+    'uberDelivery.trackingUrl': trackingUrl,
+
+    // NOVO: dados operacionais para painel
+    'uberDelivery.fee': delivery.fee || delivery.delivery_fee || null,
+    'uberDelivery.currency': delivery.currency || 'BRL',
+    'uberDelivery.courier': delivery.courier || null,
+    'uberDelivery.eta': delivery.dropoff_eta || delivery.eta || null,
+    'uberDelivery.pickupEta': delivery.pickup_eta || null,
+    'uberDelivery.dropoffEta': delivery.dropoff_eta || null,
+
+    'uberDelivery.raw': delivery,
+    'uberDelivery.createdAt': new Date(),
+    'uberDelivery.error': null
+}
             }
         );
 
