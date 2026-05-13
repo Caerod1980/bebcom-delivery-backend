@@ -127,6 +127,9 @@ function buildUberDeliveryPayload(order, weightInfo, vehicleInfo) {
     zip_code: '17054-697',
     country: 'BR'
 }),
+
+pickup_latitude: -22.358239673270123,
+pickup_longitude: -49.09889888198475,
         dropoff_name: order.customer.name,
         dropoff_phone_number: `+${customerPhone}`,
         dropoff_address: JSON.stringify({
