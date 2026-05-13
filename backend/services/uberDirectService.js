@@ -164,10 +164,8 @@ async function createUberDeliveryReal(order, weightInfo, vehicleInfo) {
 
     const payload = buildUberDeliveryPayload(order, weightInfo, vehicleInfo);
 
-   const apiBase = UBER_SANDBOX_MODE
-    ? 'https://sandbox-api.uber.com'
-    : 'https://api.uber.com';
-
+   const apiBase = 'https://api.uber.com';
+    
 const baseUrl = UBER_CUSTOMER_ID
     ? `${apiBase}/v1/customers/${UBER_CUSTOMER_ID}/deliveries`
     : `${apiBase}/v1/deliveries`;
