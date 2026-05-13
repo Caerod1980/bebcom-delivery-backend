@@ -1232,7 +1232,7 @@
                         <div class="address-row" style="display:flex; flex-direction:column;">
                            <input type="text" class="form-input" id="street" placeholder="Rua/Avenida" autocomplete="address-line1">
 
-                           <input type="text" class="form-input" id="number" placeholder='Número — digite "0" no lugar do traço' autocomplete="address-line2">
+                           <input type="text" class="form-input" id="number" placeholder="Número. Ex: 18-10, 1102, 45B ou S/N" autocomplete="address-line2">
                           </div>
                     </div>
                     <div class="form-group">
@@ -3654,8 +3654,10 @@ const FLAVOR_CATALOG = {
             });
             
             document.getElementById('number')?.addEventListener('input', function(e) {
-                this.value = this.value.replace(/[^0-9]/g, '');
-            });
+         this.value = this.value
+        .replace(/[^0-9a-zA-ZÀ-ÿ\-\/\s]/g, '')
+        .toUpperCase();
+        });
         }
 
         function setupPhoneMask() {
