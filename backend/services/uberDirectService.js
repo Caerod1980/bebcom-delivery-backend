@@ -119,17 +119,25 @@ function buildUberDeliveryPayload(order, weightInfo, vehicleInfo) {
         pickup_name: STORE_NAME,
         pickup_phone_number: `+${cleanPhone(STORE_PHONE)}`,
         pickup_address: JSON.stringify({
-            street_address: [
-                `${STORE_ADDRESS.street}, ${STORE_ADDRESS.number}`
-            ],
-            city: STORE_ADDRESS.city,
-            state: STORE_ADDRESS.state,
-            zip_code: STORE_ADDRESS.postalCode,
-            country: STORE_ADDRESS.country
-        }),
+    street_address: [
+        'Avenida José Henrique Ferraz, 18-10'
+    ],
+    city: 'Bauru',
+    state: 'SP',
+    zip_code: '17054-697',
+    country: 'BR'
+}),
         dropoff_name: order.customer.name,
         dropoff_phone_number: `+${customerPhone}`,
-        dropoff_address: dropoffAddress,
+        dropoff_address: JSON.stringify({
+    street_address: [
+        order.address.street || order.address.fullAddress || dropoffAddress
+    ],
+    city: order.address.city || 'Bauru',
+    state: 'SP',
+    zip_code: order.address.postalCode || '',
+    country: 'BR'
+}),
         manifest_items: order.items.map(item => ({
             name: item.title,
             quantity: Number(item.quantity || 1),
