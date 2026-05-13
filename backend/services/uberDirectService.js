@@ -82,9 +82,7 @@ async function getUberAccessToken() {
         throw new Error('Credenciais Uber não configuradas');
     }
 
-    const authUrl = UBER_SANDBOX_MODE
-    ? 'https://sandbox-login.uber.com/oauth/v2/token'
-    : 'https://auth.uber.com/oauth/v2/token';
+    const authUrl = 'https://auth.uber.com/oauth/v2/token';
 
        const response = await fetch(authUrl, {
         method: 'POST',
