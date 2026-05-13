@@ -646,11 +646,12 @@
                             <th onclick="sortBy('deliveryFee')">Taxa</th>
                             <th onclick="sortBy('type')">Tipo</th>
                             <th onclick="sortBy('paymentConfirmed')">Status</th>
+                            <th>Uber Direct</th>
                         </tr>
                     </thead>
                     <tbody id="tableBody">
                         <tr>
-                            <td colspan="10" class="loading">
+                            <td colspan="11" class="loading">
                                 <div class="loading-spinner"></div>
                                 <div>Carregando pedidos...</div>
                             </td>
@@ -823,7 +824,8 @@
                             address: order.address || null,
                             paymentConfirmed: order.status === 'approved',
                             status: order.status,
-                            distance: order.distance
+                            distance: order.distance,
+                            uberDelivery: order.uberDelivery || null
                         };
                     });
                     
@@ -1225,6 +1227,129 @@
             });
         }
 
+        function getUberTrackingUrl(order) {
+    const uber = order.uberDelivery || {};
+    return uber.trackingUrl || uber.tracking_url || uber.raw?.tracking_url || '';
+}
+
+function cleanPhoneForWhatsApp(phone = '') {
+    const digits = String(phone).replace(/\D/g, '');
+    if (!digits) return '';
+    return digits.startsWith('55') ? digits : `55${digits}`;
+}
+
+function formatUberEta(eta) {
+    if (!eta) return '';
+
+    try {
+        const etaDate = new Date(eta);
+        if (isNaN(etaDate.getTime())) return String(eta);
+
+        return etaDate.toLocaleTimeString('pt-BR', {
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+    } catch {
+        return String(eta);
+    }
+}
+
+function renderUberInfo(order) {
+    if (order.type !== 'delivery') {
+        return '<span style="color:#666;">—</span>';
+    }
+
+    const uber = order.uberDelivery || {};
+    const trackingUrl = getUberTrackingUrl(order);
+    const deliveryId = uber.deliveryId || uber.raw?.id || '';
+    const fee = uber.fee ?? uber.raw?.fee;
+    const eta = uber.eta || uber.dropoffEta || uber.raw?.dropoff_eta;
+    const courier = uber.courier || uber.raw?.courier;
+    const status = uber.status || '';
+
+    if (!order.uberDelivery) {
+        return '<span style="color:#f59e0b;">⏳ Não acionado</span>';
+    }
+
+    if (status === 'error') {
+        return `
+            <div style="color:#ef4444; font-weight:700;">❌ Falhou</div>
+            <div style="font-size:11px; color:#fca5a5; max-width:220px;">
+                ${uber.error || 'Erro ao acionar Uber Direct'}
+            </div>
+        `;
+    }
+
+    if (status === 'simulated') {
+        return `
+            <div style="color:#8b5cf6; font-weight:700;">🧪 Simulado</div>
+            <div style="font-size:11px; color:#c4b5fd;">Entrega simulada no sistema</div>
+        `;
+    }
+
+    return `
+        <div style="color:#10b981; font-weight:800;">✅ Acionado</div>
+
+        ${deliveryId ? `<div style="font-size:11px; color:#ddd;">ID: ${deliveryId}</div>` : ''}
+
+        ${fee !== undefined && fee !== null ? `
+            <div style="font-size:11px; color:#ddd;">💰 Taxa Uber: R$ ${(Number(fee) / 100).toFixed(2)}</div>
+        ` : ''}
+
+        ${eta ? `
+            <div style="font-size:11px; color:#ddd;">📍 ETA: ${formatUberEta(eta)}</div>
+        ` : ''}
+
+        ${courier?.name ? `
+            <div style="font-size:11px; color:#ddd;">👤 Entregador: ${courier.name}</div>
+        ` : ''}
+
+        ${trackingUrl ? `
+            <div style="margin-top:6px; display:flex; gap:6px; flex-wrap:wrap;">
+                <button onclick="copyUberTrackingLink('${order.id}')" style="padding:6px 8px; border:none; border-radius:6px; background:#3b82f6; color:white; cursor:pointer;">
+                    📋 Copiar
+                </button>
+                <button onclick="sendUberTrackingToCustomer('${order.id}')" style="padding:6px 8px; border:none; border-radius:6px; background:#25D366; color:white; cursor:pointer;">
+                    📲 Enviar
+                </button>
+            </div>
+        ` : ''}
+    `;
+}
+
+function copyUberTrackingLink(orderId) {
+    const order = allOrders.find(o => o.id === orderId);
+    const link = getUberTrackingUrl(order);
+
+    if (!link) {
+        showNotification('❌ Link de acompanhamento não disponível', 'error');
+        return;
+    }
+
+    navigator.clipboard.writeText(link)
+        .then(() => showNotification('✅ Link copiado!', 'success'))
+        .catch(() => alert(`Copie o link manualmente:\n${link}`));
+}
+
+function sendUberTrackingToCustomer(orderId) {
+    const order = allOrders.find(o => o.id === orderId);
+    const link = getUberTrackingUrl(order);
+
+    if (!link) {
+        showNotification('❌ Link de acompanhamento não disponível', 'error');
+        return;
+    }
+
+    const phone = cleanPhoneForWhatsApp(order.customer?.phone || '');
+    if (!phone) {
+        showNotification('❌ WhatsApp do cliente não encontrado', 'error');
+        return;
+    }
+
+    const msg = `🚚 Acompanhe sua entrega BebCom Delivery:\n${link}`;
+    window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank');
+}
+
         // ============================================
         // RENDERIZAR TABELA
         // ============================================
@@ -1232,7 +1357,7 @@
             const tbody = document.getElementById('tableBody');
             
             if (filteredOrders.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="10" style="text-align: center; padding: 50px;">🕒 Nenhum pedido encontrado</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="11" style="text-align: center; padding: 50px;">🕒 Nenhum pedido encontrado</td></tr>';
                 return;
             }
             
@@ -1261,6 +1386,7 @@
                         <td>R$ ${(order.deliveryFee || 0).toFixed(2)}</td>
                         <td><span class="badge ${typeClass}">${typeText}</span></td>
                         <td><span class="badge ${statusClass}">${statusText}</span></td>
+                        <td>${renderUberInfo(order)}</td>
                     </tr>
                 `;
             }).join('');
@@ -1665,6 +1791,8 @@ ${addr.complement ? `Complemento: ${addr.complement}` : ''}
         window.importFromJSON = importFromJSON;
         window.refreshDashboard = refreshDashboard;
         window.showQuickStats = showQuickStats;
+        window.copyUberTrackingLink = copyUberTrackingLink;
+        window.sendUberTrackingToCustomer = sendUberTrackingToCustomer;
     </script>
 </body>
 </html>
