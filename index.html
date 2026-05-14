@@ -1605,6 +1605,7 @@ const FLAVOR_CATALOG = {
             mpInstance: null,
             deliveryDistance: null,
             deliveryFee: 0,
+            uberQuote: null,
             preferenceId: null,
             paymentStatus: null,
             paymentCheckInterval: null,
@@ -2577,70 +2578,102 @@ const FLAVOR_CATALOG = {
         // CÁLCULO DE TAXA DE ENTREGA - ATUALIZADO
         // ============================================
         async function calculateDeliveryFee() {
-            const street = document.getElementById('street').value.trim();
-            const number = document.getElementById('number').value.trim();
-            const neighborhood = document.getElementById('neighborhood').value.trim();
-            const city = document.getElementById('city').value.trim() || 'Bauru';
-            
-            if (!street || !number || !neighborhood) {
-                showNotification('❌ Preencha Rua, Número e Bairro', 'error');
-                return;
-            }
+    const street = document.getElementById('street').value.trim();
+    const number = document.getElementById('number').value.trim();
+    const neighborhood = document.getElementById('neighborhood').value.trim();
+    const city = document.getElementById('city').value.trim() || 'Bauru';
 
-            const fullAddress = `${street}, ${number}, ${neighborhood}, ${city}, SP`;
-            
-            const statusEl = document.getElementById('deliveryCalculationStatus');
-            statusEl.innerHTML = '<span class="loading-spinner"></span> Calculando distância...';
-            
-            try {
-                const geocodeUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(fullAddress)}&limit=1`;
-                const geocodeResponse = await fetch(geocodeUrl, {
-                    headers: { 'User-Agent': 'BebCom-Delivery/1.0' }
-                });
-                
-                if (!geocodeResponse.ok) throw new Error('Erro na geocodificação');
-                
-                const geocodeData = await geocodeResponse.json();
-                
-                if (geocodeData.length === 0) {
-                    statusEl.innerHTML = '❌ Endereço não encontrado';
-                    return;
-                }
-                
-                const clientLat = parseFloat(geocodeData[0].lat);
-                const clientLon = parseFloat(geocodeData[0].lon);
-                
-                const distance = calculateDistance(
-                    CONFIG.storeLocation.lat, 
-                    CONFIG.storeLocation.lng,
-                    clientLat, 
-                    clientLon
-                );
-                
-                if (distance > CONFIG.deliveryRates.maxDistance) {
-                    statusEl.innerHTML = `❌ Distância de ${distance.toFixed(1)}km excede o limite de ${CONFIG.deliveryRates.maxDistance}km`;
-                    state.deliveryDistance = null;
-                    state.deliveryFee = 0;
-                    updateCart();
-                    return;
-                }
-                
-                if (distance < CONFIG.deliveryRates.minDistance) {
-                    state.deliveryFee = CONFIG.deliveryRates.baseFee;
-                } else {
-                    state.deliveryFee = CONFIG.deliveryRates.baseFee + (distance * CONFIG.deliveryRates.perKm);
-                }
-                
-                state.deliveryDistance = distance;
-                
-                statusEl.innerHTML = `✅ Distância: ${distance.toFixed(1)}km - Taxa: R$ ${state.deliveryFee.toFixed(2)}`;
-                updateCart();
-                
-            } catch (error) {
-                console.error('Erro ao calcular distância:', error);
-                statusEl.innerHTML = '❌ Erro ao calcular distância. Tente novamente.';
-            }
+    if (!street || !number || !neighborhood) {
+        showNotification('❌ Preencha Rua, Número e Bairro', 'error');
+        return;
+    }
+
+    if (state.cart.length === 0) {
+        showNotification('❌ Adicione produtos ao carrinho antes de calcular a entrega', 'error');
+        return;
+    }
+
+    const statusEl = document.getElementById('deliveryCalculationStatus');
+    const btn = document.getElementById('calculateDeliveryBtn');
+    const originalText = btn.innerHTML;
+
+    btn.disabled = true;
+    btn.innerHTML = '<span class="loading-spinner"></span> Cotando Uber...';
+    statusEl.innerHTML = '<span class="loading-spinner"></span> Consultando taxa real da Uber...';
+
+    try {
+        const address = {
+            street: `${street}, ${number}`,
+            neighborhood,
+            city,
+            complement: document.getElementById('addressComplement')?.value.trim() || '',
+            fullAddress: `${street}, ${number} - ${neighborhood}, ${city}`
+        };
+
+        const items = state.cart.map(item => ({
+            id: item.productId,
+            title: item.name,
+            description: item.flavors ? `Sabor: ${JSON.stringify(item.flavors)}` : '',
+            quantity: item.quantity,
+            unit_price: item.price
+        }));
+
+        const subtotal = items.reduce((sum, item) => {
+            return sum + (Number(item.quantity) * Number(item.unit_price));
+        }, 0);
+
+        const response = await fetch(`${CONFIG.backendUrl}/api/uber/quote`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                address,
+                items,
+                subtotal
+            })
+        });
+
+        const data = await response.json();
+
+        if (!response.ok || !data.success) {
+            throw new Error(data.error || 'Não foi possível cotar a entrega Uber');
         }
+
+        let deliveryFee = Number(data.deliveryFee || data.uberFee || 0);
+
+        // Opcional: arredondar para cima para proteger centavos
+        deliveryFee = Math.ceil(deliveryFee * 100) / 100;
+
+        state.deliveryFee = deliveryFee;
+        state.deliveryDistance = 0.1; // mantém validação atual sem quebrar fluxo
+        state.uberQuote = {
+            quoteId: data.quoteId,
+            fee: deliveryFee,
+            uberFee: Number(data.uberFee || deliveryFee),
+            expiresAt: data.expiresAt || null,
+            currency: data.currency || 'BRL',
+            raw: data.raw || null
+        };
+
+        statusEl.innerHTML = `✅ Taxa Uber Direct: R$ ${deliveryFee.toFixed(2)}`;
+        updateCart();
+        validateForm();
+
+    } catch (error) {
+        console.error('❌ Erro ao cotar Uber:', error);
+
+        state.deliveryFee = 0;
+        state.deliveryDistance = null;
+        state.uberQuote = null;
+
+        statusEl.innerHTML = `❌ ${error.message}`;
+        updateCart();
+        validateForm();
+
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+    }
+}
 
         function calculateDistance(lat1, lon1, lat2, lon2) {
             const R = 6371;
@@ -2680,6 +2713,9 @@ const FLAVOR_CATALOG = {
         // ============================================
         function selectDeliveryType(type) {
     state.deliveryType = type;
+    state.deliveryFee = 0;
+    state.deliveryDistance = null;
+    state.uberQuote = null;
 
     const pickupBtn = document.querySelectorAll('.delivery-option')[0];
     const deliveryBtn = document.querySelectorAll('.delivery-option')[1];
@@ -2920,6 +2956,7 @@ const FLAVOR_CATALOG = {
                     deliveryType: state.deliveryType,
                     paymentMethod: state.paymentMethod,
                     address: address,
+                    uberQuote: state.uberQuote,
                     notificationUrl: `${CONFIG.backendUrl}/api/webhooks/mercadopago`,
                     redirectUrls: {
                         success: `${window.location.origin}${window.location.pathname}?status=approved&order_id=${orderId}`,
