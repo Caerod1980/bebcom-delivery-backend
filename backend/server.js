@@ -5,7 +5,10 @@ const crypto = require('crypto');
 const rateLimit = require('express-rate-limit');
 const { MongoClient, ObjectId } = require('mongodb');
 const mercadopago = require('mercadopago');
-const { processUberDelivery } = require('./services/uberDirectService');
+const { 
+    processUberDelivery,
+    createUberDeliveryQuote
+} = require('./services/uberDirectService');
 
 const app = express();
 app.set('trust proxy', 1); // Confia no primeiro proxy (Azure)
@@ -224,19 +227,68 @@ app.post('/api/admin/verify', adminLimiter, (req, res) => {
     });
 });
 
+// ========== COTAÇÃO UBER DIRECT ==========
+app.post('/api/uber/quote', paymentLimiter, async (req, res) => {
+    try {
+        const { address, items, subtotal } = req.body;
+
+        if (!address) {
+            return res.status(400).json({
+                success: false,
+                error: 'Endereço obrigatório para cotação'
+            });
+        }
+
+        if (!items || !Array.isArray(items) || items.length === 0) {
+            return res.status(400).json({
+                success: false,
+                error: 'Itens obrigatórios para cotação'
+            });
+        }
+
+        const quote = await createUberDeliveryQuote(address);
+
+        console.log('🚚 Cotação Uber Direct criada:', {
+            quoteId: quote.quoteId,
+            fee: quote.fee,
+            currency: quote.currency,
+            expiresAt: quote.expiresAt
+        });
+
+        res.json({
+            success: true,
+            uberFee: quote.fee,
+            deliveryFee: quote.fee,
+            quoteId: quote.quoteId,
+            expiresAt: quote.expiresAt,
+            currency: quote.currency,
+            raw: quote.raw
+        });
+
+    } catch (error) {
+        console.error('❌ Erro na cotação Uber:', error);
+
+        res.status(500).json({
+            success: false,
+            error: error.message
+        });
+    }
+});
+
 // ========== ENDPOINT DE PAGAMENTO MERCADO PAGO CORRIGIDO ==========
 app.post('/api/create-payment', paymentLimiter, async (req, res) => {
     try {
         const {
-            orderId,
-            customer,
-            items,
-            total,
-            deliveryFee,
-            deliveryType,
-            paymentMethod,
-            address
-        } = req.body;
+    orderId,
+    customer,
+    items,
+    total,
+    deliveryFee,
+    deliveryType,
+    paymentMethod,
+    address,
+    uberQuote
+} = req.body;
 
         if (!items || !Array.isArray(items) || items.length === 0) {
             return res.status(400).json({
@@ -337,6 +389,7 @@ app.post('/api/create-payment', paymentLimiter, async (req, res) => {
                 deliveryFee: deliveryFee,
                 deliveryType: deliveryType,
                 address: address,
+                uberQuote: uberQuote || null,
                 status: 'pending',
                 createdAt: new Date(),
                 initPoint: response.body.init_point
