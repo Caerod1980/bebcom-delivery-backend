@@ -142,11 +142,21 @@ pickup_longitude: -49.09889888198475,
     country: 'BR'
 }),
         manifest_items: order.items.map(item => ({
-            name: item.title,
-            quantity: Number(item.quantity || 1),
-            size: 'small',
-            price: Math.round(Number(item.unit_price || 0) * 100)
-        })),
+    name: item.title,
+    quantity: Number(item.quantity || 1),
+    size: 'small',
+
+    // peso individual aproximado
+    weight: Math.round(
+        (
+            Number(item.weightKg || item.weight || 0.5) * 1000
+        )
+    ),
+
+    weight_unit: 'grams',
+
+    price: Math.round(Number(item.unit_price || 0) * 100)
+})),
         manifest_reference: order.orderId,
         manifest_total_value: Math.round(Number(order.total || 0) * 100),
         pickup_notes: `Pedido ${order.orderId}. Retirar na loja Bebidas e Companhia. Conferir fachada da loja antes de retirar.`,
