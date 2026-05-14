@@ -877,7 +877,7 @@ async function initializeMongoDB() {
         app.locals.isDBConnected = true;
 
         // Cria collections se não existirem
-        const collections = ['products', 'flavors', 'orders', 'admin_logs'];
+        const collections = ['products', 'flavors', 'orders', 'admin_logs', 'uber_webhooks'];
         for (const name of collections) {
             try {
                 await db.createCollection(name);
@@ -909,6 +909,171 @@ process.on('SIGTERM', () => {
     }
     process.exit(0);
 });
+
+// ========== WEBHOOK UBER DIRECT ==========
+app.post('/api/webhooks/uber-direct', async (req, res) => {
+    try {
+        console.log('🚚 Webhook Uber Direct recebido:', JSON.stringify(req.body, null, 2));
+
+        // Responde rápido para a Uber
+        res.status(200).json({ received: true });
+
+        if (!app.locals.db) {
+            console.log('⚠️ Banco indisponível para webhook Uber');
+            return;
+        }
+
+        const body = req.body || {};
+
+        const eventId = body.event_id || body.eventId || null;
+        const eventType = body.event_type || body.eventType || body.kind || '';
+        const status = body.status || body.data?.status || body.meta?.status || null;
+        const data = body.data || body.meta || body.resource || {};
+
+        const deliveryId =
+            data.id ||
+            data.delivery_id ||
+            data.deliveryId ||
+            body.delivery_id ||
+            body.deliveryId ||
+            data.external_delivery_id ||
+            null;
+
+        const externalDeliveryId =
+            data.external_delivery_id ||
+            data.externalDeliveryId ||
+            body.external_delivery_id ||
+            body.externalDeliveryId ||
+            null;
+
+        // Evita processar o mesmo evento duas vezes
+        if (eventId) {
+            const alreadyProcessed = await app.locals.db.collection('uber_webhooks').findOne({
+                eventId
+            });
+
+            if (alreadyProcessed) {
+                console.log(`ℹ️ Webhook Uber duplicado ignorado: ${eventId}`);
+                return;
+            }
+
+            await app.locals.db.collection('uber_webhooks').insertOne({
+                eventId,
+                eventType,
+                status,
+                deliveryId,
+                externalDeliveryId,
+                raw: body,
+                receivedAt: new Date()
+            });
+        }
+
+        const filter = {
+            $or: [
+                { 'uberDelivery.deliveryId': deliveryId },
+                { orderId: externalDeliveryId },
+                { 'uberDelivery.raw.id': deliveryId },
+                { 'uberDelivery.raw.external_delivery_id': externalDeliveryId }
+            ].filter(condition => {
+                const value = Object.values(condition)[0];
+                return value !== null && value !== undefined && value !== '';
+            })
+        };
+
+        if (!filter.$or.length) {
+            console.log('⚠️ Webhook Uber sem deliveryId/orderId reconhecível');
+            return;
+        }
+
+        const normalizedStatus = normalizeUberDeliveryStatus(status);
+
+        const update = {
+            'uberDelivery.lastWebhookAt': new Date(),
+            'uberDelivery.lastWebhookEventId': eventId,
+            'uberDelivery.lastWebhookType': eventType,
+            'uberDelivery.webhookStatus': status,
+            'uberDelivery.status': normalizedStatus,
+            'uberDelivery.rawWebhook': body
+        };
+
+        if (data.tracking_url || data.trackingUrl) {
+            update['uberDelivery.trackingUrl'] = data.tracking_url || data.trackingUrl;
+        }
+
+        if (data.courier) {
+            update['uberDelivery.courier'] = data.courier;
+        }
+
+        if (data.dropoff_eta || data.eta) {
+            update['uberDelivery.eta'] = data.dropoff_eta || data.eta;
+            update['uberDelivery.dropoffEta'] = data.dropoff_eta || data.eta;
+        }
+
+        if (data.pickup_eta) {
+            update['uberDelivery.pickupEta'] = data.pickup_eta;
+        }
+
+        if (normalizedStatus === 'delivered') {
+            update['uberDelivery.deliveredAt'] = new Date();
+        }
+
+        if (normalizedStatus === 'canceled') {
+            update['uberDelivery.canceledAt'] = new Date();
+        }
+
+        const result = await app.locals.db.collection('orders').updateOne(
+            filter,
+            { $set: update }
+        );
+
+        console.log('✅ Webhook Uber processado:', {
+            eventId,
+            eventType,
+            status,
+            normalizedStatus,
+            deliveryId,
+            externalDeliveryId,
+            matched: result.matchedCount,
+            modified: result.modifiedCount
+        });
+
+    } catch (error) {
+        console.error('❌ Erro no webhook Uber Direct:', error);
+        if (!res.headersSent) {
+            res.status(500).json({ error: 'Erro interno' });
+        }
+    }
+});
+
+function normalizeUberDeliveryStatus(status = '') {
+    const s = String(status).toLowerCase();
+
+    if (!s) return 'updated';
+
+    if (['pending', 'created'].includes(s)) return 'created';
+
+    if (['pickup', 'courier_assigned', 'courier_imminent'].includes(s)) {
+        return 'pickup';
+    }
+
+    if (['dropoff', 'in_progress', 'en_route', 'delivering'].includes(s)) {
+        return 'in_route';
+    }
+
+    if (['delivered', 'completed'].includes(s)) {
+        return 'delivered';
+    }
+
+    if (['canceled', 'cancelled', 'failed'].includes(s)) {
+        return 'canceled';
+    }
+
+    if (['returned', 'returning'].includes(s)) {
+        return 'returned';
+    }
+
+    return s;
+}
 
 // ========== INICIAR SERVIDOR ==========
 const server = app.listen(PORT, '0.0.0.0', () => {
