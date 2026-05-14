@@ -116,6 +116,7 @@ function buildUberDeliveryPayload(order, weightInfo, vehicleInfo) {
 
     return {
         external_delivery_id: order.orderId,
+        ...(order.uberQuote?.quoteId ? { quote_id: order.uberQuote.quoteId } : {}),
         pickup_name: STORE_NAME,
         pickup_phone_number: `+${cleanPhone(STORE_PHONE)}`,
         pickup_address: JSON.stringify({
@@ -163,6 +164,34 @@ pickup_longitude: -49.09889888198475,
         }
     };
 }
+function buildUberQuotePayload(address = {}) {
+    const dropoffAddress = buildFullAddress(address);
+
+    return {
+        pickup_address: JSON.stringify({
+            street_address: [
+                'Avenida José Henrique Ferraz, 18-10'
+            ],
+            city: 'Bauru',
+            state: 'SP',
+            zip_code: '17054-697',
+            country: 'BR'
+        }),
+
+        pickup_latitude: -22.358239673270123,
+        pickup_longitude: -49.09889888198475,
+
+        dropoff_address: JSON.stringify({
+            street_address: [
+                address.street || address.fullAddress || dropoffAddress
+            ],
+            city: address.city || 'Bauru',
+            state: 'SP',
+            zip_code: address.postalCode || '',
+            country: 'BR'
+        })
+    };
+}
 
 async function createUberDeliveryReal(order, weightInfo, vehicleInfo) {
     const token = await getUberAccessToken();
@@ -195,6 +224,49 @@ const response = await fetch(baseUrl, {
     }
 
     return data;
+}
+async function createUberDeliveryQuote(address) {
+    const token = await getUberAccessToken();
+
+    if (!UBER_CUSTOMER_ID) {
+        throw new Error('UBER_CUSTOMER_ID não configurado para cotação Uber');
+    }
+
+    const payload = buildUberQuotePayload(address);
+
+    const response = await fetch(
+        `https://api.uber.com/v1/customers/${UBER_CUSTOMER_ID}/delivery_quotes`,
+        {
+            method: 'POST',
+            headers: {
+                Authorization: `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(payload)
+        }
+    );
+
+    const data = await response.json();
+
+    if (!response.ok) {
+        throw new Error(`Erro ao cotar entrega Uber: ${JSON.stringify(data)}`);
+    }
+
+    const feeInCents = Number(data.fee || data.delivery_fee || 0);
+    const fee = feeInCents / 100;
+
+    return {
+        success: true,
+        quoteId: data.id || data.quote_id || null,
+        fee,
+        feeInCents,
+        currency: data.currency || data.currency_code || 'BRL',
+        expiresAt: data.expires_at || data.expiresAt || null,
+        duration: data.duration || null,
+        pickupDuration: data.pickup_duration || null,
+        dropoffEta: data.dropoff_eta || null,
+        raw: data
+    };
 }
 
 async function createUberDeliverySimulation(order, weightInfo, vehicleInfo) {
@@ -324,6 +396,7 @@ async function processUberDelivery(order, db) {
 
 module.exports = {
     processUberDelivery,
+    createUberDeliveryQuote,
     calculateOrderWeight,
     selectVehicleByWeight
 };
