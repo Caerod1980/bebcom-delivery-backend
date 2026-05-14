@@ -141,19 +141,16 @@ pickup_longitude: -49.09889888198475,
     zip_code: order.address.postalCode || '',
     country: 'BR'
 }),
-        manifest_items: order.items.map(item => ({
+       manifest_items: order.items.map(item => ({
     name: item.title,
     quantity: Number(item.quantity || 1),
     size: 'small',
 
-    // peso individual aproximado
     weight: Math.round(
-        (
-            Number(item.weightKg || item.weight || 0.5) * 1000
-        )
+        Number(item.weightKg || item.weight || 0.5) * 1000
     ),
 
-    weight_unit: 'grams',
+    weight_unit: 'g',
 
     price: Math.round(Number(item.unit_price || 0) * 100)
 })),
