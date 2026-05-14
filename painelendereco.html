@@ -1286,6 +1286,39 @@ function renderUberInfo(order) {
             <div style="font-size:11px; color:#c4b5fd;">Entrega simulada no sistema</div>
         `;
     }
+   if (status === 'pickup') {
+    return `
+        <div style="color:#3b82f6; font-weight:800;">🛵 Entregador indo para retirada</div>
+        ${deliveryId ? `<div style="font-size:11px; color:#ddd;">ID: ${deliveryId}</div>` : ''}
+        ${eta ? `<div style="font-size:11px; color:#ddd;">📍 ETA: ${formatUberEta(eta)}</div>` : ''}
+        ${trackingUrl ? renderUberButtons(order.id) : ''}
+    `;
+}
+
+if (status === 'in_route') {
+    return `
+        <div style="color:#f59e0b; font-weight:800;">🚚 Em rota para o cliente</div>
+        ${deliveryId ? `<div style="font-size:11px; color:#ddd;">ID: ${deliveryId}</div>` : ''}
+        ${eta ? `<div style="font-size:11px; color:#ddd;">📍 ETA: ${formatUberEta(eta)}</div>` : ''}
+        ${trackingUrl ? renderUberButtons(order.id) : ''}
+    `;
+}
+
+if (status === 'delivered') {
+    return `
+        <div style="color:#10b981; font-weight:800;">✅ Entregue</div>
+        ${deliveryId ? `<div style="font-size:11px; color:#ddd;">ID: ${deliveryId}</div>` : ''}
+        ${uber.deliveredAt ? `<div style="font-size:11px; color:#ddd;">Finalizado: ${new Date(uber.deliveredAt).toLocaleString('pt-BR')}</div>` : ''}
+    `;
+}
+
+if (status === 'canceled') {
+    return `
+        <div style="color:#ef4444; font-weight:800;">🚫 Cancelado</div>
+        ${deliveryId ? `<div style="font-size:11px; color:#ddd;">ID: ${deliveryId}</div>` : ''}
+        <div style="font-size:11px; color:#fca5a5;">Verificar entrega manual</div>
+    `;
+} 
 
     return `
         <div style="color:#10b981; font-weight:800;">✅ Acionado</div>
@@ -1314,6 +1347,18 @@ function renderUberInfo(order) {
                 </button>
             </div>
         ` : ''}
+    `;
+}
+        function renderUberButtons(orderId) {
+    return `
+        <div style="margin-top:6px; display:flex; gap:6px; flex-wrap:wrap;">
+            <button onclick="copyUberTrackingLink('${orderId}')" style="padding:6px 8px; border:none; border-radius:6px; background:#3b82f6; color:white; cursor:pointer;">
+                📋 Copiar
+            </button>
+            <button onclick="sendUberTrackingToCustomer('${orderId}')" style="padding:6px 8px; border:none; border-radius:6px; background:#25D366; color:white; cursor:pointer;">
+                📲 Enviar
+            </button>
+        </div>
     `;
 }
 
