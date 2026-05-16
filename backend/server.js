@@ -446,7 +446,18 @@ const payment = paymentResponse.body;
 console.log('💳 Pagamento Mercado Pago consultado:', {
     id: payment.id,
     status: payment.status,
-    external_reference: payment.external_reference
+    status_detail: payment.status_detail,
+    external_reference: payment.external_reference,
+    payment_method_id: payment.payment_method_id,
+    payment_type_id: payment.payment_type_id,
+    issuer_id: payment.issuer_id,
+    installments: payment.installments,
+    transaction_amount: payment.transaction_amount,
+    card: payment.card ? {
+        first_six_digits: payment.card.first_six_digits,
+        last_four_digits: payment.card.last_four_digits,
+        cardholder: payment.card.cardholder
+    } : null
 });
 
 let order = await app.locals.db.collection('orders').findOne({
