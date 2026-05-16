@@ -2078,32 +2078,68 @@ const FLAVOR_CATALOG = {
         // FUNÇÃO PARA VERIFICAR STATUS NO BACKEND
         // ============================================
         async function checkPaymentStatus(orderId, paymentId) {
-            try {
-                console.log('🔄 Verificando status do pagamento...');
-                
-               const url = paymentId
-                   ? `${CONFIG.backendUrl}/api/payment-status/${orderId}?paymentId=${paymentId}`
-                   :`${CONFIG.backendUrl}/api/payment-status/${orderId}`;
+    try {
+        console.log('🔄 Verificando status do pagamento.');
 
-                const response = await fetch(url);
-                const data = await response.json();
-                
-                console.log('📥 Status do pedido:', data);
-                
-                if (data.success && data.status === 'approved') {
-                    confirmPaymentSuccess(orderId, paymentId);
-                } else {
-                    setTimeout(() => checkPaymentStatus(orderId, paymentId), 3000);
-                    
-                    const statusDiv = document.getElementById('paymentStatus');
-                    statusDiv.innerHTML = '⏳ Pagamento processando. Aguarde confirmação...';
-                }
-                
-            } catch (error) {
-                console.error('❌ Erro ao verificar status:', error);
-                setTimeout(() => checkPaymentStatus(orderId, paymentId), 5000);
-            }
+        const url = paymentId
+            ? `${CONFIG.backendUrl}/api/payment-status/${orderId}?paymentId=${paymentId}`
+            : `${CONFIG.backendUrl}/api/payment-status/${orderId}`;
+
+        const response = await fetch(url);
+        const data = await response.json();
+
+        console.log('📥 Status do pedido:', data);
+
+        const statusDiv = document.getElementById('paymentStatus');
+        statusDiv.style.display = 'block';
+
+        if (data.success && data.status === 'approved') {
+            confirmPaymentSuccess(orderId, paymentId);
+            return;
         }
+
+        if (data.success && ['rejected', 'cancelled', 'canceled', 'expired'].includes(data.status)) {
+            state.paymentConfirmed = false;
+            state.paymentProcessing = false;
+
+            statusDiv.className = 'payment-status error';
+            statusDiv.innerHTML = '❌ Pagamento recusado ou expirado. Tente outro cartão ou pague via PIX.';
+
+            const payButton = document.getElementById('payButton');
+            payButton.disabled = false;
+            payButton.style.display = 'flex';
+            payButton.innerHTML = '💰 Tentar pagar novamente';
+
+            const whatsappButton = document.getElementById('whatsappButton');
+            whatsappButton.disabled = true;
+            whatsappButton.innerHTML = '📱 Enviar Pedido (Aguardando Pagamento)';
+
+            sessionStorage.removeItem('bebcom_last_order');
+            localStorage.removeItem('bebcom_last_order');
+
+            validateForm();
+            return;
+        }
+
+        statusDiv.className = 'payment-status info';
+        statusDiv.innerHTML = '⏳ Pagamento processando. Aguarde confirmação.';
+
+        setTimeout(() => checkPaymentStatus(orderId, paymentId), 3000);
+
+    } catch (error) {
+        console.error('❌ Erro ao verificar status:', error);
+
+        const statusDiv = document.getElementById('paymentStatus');
+        statusDiv.style.display = 'block';
+        statusDiv.className = 'payment-status error';
+        statusDiv.innerHTML = '❌ Erro ao verificar pagamento. Tente novamente.';
+
+        const payButton = document.getElementById('payButton');
+        payButton.disabled = false;
+        payButton.style.display = 'flex';
+        payButton.innerHTML = '💰 Tentar pagar novamente';
+    }
+}
 
         // ============================================
         // STORAGE MANAGEMENT
