@@ -515,10 +515,11 @@
         </div>
 
         <!-- Tabs -->
-        <div class="tabs">
-            <div class="tab active" onclick="switchTab('dashboard')">📊 Dashboard</div>
-            <div class="tab" onclick="switchTab('orders')">📋 Pedidos</div>
-        </div>
+      <div class="tabs">
+    <div class="tab active" onclick="switchTab('dashboard')">📊 Dashboard</div>
+    <div class="tab" onclick="switchTab('orders')">📋 Pedidos</div>
+    <div class="tab" onclick="switchTab('clube')">🎮 Clube Bebcom</div>
+</div>
 
         <!-- Dashboard Tab -->
         <div id="dashboard-tab" class="tab-content active">
@@ -666,6 +667,101 @@
                 </div>
             </div>
         </div>
+
+        <!-- Clube Bebcom Tab -->
+<div id="clube-tab" class="tab-content">
+
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-title">🎮 Jogadores</div>
+            <div class="stat-value" id="clubePlayersCount">-</div>
+            <div class="stat-sub">Clientes cadastrados no Clube</div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-title">📷 QR Codes</div>
+            <div class="stat-value" id="clubeQrCount">-</div>
+            <div class="stat-sub">Códigos gerados para campanhas</div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-title">⭐ XP Gerado</div>
+            <div class="stat-value" id="clubeXpCount">-</div>
+            <div class="stat-sub">Experiência acumulada pelos jogadores</div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-title">🎁 Recompensas</div>
+            <div class="stat-value" id="clubeRewardsCount">-</div>
+            <div class="stat-sub">Cupons desbloqueados</div>
+        </div>
+    </div>
+
+    <div class="table-container">
+        <h2 style="margin-bottom: 20px;">🎯 Criar Missão</h2>
+
+        <div class="filter-section">
+            <div class="filter-group">
+                <label>Título:</label>
+                <input type="text" id="missionTitle" placeholder="Ex: Primeira Jornada Bebcom">
+            </div>
+
+            <div class="filter-group">
+                <label>Meta XP:</label>
+                <input type="number" id="missionTargetXp" value="100">
+            </div>
+
+            <div class="filter-group">
+                <label>Prêmio:</label>
+                <input type="text" id="missionRewardTitle" placeholder="Ex: Cupom especial">
+            </div>
+        </div>
+
+        <div class="filter-section">
+            <div class="filter-group" style="width: 100%;">
+                <label>Descrição:</label>
+                <input type="text" id="missionDescription" placeholder="Escaneie produtos participantes e acumule XP.">
+            </div>
+        </div>
+
+        <button class="header-btn btn-stats" onclick="createClubeMission()">
+            🚀 Criar Missão
+        </button>
+    </div>
+
+    <div class="table-container">
+        <h2 style="margin-bottom: 20px;">📷 Gerar QR Codes</h2>
+
+        <div class="filter-section">
+            <div class="filter-group">
+                <label>Produto:</label>
+                <input type="text" id="qrProduct" placeholder="Ex: Big Power">
+            </div>
+
+            <div class="filter-group">
+                <label>Categoria:</label>
+                <input type="text" id="qrCategory" placeholder="Ex: energéticos">
+            </div>
+
+            <div class="filter-group">
+                <label>Quantidade:</label>
+                <input type="number" id="qrQuantity" value="10">
+            </div>
+
+            <div class="filter-group">
+                <label>XP:</label>
+                <input type="number" id="qrXp" value="25">
+            </div>
+        </div>
+
+        <button class="header-btn btn-import-json" onclick="generateClubeQRCodes()">
+            🎮 Gerar QR Codes
+        </button>
+
+        <div id="qrResultBox" style="margin-top: 25px;"></div>
+    </div>
+
+</div>
 
         <div class="stats-footer">
             BebCom Delivery - Painel Administrativo • Dados centralizados no servidor
@@ -1838,6 +1934,148 @@ ${addr.complement ? `Complemento: ${addr.complement}` : ''}
         window.showQuickStats = showQuickStats;
         window.copyUberTrackingLink = copyUberTrackingLink;
         window.sendUberTrackingToCustomer = sendUberTrackingToCustomer;
+        window.createClubeMission = createClubeMission;
+        window.generateClubeQRCodes = generateClubeQRCodes;
+        window.copyGeneratedQRCodes = copyGeneratedQRCodes;
+
+    async function createClubeMission() {
+    const password = prompt('Digite a senha admin:');
+
+    if (!password) return;
+
+    const payload = {
+        password,
+        title: document.getElementById('missionTitle').value.trim(),
+        description: document.getElementById('missionDescription').value.trim(),
+        targetXp: Number(document.getElementById('missionTargetXp').value || 100),
+        rewardTitle: document.getElementById('missionRewardTitle').value.trim()
+    };
+
+    if (!payload.title) {
+        showNotification('❌ Informe o título da missão.', 'error');
+        return;
+    }
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/admin/clube/missoes/criar`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+
+        const data = await response.json();
+
+        if (!data.success) {
+            throw new Error(data.error || 'Erro ao criar missão');
+        }
+
+        showNotification('✅ Missão criada com sucesso!', 'success');
+
+        document.getElementById('missionTitle').value = '';
+        document.getElementById('missionDescription').value = '';
+        document.getElementById('missionTargetXp').value = '100';
+        document.getElementById('missionRewardTitle').value = '';
+
+    } catch (error) {
+        console.error(error);
+        showNotification('❌ ' + error.message, 'error');
+    }
+}
+
+async function generateClubeQRCodes() {
+    const password = prompt('Digite a senha admin:');
+
+    if (!password) return;
+
+    const payload = {
+        password,
+        product: document.getElementById('qrProduct').value.trim() || 'Produto participante',
+        category: document.getElementById('qrCategory').value.trim() || 'geral',
+        quantity: Number(document.getElementById('qrQuantity').value || 10),
+        xp: Number(document.getElementById('qrXp').value || 10)
+    };
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/admin/clube/qrcodes/gerar`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+
+        const data = await response.json();
+
+        if (!data.success) {
+            throw new Error(data.error || 'Erro ao gerar QR Codes');
+        }
+
+        showNotification(`✅ ${data.total} QR Codes gerados!`, 'success');
+        renderGeneratedQRCodes(data.qrcodes || []);
+
+    } catch (error) {
+        console.error(error);
+        showNotification('❌ ' + error.message, 'error');
+    }
+}
+
+function renderGeneratedQRCodes(qrcodes) {
+    const box = document.getElementById('qrResultBox');
+
+    if (!qrcodes.length) {
+        box.innerHTML = '';
+        return;
+    }
+
+    box.innerHTML = `
+        <h3 style="margin-bottom: 15px;">📦 QR Codes Gerados</h3>
+
+        <div class="table-container" style="padding: 0;">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Código</th>
+                        <th>Produto</th>
+                        <th>Categoria</th>
+                        <th>XP</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${qrcodes.map(qr => `
+                        <tr>
+                            <td><strong>${qr.code}</strong></td>
+                            <td>${qr.product}</td>
+                            <td>${qr.category}</td>
+                            <td>${qr.xp}</td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        </div>
+
+        <button class="header-btn btn-excel" style="margin-top: 15px;" onclick="copyGeneratedQRCodes()">
+            📋 Copiar Códigos
+        </button>
+    `;
+
+    window.lastGeneratedQRCodes = qrcodes;
+}
+
+function copyGeneratedQRCodes() {
+    const qrcodes = window.lastGeneratedQRCodes || [];
+
+    if (!qrcodes.length) {
+        showNotification('❌ Nenhum QR Code para copiar.', 'error');
+        return;
+    }
+
+    const text = qrcodes
+        .map(qr => `${qr.code} | ${qr.product} | ${qr.category} | ${qr.xp} XP`)
+        .join('\n');
+
+    navigator.clipboard.writeText(text)
+        .then(() => showNotification('✅ Códigos copiados!', 'success'))
+        .catch(() => alert(text));
+}
+    
     </script>
 </body>
 </html>
