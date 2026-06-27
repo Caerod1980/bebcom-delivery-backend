@@ -913,6 +913,431 @@ app.get('/api/payment-status/:orderId', async (req, res) => {
     }
 });
 
+// =====================================================
+// 🎮 CLUBE BEBCOM — PASSAPORTE GAMER
+// =====================================================
+
+function normalizePhone(phone = '') {
+    return String(phone).replace(/\D/g, '');
+}
+
+function calculateLevel(xp = 0) {
+    if (xp >= 1000) return 10;
+    if (xp >= 800) return 8;
+    if (xp >= 600) return 6;
+    if (xp >= 400) return 4;
+    if (xp >= 200) return 3;
+    if (xp >= 100) return 2;
+    return 1;
+}
+
+// LOGIN / CADASTRO SIMPLES
+app.post('/api/clube/login', async (req, res) => {
+    try {
+        if (!app.locals.db) {
+            return res.status(503).json({
+                success: false,
+                error: 'Banco de dados indisponível'
+            });
+        }
+
+        const { name, phone } = req.body;
+        const normalizedPhone = normalizePhone(phone);
+
+        if (!normalizedPhone || normalizedPhone.length < 10) {
+            return res.status(400).json({
+                success: false,
+                error: 'Telefone inválido'
+            });
+        }
+
+        const users = app.locals.db.collection('clube_users');
+
+        let user = await users.findOne({ phone: normalizedPhone });
+
+        if (!user) {
+            user = {
+                name: name || 'Jogador Bebcom',
+                phone: normalizedPhone,
+                xp: 0,
+                level: 1,
+                avatar: {
+                    name: 'Explorador Bebcom',
+                    skin: 'default',
+                    items: []
+                },
+                stats: {
+                    scans: 0,
+                    missionsCompleted: 0,
+                    rewardsUnlocked: 0
+                },
+                createdAt: new Date(),
+                updatedAt: new Date()
+            };
+
+            await users.insertOne(user);
+        } else if (name && name !== user.name) {
+            await users.updateOne(
+                { phone: normalizedPhone },
+                {
+                    $set: {
+                        name,
+                        updatedAt: new Date()
+                    }
+                }
+            );
+
+            user.name = name;
+        }
+
+        res.json({
+            success: true,
+            user
+        });
+
+    } catch (error) {
+        console.error('❌ Erro no login Clube:', error);
+        res.status(500).json({
+            success: false,
+            error: error.message
+        });
+    }
+});
+
+// PERFIL DO JOGADOR
+app.get('/api/clube/perfil/:phone', async (req, res) => {
+    try {
+        if (!app.locals.db) {
+            return res.status(503).json({
+                success: false,
+                error: 'Banco de dados indisponível'
+            });
+        }
+
+        const phone = normalizePhone(req.params.phone);
+
+        const user = await app.locals.db.collection('clube_users').findOne({ phone });
+
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                error: 'Jogador não encontrado'
+            });
+        }
+
+        const scans = await app.locals.db.collection('clube_scans')
+            .find({ phone })
+            .sort({ createdAt: -1 })
+            .limit(20)
+            .toArray();
+
+        const rewards = await app.locals.db.collection('clube_coupons')
+            .find({ phone })
+            .sort({ createdAt: -1 })
+            .toArray();
+
+        res.json({
+            success: true,
+            user,
+            scans,
+            rewards
+        });
+
+    } catch (error) {
+        console.error('❌ Erro ao buscar perfil Clube:', error);
+        res.status(500).json({
+            success: false,
+            error: error.message
+        });
+    }
+});
+
+// MISSÕES ATIVAS
+app.get('/api/clube/missoes', async (req, res) => {
+    try {
+        if (!app.locals.db) {
+            return res.status(503).json({
+                success: false,
+                error: 'Banco de dados indisponível'
+            });
+        }
+
+        const missions = await app.locals.db.collection('clube_missions')
+            .find({ active: true })
+            .sort({ createdAt: -1 })
+            .toArray();
+
+        res.json({
+            success: true,
+            missions
+        });
+
+    } catch (error) {
+        console.error('❌ Erro ao buscar missões:', error);
+        res.status(500).json({
+            success: false,
+            error: error.message
+        });
+    }
+});
+
+// ESCANEAR / VALIDAR QR CODE
+app.post('/api/clube/escanear', async (req, res) => {
+    try {
+        if (!app.locals.db) {
+            return res.status(503).json({
+                success: false,
+                error: 'Banco de dados indisponível'
+            });
+        }
+
+        const { phone, code } = req.body;
+
+        const normalizedPhone = normalizePhone(phone);
+        const normalizedCode = String(code || '').trim().toUpperCase();
+
+        if (!normalizedPhone || normalizedPhone.length < 10) {
+            return res.status(400).json({
+                success: false,
+                error: 'Telefone inválido'
+            });
+        }
+
+        if (!normalizedCode) {
+            return res.status(400).json({
+                success: false,
+                error: 'Código QR inválido'
+            });
+        }
+
+        const users = app.locals.db.collection('clube_users');
+        const qrcodes = app.locals.db.collection('clube_qrcodes');
+        const scans = app.locals.db.collection('clube_scans');
+        const coupons = app.locals.db.collection('clube_coupons');
+
+        const user = await users.findOne({ phone: normalizedPhone });
+
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                error: 'Faça login no Clube antes de escanear'
+            });
+        }
+
+        const qr = await qrcodes.findOne({ code: normalizedCode });
+
+        if (!qr) {
+            return res.status(404).json({
+                success: false,
+                error: 'Código não encontrado'
+            });
+        }
+
+        if (qr.used) {
+            return res.status(409).json({
+                success: false,
+                error: 'Este QR Code já foi utilizado'
+            });
+        }
+
+        if (qr.expiresAt && new Date(qr.expiresAt) < new Date()) {
+            return res.status(410).json({
+                success: false,
+                error: 'Este QR Code expirou'
+            });
+        }
+
+        const xpGained = Number(qr.xp || 10);
+        const newXp = Number(user.xp || 0) + xpGained;
+        const newLevel = calculateLevel(newXp);
+
+        await qrcodes.updateOne(
+            { code: normalizedCode },
+            {
+                $set: {
+                    used: true,
+                    usedBy: normalizedPhone,
+                    usedAt: new Date()
+                }
+            }
+        );
+
+        await scans.insertOne({
+            phone: normalizedPhone,
+            code: normalizedCode,
+            product: qr.product || 'Produto participante',
+            category: qr.category || 'geral',
+            missionId: qr.missionId || null,
+            xp: xpGained,
+            createdAt: new Date()
+        });
+
+        await users.updateOne(
+            { phone: normalizedPhone },
+            {
+                $set: {
+                    xp: newXp,
+                    level: newLevel,
+                    updatedAt: new Date()
+                },
+                $inc: {
+                    'stats.scans': 1
+                }
+            }
+        );
+
+        let reward = null;
+
+        if (newXp >= 100 && !user.firstRewardUnlocked) {
+            const couponCode = `CLUBE${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
+
+            reward = {
+                phone: normalizedPhone,
+                code: couponCode,
+                title: 'Primeira recompensa desbloqueada',
+                description: 'Cupom especial do Clube Bebcom',
+                type: 'discount',
+                value: 5,
+                status: 'available',
+                deliveryUrl: `https://caerod1980.github.io/bebcom-delivery-backend/?cupom=${couponCode}`,
+                createdAt: new Date()
+            };
+
+            await coupons.insertOne(reward);
+
+            await users.updateOne(
+                { phone: normalizedPhone },
+                {
+                    $set: {
+                        firstRewardUnlocked: true
+                    },
+                    $inc: {
+                        'stats.rewardsUnlocked': 1
+                    }
+                }
+            );
+        }
+
+        res.json({
+            success: true,
+            message: `Você ganhou ${xpGained} XP!`,
+            xpGained,
+            newXp,
+            newLevel,
+            product: qr.product || 'Produto participante',
+            reward
+        });
+
+    } catch (error) {
+        console.error('❌ Erro ao escanear QR:', error);
+        res.status(500).json({
+            success: false,
+            error: error.message
+        });
+    }
+});
+
+// ADMIN — GERAR QR CODES EM LOTE
+app.post('/api/admin/clube/qrcodes/gerar', adminLimiter, authenticateAdmin, async (req, res) => {
+    try {
+        if (!app.locals.db) {
+            return res.status(503).json({
+                success: false,
+                error: 'Banco de dados indisponível'
+            });
+        }
+
+        const {
+            product = 'Produto participante',
+            category = 'geral',
+            quantity = 10,
+            xp = 10,
+            missionId = null
+        } = req.body;
+
+        const total = Math.min(Number(quantity) || 10, 500);
+
+        const docs = [];
+
+        for (let i = 0; i < total; i++) {
+            docs.push({
+                code: `BEBCOM-${crypto.randomBytes(5).toString('hex').toUpperCase()}`,
+                product,
+                category,
+                xp: Number(xp) || 10,
+                missionId,
+                used: false,
+                createdAt: new Date()
+            });
+        }
+
+        await app.locals.db.collection('clube_qrcodes').insertMany(docs);
+
+        res.json({
+            success: true,
+            total,
+            qrcodes: docs
+        });
+
+    } catch (error) {
+        console.error('❌ Erro ao gerar QR Codes:', error);
+        res.status(500).json({
+            success: false,
+            error: error.message
+        });
+    }
+});
+
+// ADMIN — CRIAR MISSÃO SIMPLES
+app.post('/api/admin/clube/missoes/criar', adminLimiter, authenticateAdmin, async (req, res) => {
+    try {
+        if (!app.locals.db) {
+            return res.status(503).json({
+                success: false,
+                error: 'Banco de dados indisponível'
+            });
+        }
+
+        const {
+            title,
+            description,
+            targetXp = 100,
+            rewardTitle = 'Recompensa Bebcom'
+        } = req.body;
+
+        if (!title) {
+            return res.status(400).json({
+                success: false,
+                error: 'Título da missão é obrigatório'
+            });
+        }
+
+        const mission = {
+            title,
+            description: description || '',
+            targetXp: Number(targetXp) || 100,
+            rewardTitle,
+            active: true,
+            createdAt: new Date()
+        };
+
+        const result = await app.locals.db.collection('clube_missions').insertOne(mission);
+
+        res.json({
+            success: true,
+            missionId: result.insertedId,
+            mission
+        });
+
+    } catch (error) {
+        console.error('❌ Erro ao criar missão:', error);
+        res.status(500).json({
+            success: false,
+            error: error.message
+        });
+    }
+});
+
 // ========== INICIALIZAÇÃO DO MONGODB ==========
 async function initializeMongoDB() {
     try {
@@ -941,7 +1366,22 @@ async function initializeMongoDB() {
         app.locals.isDBConnected = true;
 
         // Cria collections se não existirem
-        const collections = ['products', 'flavors', 'orders', 'admin_logs', 'uber_webhooks'];
+       const collections = [
+    'products',
+    'flavors',
+    'orders',
+    'admin_logs',
+    'uber_webhooks',
+    'webhooks',
+
+    // Clube Bebcom
+    'clube_users',
+    'clube_qrcodes',
+    'clube_scans',
+    'clube_missions',
+    'clube_rewards',
+    'clube_coupons'
+];
         for (const name of collections) {
             try {
                 await db.createCollection(name);
