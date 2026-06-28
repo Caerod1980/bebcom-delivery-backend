@@ -697,56 +697,126 @@
         </div>
     </div>
 
-    <div class="table-container">
-        <h2 style="margin-bottom: 20px;">🚀 Criar Expedição</h2>
+   <div class="table-container">
+  <h2 style="margin-bottom: 20px;">🌌 Criar Campanha Bebcom</h2>
 
-        <div class="filter-section">
-            <div class="filter-group">
-                <label>Título:</label>
-                <input type="text" id="expeditionTitle" placeholder="Ex: Rota Energética">
-            </div>
-
-            <div class="filter-group">
-                <label>Planeta/Categoria:</label>
-                <input type="text" id="expeditionCategory" placeholder="Ex: energéticos">
-            </div>
-
-            <div class="filter-group">
-                <label>XP Final:</label>
-                <input type="number" id="expeditionXp" value="150">
-            </div>
-        </div>
-
-        <div class="filter-section">
-            <div class="filter-group" style="width: 100%;">
-                <label>Produtos da Expedição:</label>
-                <input type="text" id="expeditionSteps" placeholder="Ex: Big Power, Monster, Red Bull">
-            </div>
-        </div>
-
-        <div class="filter-section">
-            <div class="filter-group" style="width: 100%;">
-                <label>Descrição:</label>
-                <input type="text" id="expeditionDescription" placeholder="Descubra produtos participantes e avance pelo Universo Bebcom.">
-            </div>
-        </div>
-
-        <div class="filter-section">
-            <div class="filter-group">
-                <label>Prêmio:</label>
-                <input type="text" id="expeditionRewardTitle" placeholder="Ex: Brinde Rota Energética">
-            </div>
-
-            <div class="filter-group" style="flex: 1;">
-                <label>Descrição do Prêmio:</label>
-                <input type="text" id="expeditionRewardDescription" placeholder="Retirar na Bebidas & Companhia.">
-            </div>
-        </div>
-
-        <button class="header-btn btn-stats" onclick="createClubeExpedition()">
-            🌌 Criar Expedição
-        </button>
+  <div class="filter-section">
+    <div class="filter-group">
+      <label>Título:</label>
+      <input type="text" id="expeditionTitle" placeholder="Ex: Operação Happy Hour">
     </div>
+
+    <div class="filter-group">
+      <label>Planeta:</label>
+      <select id="expeditionPlanet">
+        <option value="energéticos">⚡ Energéticos</option>
+        <option value="cervejas">🍺 Cervejas</option>
+        <option value="refrigerantes">🥤 Refrigerantes</option>
+        <option value="salgadinhos">🥜 Salgadinhos</option>
+        <option value="drinks">🍹 Drinks</option>
+        <option value="destilados">🥃 Destilados</option>
+        <option value="sucos">🍊 Sucos</option>
+        <option value="doces">🍬 Doces</option>
+        <option value="mercearia">🛒 Mercearia</option>
+        <option value="carvão">🔥 Carvão</option>
+        <option value="gelos">🧊 Gelos</option>
+      </select>
+    </div>
+
+    <div class="filter-group">
+      <label>Raridade:</label>
+      <select id="expeditionRarity">
+        <option value="comum">🟢 Comum</option>
+        <option value="rara">🔵 Rara</option>
+        <option value="epica">🟣 Épica</option>
+        <option value="lendaria">🟡 Lendária</option>
+      </select>
+    </div>
+
+    <div class="filter-group">
+      <label>XP:</label>
+      <input type="number" id="expeditionXp" value="150">
+    </div>
+  </div>
+
+  <div class="filter-section">
+    <div class="filter-group">
+      <label>Patrocinador:</label>
+      <input type="text" id="expeditionSponsor" placeholder="Ex: Monster, Heineken, Bebcom">
+    </div>
+
+    <div class="filter-group">
+      <label>Cor:</label>
+      <input type="color" id="expeditionColor" value="#f59e0b">
+    </div>
+
+    <div class="filter-group" style="flex: 1;">
+      <label>Banner URL:</label>
+      <input type="text" id="expeditionBannerUrl" placeholder="Opcional">
+    </div>
+  </div>
+
+  <div class="filter-section">
+    <div class="filter-group" style="width: 100%;">
+      <label>Descrição:</label>
+      <input type="text" id="expeditionDescription" placeholder="Ex: Monte seu Happy Hour perfeito e desbloqueie uma recompensa.">
+    </div>
+  </div>
+
+  <div class="filter-section">
+    <div class="filter-group" style="width: 100%;">
+      <label>Produtos:</label>
+      <input type="text" id="expeditionSteps" placeholder="Ex: Heineken, Amendoim, Gelo, Carvão">
+    </div>
+  </div>
+
+  <div class="filter-section">
+    <div class="filter-group">
+      <label>Início:</label>
+      <input type="date" id="expeditionStartsAt">
+    </div>
+
+    <div class="filter-group">
+      <label>Fim:</label>
+      <input type="date" id="expeditionEndsAt">
+    </div>
+
+    <div class="filter-group">
+      <label>
+        <input type="checkbox" id="expeditionPermanent">
+        Permanente
+      </label>
+    </div>
+
+    <div class="filter-group">
+      <label>Limite resgates:</label>
+      <input type="number" id="expeditionMaxRedeems" placeholder="Opcional">
+    </div>
+  </div>
+
+  <div class="filter-section">
+    <div class="filter-group">
+      <label>Prêmio:</label>
+      <input type="text" id="expeditionRewardTitle" placeholder="Ex: Copão de Gin">
+    </div>
+
+    <div class="filter-group" style="flex: 1;">
+      <label>Descrição do prêmio:</label>
+      <input type="text" id="expeditionRewardDescription" placeholder="Retirar na Bebidas & Companhia.">
+    </div>
+  </div>
+
+  <div class="filter-section">
+    <div class="filter-group" style="width: 100%;">
+      <label>Mensagem final:</label>
+      <input type="text" id="expeditionCompletionMessage" placeholder="Ex: Missão concluída! Sua recompensa está esperando na Base Bebcom.">
+    </div>
+  </div>
+
+  <button class="header-btn btn-stats" onclick="createClubeExpedition()">
+    🌌 Criar Campanha
+  </button>
+</div>
 
     <div class="table-container">
         <h2 style="margin-bottom: 20px;">📷 Gerar QR Codes de Produto</h2>
@@ -2064,70 +2134,71 @@ function copyGeneratedQRCodes() {
         .catch(() => alert(text));
 }
 
-        async function createClubeExpedition() {
-    const password = prompt('Digite a senha admin:');
+       async function createClubeExpedition() {
+  const password = prompt('Digite a senha admin:');
+  if (!password) return;
 
-    if (!password) return;
+  const steps = document.getElementById('expeditionSteps').value
+    .split(',')
+    .map(item => item.trim())
+    .filter(Boolean);
 
-    const stepsText = document.getElementById('expeditionSteps').value.trim();
+  const planet = document.getElementById('expeditionPlanet').value;
+  const permanent = document.getElementById('expeditionPermanent').checked;
 
-    const steps = stepsText
-        .split(',')
-        .map(item => item.trim())
-        .filter(Boolean);
+  const payload = {
+    password,
+    title: document.getElementById('expeditionTitle').value.trim(),
+    description: document.getElementById('expeditionDescription').value.trim(),
+    category: planet,
+    planet,
+    rarity: document.getElementById('expeditionRarity').value,
+    sponsor: document.getElementById('expeditionSponsor').value.trim(),
+    bannerUrl: document.getElementById('expeditionBannerUrl').value.trim(),
+    color: document.getElementById('expeditionColor').value || '#f59e0b',
+    steps,
+    xp: Number(document.getElementById('expeditionXp').value || 100),
+    startsAt: document.getElementById('expeditionStartsAt').value || null,
+    endsAt: permanent ? null : (document.getElementById('expeditionEndsAt').value || null),
+    permanent,
+    maxRedeems: document.getElementById('expeditionMaxRedeems').value || null,
+    completionMessage: document.getElementById('expeditionCompletionMessage').value.trim(),
+    reward: {
+      title: document.getElementById('expeditionRewardTitle').value.trim() || 'Recompensa Bebcom',
+      description: document.getElementById('expeditionRewardDescription').value.trim() || 'Retire sua recompensa na loja física.'
+    }
+  };
 
-    const payload = {
-        password,
-        title: document.getElementById('expeditionTitle').value.trim(),
-        description: document.getElementById('expeditionDescription').value.trim(),
-        category: document.getElementById('expeditionCategory').value.trim() || 'geral',
-        steps,
-        xp: Number(document.getElementById('expeditionXp').value || 100),
-        reward: {
-            title: document.getElementById('expeditionRewardTitle').value.trim() || 'Recompensa Bebcom',
-            description: document.getElementById('expeditionRewardDescription').value.trim() || 'Retire sua recompensa na loja física.'
-        }
-    };
+  if (!payload.title) {
+    showNotification('❌ Informe o título da campanha.', 'error');
+    return;
+  }
 
-    if (!payload.title) {
-        showNotification('❌ Informe o título da expedição.', 'error');
-        return;
+  if (!steps.length) {
+    showNotification('❌ Informe pelo menos um produto participante.', 'error');
+    return;
+  }
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/admin/clube/expedicoes/criar`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+
+    const data = await response.json();
+
+    if (!data.success) {
+      throw new Error(data.error || 'Erro ao criar campanha');
     }
 
-    if (!steps.length) {
-        showNotification('❌ Informe pelo menos um produto na expedição.', 'error');
-        return;
-    }
+    showNotification('✅ Campanha criada com sucesso!', 'success');
+    await loadClubeExpeditions();
 
-    try {
-        const response = await fetch(`${API_BASE_URL}/api/admin/clube/expedicoes/criar`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-        });
-
-        const data = await response.json();
-
-        if (!data.success) {
-            throw new Error(data.error || 'Erro ao criar expedição');
-        }
-
-        showNotification('✅ Expedição criada com sucesso!', 'success');
-
-        document.getElementById('expeditionTitle').value = '';
-        document.getElementById('expeditionDescription').value = '';
-        document.getElementById('expeditionCategory').value = '';
-        document.getElementById('expeditionSteps').value = '';
-        document.getElementById('expeditionXp').value = '150';
-        document.getElementById('expeditionRewardTitle').value = '';
-        document.getElementById('expeditionRewardDescription').value = '';
-
-        await loadClubeExpeditions();
-
-    } catch (error) {
-        console.error(error);
-        showNotification('❌ ' + error.message, 'error');
-    }
+  } catch (error) {
+    console.error(error);
+    showNotification('❌ ' + error.message, 'error');
+  }
 }
 
 async function loadClubeExpeditions() {
@@ -2152,45 +2223,72 @@ async function loadClubeExpeditions() {
 }
 
 function renderClubeExpeditions(expeditions) {
-    const box = document.getElementById('expeditionsListBox');
+  const box = document.getElementById('expeditionsListBox');
 
-    document.getElementById('clubeExpeditionsCount').innerText = expeditions.length;
+  document.getElementById('clubeExpeditionsCount').innerText = expeditions.length;
 
-    if (!expeditions.length) {
-        box.innerHTML = '<p style="color: var(--gray);">Nenhuma expedição criada ainda.</p>';
-        return;
-    }
+  if (!expeditions.length) {
+    box.innerHTML = '<p style="color: var(--gray);">Nenhuma campanha criada ainda.</p>';
+    return;
+  }
 
-    box.innerHTML = `
-        <table>
-            <thead>
-                <tr>
-                    <th>Expedição</th>
-                    <th>Planeta</th>
-                    <th>Produtos</th>
-                    <th>XP</th>
-                    <th>Recompensa</th>
-                    <th>Status</th>
-                </tr>
-            </thead>
-            <tbody>
-                ${expeditions.map(exp => `
-                    <tr>
-                        <td><strong>${exp.title}</strong><br><small style="color: var(--gray);">${exp.description || ''}</small></td>
-                        <td>${exp.category || 'geral'}</td>
-                        <td>${(exp.steps || []).map(s => s.title).join(', ')}</td>
-                        <td>${exp.xp || 0}</td>
-                        <td>${exp.reward?.title || 'Recompensa Bebcom'}</td>
-                        <td>
-                            <span class="badge ${exp.active ? 'badge-paid' : 'badge-pending'}">
-                                ${exp.active ? 'Ativa' : 'Inativa'}
-                            </span>
-                        </td>
-                    </tr>
-                `).join('')}
-            </tbody>
-        </table>
-    `;
+  const now = new Date();
+
+  box.innerHTML = `
+    <table>
+      <thead>
+        <tr>
+          <th>Campanha</th>
+          <th>Planeta</th>
+          <th>Raridade</th>
+          <th>Vigência</th>
+          <th>Produtos</th>
+          <th>Recompensa</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${expeditions.map(exp => {
+          const startsAt = exp.startsAt ? new Date(exp.startsAt) : null;
+          const endsAt = exp.endsAt ? new Date(exp.endsAt) : null;
+
+          let status = 'Ativa';
+          let badge = 'badge-paid';
+
+          if (startsAt && startsAt > now) {
+            status = 'Agendada';
+            badge = 'badge-pending';
+          } else if (!exp.permanent && endsAt && endsAt < now) {
+            status = 'Encerrada';
+            badge = 'badge-pending';
+          } else if (!exp.active) {
+            status = 'Inativa';
+            badge = 'badge-pending';
+          }
+
+          return `
+            <tr>
+              <td>
+                <strong>${exp.title}</strong><br>
+                <small style="color: var(--gray);">${exp.description || ''}</small><br>
+                <small style="color: var(--warning);">Patrocinador: ${exp.sponsor || 'Bebcom'}</small>
+              </td>
+              <td>${exp.planet || exp.category || 'geral'}</td>
+              <td>${exp.rarity || 'comum'}</td>
+              <td>
+                ${startsAt ? startsAt.toLocaleDateString('pt-BR') : 'Hoje'}
+                →
+                ${exp.permanent ? 'Permanente' : (endsAt ? endsAt.toLocaleDateString('pt-BR') : 'Sem fim')}
+              </td>
+              <td>${(exp.steps || []).map(s => s.title).join(', ')}</td>
+              <td>${exp.reward?.title || 'Recompensa Bebcom'}</td>
+              <td><span class="badge ${badge}">${status}</span></td>
+            </tr>
+          `;
+        }).join('')}
+      </tbody>
+    </table>
+  `;
 }
     
     </script>
