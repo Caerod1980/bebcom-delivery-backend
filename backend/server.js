@@ -1081,7 +1081,213 @@ app.get('/api/clube/missoes', async (req, res) => {
     }
 });
 
-// ESCANEAR / VALIDAR QR CODE
+// =====================================================
+// 🌌 UNIVERSO BEBCOM — ENGINE DAS EXPEDIÇÕES
+// =====================================================
+
+function normalizeKey(value = '') {
+    return String(value)
+        .trim()
+        .toUpperCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^A-Z0-9]+/g, '_')
+        .replace(/^_+|_+$/g, '');
+}
+
+function getRankByXp(xp = 0) {
+    if (xp >= 3000) return 'Lenda Bebcom';
+    if (xp >= 1800) return 'Comandante';
+    if (xp >= 900) return 'Pioneiro';
+    if (xp >= 300) return 'Viajante';
+    return 'Explorador';
+}
+
+async function findMatchingExpeditions(db, qr) {
+    const productKey = normalizeKey(qr.productKey || qr.product || qr.category);
+    const categoryKey = normalizeKey(qr.category || 'geral');
+
+    const filter = {
+        active: true,
+        $or: [
+            { productKeys: productKey },
+            { categoryKey },
+            { category: qr.category },
+            { _id: qr.expeditionId ? new ObjectId(qr.expeditionId) : null }
+        ].filter(Boolean)
+    };
+
+    if (Array.isArray(qr.expeditionIds) && qr.expeditionIds.length) {
+        filter.$or.push({
+            _id: {
+                $in: qr.expeditionIds.map(id => {
+                    try {
+                        return new ObjectId(id);
+                    } catch {
+                        return null;
+                    }
+                }).filter(Boolean)
+            }
+        });
+    }
+
+    return db.collection('clube_expeditions')
+        .find(filter)
+        .sort({ createdAt: -1 })
+        .toArray();
+}
+
+async function advanceExpeditionProgress(db, user, qr) {
+    const phone = user.phone;
+    const productKey = normalizeKey(qr.productKey || qr.product || qr.category);
+    const expeditions = await findMatchingExpeditions(db, qr);
+
+    const results = [];
+
+    for (const expedition of expeditions) {
+        const steps = Array.isArray(expedition.steps) ? expedition.steps : [];
+
+        if (!steps.length) continue;
+
+        const stepIndex = steps.findIndex(step => {
+            return normalizeKey(step.productKey || step.product || step.title) === productKey;
+        });
+
+        if (stepIndex === -1) continue;
+
+        let progress = await db.collection('clube_progress').findOne({
+            phone,
+            expeditionId: expedition._id
+        });
+
+        if (!progress) {
+            progress = {
+                phone,
+                expeditionId: expedition._id,
+                expeditionTitle: expedition.title,
+                currentStep: 0,
+                completed: false,
+                discoveredProducts: [],
+                completedSteps: [],
+                createdAt: new Date(),
+                updatedAt: new Date()
+            };
+
+            await db.collection('clube_progress').insertOne(progress);
+        }
+
+        if (progress.completed) {
+            results.push({
+                expedition,
+                status: 'already_completed',
+                message: 'Expedição já concluída'
+            });
+            continue;
+        }
+
+        const alreadyDiscovered = progress.discoveredProducts?.includes(productKey);
+
+        if (alreadyDiscovered) {
+            results.push({
+                expedition,
+                status: 'already_discovered',
+                message: 'Produto já descoberto nesta expedição'
+            });
+            continue;
+        }
+
+        const completedSteps = Array.from(new Set([
+            ...(progress.completedSteps || []),
+            stepIndex
+        ])).sort((a, b) => a - b);
+
+        const discoveredProducts = Array.from(new Set([
+            ...(progress.discoveredProducts || []),
+            productKey
+        ]));
+
+        const isCompleted = completedSteps.length >= steps.length;
+
+        await db.collection('clube_progress').updateOne(
+            { phone, expeditionId: expedition._id },
+            {
+                $set: {
+                    currentStep: completedSteps.length,
+                    completed: isCompleted,
+                    discoveredProducts,
+                    completedSteps,
+                    updatedAt: new Date(),
+                    completedAt: isCompleted ? new Date() : null
+                }
+            }
+        );
+
+        const event = {
+            phone,
+            type: isCompleted ? 'EXPEDITION_COMPLETED' : 'PRODUCT_DISCOVERED',
+            expeditionId: expedition._id,
+            expeditionTitle: expedition.title,
+            product: qr.product || 'Produto participante',
+            productKey,
+            stepIndex,
+            progress: {
+                completedSteps: completedSteps.length,
+                totalSteps: steps.length,
+                percent: Math.round((completedSteps.length / steps.length) * 100)
+            },
+            message: isCompleted
+                ? `Expedição concluída: ${expedition.title}`
+                : `Produto descoberto: ${qr.product || productKey}`,
+            createdAt: new Date()
+        };
+
+        await db.collection('clube_events').insertOne(event);
+
+        let reward = null;
+
+        if (isCompleted && expedition.reward) {
+            const redeemCode = `RESGATE-${crypto.randomBytes(4).toString('hex').toUpperCase()}`;
+
+            reward = {
+                phone,
+                code: redeemCode,
+                expeditionId: expedition._id,
+                expeditionTitle: expedition.title,
+                title: expedition.reward.title || 'Recompensa Bebcom',
+                description: expedition.reward.description || 'Retire sua recompensa na loja física.',
+                type: 'physical_store_redeem',
+                status: 'available',
+                redeemLocation: 'Bebidas & Companhia',
+                createdAt: new Date(),
+                redeemedAt: null
+            };
+
+            await db.collection('clube_redeems').insertOne(reward);
+
+            await db.collection('clube_users').updateOne(
+                { phone },
+                {
+                    $inc: {
+                        'stats.rewardsUnlocked': 1,
+                        'stats.missionsCompleted': 1
+                    }
+                }
+            );
+        }
+
+        results.push({
+            expedition,
+            status: isCompleted ? 'completed' : 'advanced',
+            completedSteps: completedSteps.length,
+            totalSteps: steps.length,
+            percent: Math.round((completedSteps.length / steps.length) * 100),
+            reward
+        });
+    }
+
+    return results;
+}
+
 app.post('/api/clube/escanear', async (req, res) => {
     try {
         if (!app.locals.db) {
@@ -1110,10 +1316,10 @@ app.post('/api/clube/escanear', async (req, res) => {
             });
         }
 
-        const users = app.locals.db.collection('clube_users');
-        const qrcodes = app.locals.db.collection('clube_qrcodes');
-        const scans = app.locals.db.collection('clube_scans');
-        const coupons = app.locals.db.collection('clube_coupons');
+        const db = app.locals.db;
+        const users = db.collection('clube_users');
+        const qrcodes = db.collection('clube_qrcodes');
+        const scans = db.collection('clube_scans');
 
         const user = await users.findOne({ phone: normalizedPhone });
 
@@ -1147,9 +1353,11 @@ app.post('/api/clube/escanear', async (req, res) => {
             });
         }
 
+        const productKey = normalizeKey(qr.productKey || qr.product || qr.category);
         const xpGained = Number(qr.xp || 10);
         const newXp = Number(user.xp || 0) + xpGained;
         const newLevel = calculateLevel(newXp);
+        const newRank = getRankByXp(newXp);
 
         await qrcodes.updateOne(
             { code: normalizedCode },
@@ -1166,11 +1374,16 @@ app.post('/api/clube/escanear', async (req, res) => {
             phone: normalizedPhone,
             code: normalizedCode,
             product: qr.product || 'Produto participante',
+            productKey,
             category: qr.category || 'geral',
-            missionId: qr.missionId || null,
             xp: xpGained,
             createdAt: new Date()
         });
+
+        const expeditionResults = await advanceExpeditionProgress(db, {
+            ...user,
+            phone: normalizedPhone
+        }, qr);
 
         await users.updateOne(
             { phone: normalizedPhone },
@@ -1178,6 +1391,7 @@ app.post('/api/clube/escanear', async (req, res) => {
                 $set: {
                     xp: newXp,
                     level: newLevel,
+                    rank: newRank,
                     updatedAt: new Date()
                 },
                 $inc: {
@@ -1186,46 +1400,28 @@ app.post('/api/clube/escanear', async (req, res) => {
             }
         );
 
-        let reward = null;
+        const completedExpedition = expeditionResults.find(r => r.status === 'completed');
+        const advancedExpedition = expeditionResults.find(r => r.status === 'advanced');
 
-        if (newXp >= 100 && !user.firstRewardUnlocked) {
-            const couponCode = `CLUBE${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
+        let narrativeMessage = `Você descobriu ${qr.product || 'um produto participante'} no Universo Bebcom.`;
 
-            reward = {
-                phone: normalizedPhone,
-                code: couponCode,
-                title: 'Primeira recompensa desbloqueada',
-                description: 'Cupom especial do Clube Bebcom',
-                type: 'discount',
-                value: 5,
-                status: 'available',
-                deliveryUrl: `https://caerod1980.github.io/bebcom-delivery-backend/?cupom=${couponCode}`,
-                createdAt: new Date()
-            };
-
-            await coupons.insertOne(reward);
-
-            await users.updateOne(
-                { phone: normalizedPhone },
-                {
-                    $set: {
-                        firstRewardUnlocked: true
-                    },
-                    $inc: {
-                        'stats.rewardsUnlocked': 1
-                    }
-                }
-            );
+        if (completedExpedition) {
+            narrativeMessage = `Expedição concluída: ${completedExpedition.expedition.title}. Sua recompensa está pronta para retirada na loja física.`;
+        } else if (advancedExpedition) {
+            narrativeMessage = `Seu avatar avançou na expedição ${advancedExpedition.expedition.title}. Progresso: ${advancedExpedition.percent}%.`;
         }
 
         res.json({
             success: true,
-            message: `Você ganhou ${xpGained} XP!`,
+            message: narrativeMessage,
             xpGained,
             newXp,
             newLevel,
+            rank: newRank,
             product: qr.product || 'Produto participante',
-            reward
+            productKey,
+            expeditionResults,
+            reward: completedExpedition?.reward || null
         });
 
     } catch (error) {
@@ -1248,11 +1444,14 @@ app.post('/api/admin/clube/qrcodes/gerar', adminLimiter, authenticateAdmin, asyn
         }
 
         const {
-            product = 'Produto participante',
-            category = 'geral',
-            quantity = 10,
-            xp = 10,
-            missionId = null
+         product = 'Produto participante',
+         productKey = null,
+         category = 'geral',
+         quantity = 10,
+         xp = 10,
+         missionId = null,
+         expeditionId = null,
+         expeditionIds = []
         } = req.body;
 
         const total = Math.min(Number(quantity) || 10, 500);
@@ -1260,15 +1459,19 @@ app.post('/api/admin/clube/qrcodes/gerar', adminLimiter, authenticateAdmin, asyn
         const docs = [];
 
         for (let i = 0; i < total; i++) {
-            docs.push({
-                code: `BEBCOM-${crypto.randomBytes(5).toString('hex').toUpperCase()}`,
-                product,
-                category,
-                xp: Number(xp) || 10,
-                missionId,
-                used: false,
-                createdAt: new Date()
-            });
+           docs.push({
+    code: `BEBCOM-${crypto.randomBytes(5).toString('hex').toUpperCase()}`,
+    product,
+    productKey: normalizeKey(productKey || product),
+    category,
+    categoryKey: normalizeKey(category),
+    xp: Number(xp) || 10,
+    missionId,
+    expeditionId,
+    expeditionIds: Array.isArray(expeditionIds) ? expeditionIds : [],
+    used: false,
+    createdAt: new Date()
+});
         }
 
         await app.locals.db.collection('clube_qrcodes').insertMany(docs);
@@ -1338,6 +1541,166 @@ app.post('/api/admin/clube/missoes/criar', adminLimiter, authenticateAdmin, asyn
     }
 });
 
+// ADMIN — CRIAR EXPEDIÇÃO
+app.post('/api/admin/clube/expedicoes/criar', adminLimiter, authenticateAdmin, async (req, res) => {
+    try {
+        if (!app.locals.db) {
+            return res.status(503).json({
+                success: false,
+                error: 'Banco de dados indisponível'
+            });
+        }
+
+        const {
+            title,
+            description,
+            category = 'geral',
+            steps = [],
+            reward = {},
+            xp = 100
+        } = req.body;
+
+        if (!title) {
+            return res.status(400).json({
+                success: false,
+                error: 'Título da expedição é obrigatório'
+            });
+        }
+
+        if (!Array.isArray(steps) || steps.length === 0) {
+            return res.status(400).json({
+                success: false,
+                error: 'A expedição precisa ter ao menos um produto'
+            });
+        }
+
+        const normalizedSteps = steps.map((step, index) => {
+            const title = typeof step === 'string' ? step : step.title;
+            const productKey = typeof step === 'string'
+                ? normalizeKey(step)
+                : normalizeKey(step.productKey || step.title);
+
+            return {
+                index,
+                title,
+                productKey,
+                required: true
+            };
+        });
+
+        const expedition = {
+            title,
+            description: description || '',
+            category,
+            categoryKey: normalizeKey(category),
+            productKeys: normalizedSteps.map(step => step.productKey),
+            steps: normalizedSteps,
+            xp: Number(xp) || 100,
+            reward: {
+                title: reward.title || 'Recompensa Bebcom',
+                description: reward.description || 'Retire sua recompensa na loja física.',
+                type: 'physical_store_redeem'
+            },
+            active: true,
+            createdAt: new Date(),
+            updatedAt: new Date()
+        };
+
+        const result = await app.locals.db
+            .collection('clube_expeditions')
+            .insertOne(expedition);
+
+        res.json({
+            success: true,
+            expeditionId: result.insertedId,
+            expedition
+        });
+
+    } catch (error) {
+        console.error('❌ Erro ao criar expedição:', error);
+        res.status(500).json({
+            success: false,
+            error: error.message
+        });
+    }
+});
+
+// ADMIN — LISTAR EXPEDIÇÕES
+app.get('/api/admin/clube/expedicoes', adminLimiter, authenticateAdmin, async (req, res) => {
+    try {
+        if (!app.locals.db) {
+            return res.status(503).json({
+                success: false,
+                error: 'Banco de dados indisponível'
+            });
+        }
+
+        const expeditions = await app.locals.db
+            .collection('clube_expeditions')
+            .find({})
+            .sort({ createdAt: -1 })
+            .toArray();
+
+        res.json({
+            success: true,
+            expeditions
+        });
+
+    } catch (error) {
+        console.error('❌ Erro ao listar expedições:', error);
+        res.status(500).json({
+            success: false,
+            error: error.message
+        });
+    }
+});
+
+// PÚBLICO — EXPEDIÇÕES E PROGRESSO DO EXPLORADOR
+app.get('/api/clube/expedicoes/:phone', async (req, res) => {
+    try {
+        if (!app.locals.db) {
+            return res.status(503).json({
+                success: false,
+                error: 'Banco de dados indisponível'
+            });
+        }
+
+        const phone = normalizePhone(req.params.phone);
+
+        const expeditions = await app.locals.db
+            .collection('clube_expeditions')
+            .find({ active: true })
+            .sort({ createdAt: -1 })
+            .toArray();
+
+        const progress = await app.locals.db
+            .collection('clube_progress')
+            .find({ phone })
+            .toArray();
+
+        const redeems = await app.locals.db
+            .collection('clube_redeems')
+            .find({ phone })
+            .sort({ createdAt: -1 })
+            .toArray();
+
+        res.json({
+            success: true,
+            expeditions,
+            progress,
+            redeems
+        });
+
+    } catch (error) {
+        console.error('❌ Erro ao buscar expedições:', error);
+        res.status(500).json({
+            success: false,
+            error: error.message
+        });
+    }
+});
+
+
 // ========== INICIALIZAÇÃO DO MONGODB ==========
 async function initializeMongoDB() {
     try {
@@ -1380,7 +1743,13 @@ async function initializeMongoDB() {
     'clube_scans',
     'clube_missions',
     'clube_rewards',
-    'clube_coupons'
+    'clube_coupons',
+
+// Engine Universo Bebcom
+   'clube_expeditions',
+   'clube_progress',
+   'clube_events',
+   'clube_redeems'
 ];
         for (const name of collections) {
             try {
