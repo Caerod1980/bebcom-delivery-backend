@@ -1541,7 +1541,7 @@ app.post('/api/admin/clube/missoes/criar', adminLimiter, authenticateAdmin, asyn
     }
 });
 
-// ADMIN — CRIAR EXPEDIÇÃO
+// ADMIN — CRIAR CAMPANHA / EXPEDIÇÃO
 app.post('/api/admin/clube/expedicoes/criar', adminLimiter, authenticateAdmin, async (req, res) => {
     try {
         if (!app.locals.db) {
@@ -1555,52 +1555,83 @@ app.post('/api/admin/clube/expedicoes/criar', adminLimiter, authenticateAdmin, a
             title,
             description,
             category = 'geral',
+            planet = '',
+            rarity = 'comum',
+            sponsor = '',
+            bannerUrl = '',
+            color = '#f59e0b',
             steps = [],
             reward = {},
-            xp = 100
+            xp = 100,
+            startsAt = null,
+            endsAt = null,
+            permanent = false,
+            maxRedeems = null,
+            completionMessage = ''
         } = req.body;
 
         if (!title) {
             return res.status(400).json({
                 success: false,
-                error: 'Título da expedição é obrigatório'
+                error: 'Título da campanha é obrigatório'
             });
         }
 
         if (!Array.isArray(steps) || steps.length === 0) {
             return res.status(400).json({
                 success: false,
-                error: 'A expedição precisa ter ao menos um produto'
+                error: 'A campanha precisa ter ao menos um produto'
             });
         }
 
         const normalizedSteps = steps.map((step, index) => {
-            const title = typeof step === 'string' ? step : step.title;
+            const stepTitle = typeof step === 'string' ? step : step.title;
             const productKey = typeof step === 'string'
                 ? normalizeKey(step)
                 : normalizeKey(step.productKey || step.title);
 
             return {
                 index,
-                title,
+                title: stepTitle,
                 productKey,
                 required: true
             };
         });
+
+        const now = new Date();
+
+        const campaignStartsAt = startsAt ? new Date(startsAt) : now;
+        const campaignEndsAt = permanent || !endsAt ? null : new Date(endsAt);
 
         const expedition = {
             title,
             description: description || '',
             category,
             categoryKey: normalizeKey(category),
+
+            // Dados novos de campanha
+            planet: planet || category,
+            planetKey: normalizeKey(planet || category),
+            rarity,
+            sponsor,
+            bannerUrl,
+            color,
+            permanent: Boolean(permanent),
+            startsAt: campaignStartsAt,
+            endsAt: campaignEndsAt,
+            maxRedeems: maxRedeems ? Number(maxRedeems) : null,
+            completionMessage: completionMessage || 'Sua recompensa está pronta para retirada na Base Bebcom.',
+
             productKeys: normalizedSteps.map(step => step.productKey),
             steps: normalizedSteps,
             xp: Number(xp) || 100,
+
             reward: {
                 title: reward.title || 'Recompensa Bebcom',
                 description: reward.description || 'Retire sua recompensa na loja física.',
                 type: 'physical_store_redeem'
             },
+
             active: true,
             createdAt: new Date(),
             updatedAt: new Date()
@@ -1617,7 +1648,7 @@ app.post('/api/admin/clube/expedicoes/criar', adminLimiter, authenticateAdmin, a
         });
 
     } catch (error) {
-        console.error('❌ Erro ao criar expedição:', error);
+        console.error('❌ Erro ao criar campanha:', error);
         res.status(500).json({
             success: false,
             error: error.message
@@ -1667,16 +1698,37 @@ app.get('/api/clube/expedicoes/:phone', async (req, res) => {
 
         const phone = normalizePhone(req.params.phone);
 
-        const expeditions = await app.locals.db
-            .collection('clube_expeditions')
-            .find({ active: true })
-            .sort({ createdAt: -1 })
-            .toArray();
+       const now = new Date();
+
+const expeditions = await app.locals.db
+    .collection('clube_expeditions')
+    .find({
+        active: true,
+        $and: [
+            {
+                $or: [
+                    { startsAt: { $exists: false } },
+                    { startsAt: null },
+                    { startsAt: { $lte: now } }
+                ]
+            },
+            {
+                $or: [
+                    { permanent: true },
+                    { endsAt: { $exists: false } },
+                    { endsAt: null },
+                    { endsAt: { $gte: now } }
+                ]
+            }
+        ]
+    })
+    .sort({ createdAt: -1 })
+    .toArray(); 
 
         const progress = await app.locals.db
-            .collection('clube_progress')
-            .find({ phone })
-            .toArray();
+    .collection('clube_progress')
+    .find({ phone })
+    .toArray();
 
         const redeems = await app.locals.db
             .collection('clube_redeems')
@@ -1744,6 +1796,7 @@ async function initializeMongoDB() {
     'clube_missions',
     'clube_rewards',
     'clube_coupons',
+    'clube_campaigns',
 
 // Engine Universo Bebcom
    'clube_expeditions',
