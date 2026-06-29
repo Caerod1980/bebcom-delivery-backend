@@ -1257,6 +1257,7 @@ async function advanceExpeditionProgress(db, user, qr) {
                 {
                     $set: {
                         active: false,
+                        status: 'max_redeems',
                         closedReason: 'Limite de resgates atingido',
                         closedAt: new Date(),
                         updatedAt: new Date()
@@ -1296,6 +1297,7 @@ async function advanceExpeditionProgress(db, user, qr) {
             {
                 $set: {
                     active: false,
+                    status: 'max_redeems',
                     closedReason: 'Limite de resgates atingido',
                     closedAt: new Date(),
                     updatedAt: new Date()
@@ -1673,6 +1675,10 @@ app.post('/api/admin/clube/expedicoes/criar', adminLimiter, authenticateAdmin, a
                 type: 'physical_store_redeem'
             },
 
+            status: 'active',
+            closedReason: null,
+            closedAt: null,
+
             active: true,
             createdAt: new Date(),
             updatedAt: new Date()
@@ -1755,12 +1761,14 @@ app.delete('/api/admin/clube/expedicoes/:id', adminLimiter, authenticateAdmin, a
             expeditionId
         });
 
-        await app.locals.db.collection('clube_qrcodes').deleteMany({
-            $or: [
-                { expeditionId: String(expeditionId) },
-                { expeditionIds: String(expeditionId) }
-            ]
-        });
+       await app.locals.db.collection('clube_qrcodes').deleteMany({
+    $or: [
+        { expeditionId: expeditionId },
+        { expeditionId: String(expeditionId) },
+        { expeditionIds: expeditionId },
+        { expeditionIds: String(expeditionId) }
+    ]
+});
 
         res.json({
             success: true,
