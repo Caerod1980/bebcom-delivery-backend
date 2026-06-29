@@ -1246,6 +1246,27 @@ async function advanceExpeditionProgress(db, user, qr) {
         let reward = null;
 
         if (isCompleted && expedition.reward) {
+    if (expedition.maxRedeems) {
+        const totalRedeems = await db.collection('clube_redeems').countDocuments({
+            expeditionId: expedition._id
+        });
+
+        if (totalRedeems >= Number(expedition.maxRedeems)) {
+            await db.collection('clube_expeditions').updateOne(
+                { _id: expedition._id },
+                {
+                    $set: {
+                        active: false,
+                        closedReason: 'Limite de resgates atingido',
+                        closedAt: new Date(),
+                        updatedAt: new Date()
+                    }
+                }
+            );
+
+            continue;
+        }
+    }
             const redeemCode = `RESGATE-${crypto.randomBytes(4).toString('hex').toUpperCase()}`;
 
             reward = {
@@ -1263,6 +1284,26 @@ async function advanceExpeditionProgress(db, user, qr) {
             };
 
             await db.collection('clube_redeems').insertOne(reward);
+
+            if (expedition.maxRedeems) {
+    const totalRedeemsAfter = await db.collection('clube_redeems').countDocuments({
+        expeditionId: expedition._id
+    });
+
+    if (totalRedeemsAfter >= Number(expedition.maxRedeems)) {
+        await db.collection('clube_expeditions').updateOne(
+            { _id: expedition._id },
+            {
+                $set: {
+                    active: false,
+                    closedReason: 'Limite de resgates atingido',
+                    closedAt: new Date(),
+                    updatedAt: new Date()
+                }
+            }
+        );
+    }
+}
 
             await db.collection('clube_users').updateOne(
                 { phone },
@@ -1679,6 +1720,55 @@ app.get('/api/admin/clube/expedicoes', adminLimiter, authenticateAdmin, async (r
 
     } catch (error) {
         console.error('❌ Erro ao listar expedições:', error);
+        res.status(500).json({
+            success: false,
+            error: error.message
+        });
+    }
+});
+
+    // ADMIN — EXCLUIR CAMPANHA
+app.delete('/api/admin/clube/expedicoes/:id', adminLimiter, authenticateAdmin, async (req, res) => {
+    try {
+        if (!app.locals.db) {
+            return res.status(503).json({
+                success: false,
+                error: 'Banco de dados indisponível'
+            });
+        }
+
+        const expeditionId = new ObjectId(req.params.id);
+
+        await app.locals.db.collection('clube_expeditions').deleteOne({
+            _id: expeditionId
+        });
+
+        await app.locals.db.collection('clube_progress').deleteMany({
+            expeditionId
+        });
+
+        await app.locals.db.collection('clube_events').deleteMany({
+            expeditionId
+        });
+
+        await app.locals.db.collection('clube_redeems').deleteMany({
+            expeditionId
+        });
+
+        await app.locals.db.collection('clube_qrcodes').deleteMany({
+            $or: [
+                { expeditionId: String(expeditionId) },
+                { expeditionIds: String(expeditionId) }
+            ]
+        });
+
+        res.json({
+            success: true,
+            message: 'Campanha excluída com dados dos participantes'
+        });
+
+    } catch (error) {
+        console.error('❌ Erro ao excluir campanha:', error);
         res.status(500).json({
             success: false,
             error: error.message
