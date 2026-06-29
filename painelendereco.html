@@ -2245,6 +2245,7 @@ function renderClubeExpeditions(expeditions) {
           <th>Produtos</th>
           <th>Recompensa</th>
           <th>Status</th>
+          <th>Ações</th>
         </tr>
       </thead>
       <tbody>
@@ -2283,6 +2284,11 @@ function renderClubeExpeditions(expeditions) {
               <td>${(exp.steps || []).map(s => s.title).join(', ')}</td>
               <td>${exp.reward?.title || 'Recompensa Bebcom'}</td>
               <td><span class="badge ${badge}">${status}</span></td>
+              <td>
+  <button class="header-btn btn-import-json" onclick="deleteClubeExpedition('${exp._id}')">
+    🗑️ Excluir
+  </button>
+</td>
             </tr>
           `;
         }).join('')}
@@ -2290,6 +2296,38 @@ function renderClubeExpeditions(expeditions) {
     </table>
   `;
 }
+
+        async function deleteClubeExpedition(expeditionId) {
+  const password = prompt('Digite a senha admin:');
+  if (!password) return;
+
+  const confirmDelete = confirm(
+    'Tem certeza que deseja excluir esta campanha? Isso também apagará o progresso dos participantes e resgates vinculados.'
+  );
+
+  if (!confirmDelete) return;
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/admin/clube/expedicoes/${expeditionId}?adminPassword=${encodeURIComponent(password)}`, {
+      method: 'DELETE'
+    });
+
+    const data = await response.json();
+
+    if (!data.success) {
+      throw new Error(data.error || 'Erro ao excluir campanha');
+    }
+
+    showNotification('✅ Campanha excluída com sucesso!', 'success');
+    await loadClubeExpeditions();
+
+  } catch (error) {
+    console.error(error);
+    showNotification('❌ ' + error.message, 'error');
+  }
+}
+
+window.deleteClubeExpedition = deleteClubeExpedition;
     
     </script>
 </body>
