@@ -11,9 +11,6 @@
     <!-- SheetJS para exportar Excel -->
     <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
 
- <script src="./js/qrcode.min.js"></script>
- <script src="./js/jspdf.umd.min.js"></script>
-
     
     <style>
         /* ESTILOS IGUAIS - MANTIDOS */
@@ -2471,6 +2468,7 @@ function renderPhysicalProductQRs(qrs) {
                             <td>
                                 <button class="header-btn btn-refresh" style="padding:8px 10px;" onclick="editPhysicalQrAdminCode('${qr._id}')">✏️ Editar</button>
                                 <button class="header-btn btn-import-json" style="padding:8px 10px;" onclick="disablePhysicalQR('${qr._id}')">🚫 Desativar</button>
+                                <button class="header-btn btn-excel" style="padding:8px 10px;" onclick="downloadSinglePhysicalQrPDF('${qr._id}')">📄 PDF</button>
                             </td>
                         </tr>
                     `).join('')}
@@ -2480,157 +2478,69 @@ function renderPhysicalProductQRs(qrs) {
     `;
 }
 
-function getSelectedPhysicalQRs() {
-    const selectedIds = Array.from(document.querySelectorAll('.physical-qr-check:checked')).map(input => input.value);
-    return physicalProductQRs.filter(qr => selectedIds.includes(String(qr._id)));
+function getSelectedPhysicalQRIds() {
+    return Array.from(document.querySelectorAll('.physical-qr-check:checked'))
+        .map(input => input.value)
+        .filter(Boolean);
 }
 
-async function editPhysicalQrAdminCode(id) {
-    const qr = physicalProductQRs.find(item => String(item._id) === String(id));
-    if (!qr) return;
+async function downloadBlobResponse(response, fallbackFilename = 'arquivo.pdf') {
+    if (!response.ok) {
+        let errorMessage = 'Erro ao baixar arquivo';
 
-    const password = prompt('Digite a senha admin:');
-    if (!password) return;
+        try {
+            const data = await response.json();
+            errorMessage = data.error || errorMessage;
+        } catch {}
 
-    const newAdminCode = prompt('Novo código administrativo:', qr.adminCode || '');
-    if (!newAdminCode) return;
-
-    const regenerate = confirm('Deseja regenerar o QR Code também? Se confirmar, o QR impresso anteriormente deixa de funcionar.');
-
-    try {
-        const response = await fetch(`${API_BASE_URL}/api/admin/clube/product-qrs/${id}?adminPassword=${encodeURIComponent(password)}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ adminCode: newAdminCode, regenerateToken: regenerate })
-        });
-
-        const data = await response.json();
-        if (!data.success) throw new Error(data.error || 'Erro ao editar QR');
-
-        showNotification('✅ QR atualizado com sucesso!', 'success');
-        await loadPhysicalProductQRs();
-
-    } catch (error) {
-        console.error(error);
-        showNotification('❌ ' + error.message, 'error');
+        throw new Error(errorMessage);
     }
-}
 
-async function disablePhysicalQR(id) {
-    const password = prompt('Digite a senha admin:');
-    if (!password) return;
-    if (!confirm('Desativar este QR? Ele deixará de funcionar no Clube Bebcom.')) return;
+    const blob = await response.blob();
+    const disposition = response.headers.get('Content-Disposition') || '';
+    const match = disposition.match(/filename="?([^"]+)"?/i);
+    const filename = match?.[1] || fallbackFilename;
 
-    try {
-        const response = await fetch(`${API_BASE_URL}/api/admin/clube/product-qrs/${id}?adminPassword=${encodeURIComponent(password)}`, {
-            method: 'DELETE'
-        });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
 
-        const data = await response.json();
-        if (!data.success) throw new Error(data.error || 'Erro ao desativar QR');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
 
-        showNotification('✅ QR desativado.', 'success');
-        await loadPhysicalProductQRs();
-
-    } catch (error) {
-        console.error(error);
-        showNotification('❌ ' + error.message, 'error');
-    }
-}
-
-async function buildQrDataUrl(text) {
-    return await QRCode.toDataURL(text, {
-        errorCorrectionLevel: 'M',
-        margin: 1,
-        width: 480,
-        color: { dark: '#111111', light: '#FFFFFF' }
-    });
+    a.remove();
+    URL.revokeObjectURL(url);
 }
 
 async function exportPhysicalQrsPDF() {
-    const items = getSelectedPhysicalQRs();
+    const password = prompt('Digite a senha admin:');
+    if (!password) return;
 
-    if (!items.length) {
+    const ids = getSelectedPhysicalQRIds();
+
+    if (!ids.length) {
         showNotification('❌ Selecione pelo menos um QR.', 'error');
         return;
     }
 
-    if (!window.jspdf || !window.QRCode) {
-        showNotification('❌ Bibliotecas PDF/QR não carregadas.', 'error');
-        return;
-    }
-
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-
-    const pageW = 210, margin = 10, gap = 6, cols = 2;
-    const cardW = (pageW - margin * 2 - gap) / cols;
-    const cardH = 86;
-
-    let x = margin, y = 12;
-
-    for (let i = 0; i < items.length; i++) {
-        const qr = items[i];
-
-        if (y + cardH > 287) {
-            doc.addPage();
-            x = margin;
-            y = 12;
-        }
-
-        const qrImg = await buildQrDataUrl(qr.qrPayload);
-
-        doc.setFillColor(12, 12, 12);
-        doc.roundedRect(x, y, cardW, cardH, 4, 4, 'F');
-
-        doc.setDrawColor(220, 38, 38);
-        doc.setLineWidth(0.4);
-        doc.roundedRect(x, y, cardW, cardH, 4, 4, 'S');
-
-        doc.setTextColor(245, 158, 11);
-        doc.setFontSize(9);
-        doc.setFont(undefined, 'bold');
-        doc.text('CLUBE BEBCOM', x + cardW / 2, y + 8, { align: 'center' });
-
-        doc.setTextColor(255, 255, 255);
-        doc.setFontSize(13);
-        doc.text(String(qr.product || 'Produto').substring(0, 24), x + cardW / 2, y + 17, { align: 'center' });
-
-        doc.addImage(qrImg, 'PNG', x + cardW / 2 - 20, y + 22, 40, 40);
-
-        doc.setTextColor(245, 245, 245);
-        doc.setFontSize(8);
-        doc.setFont(undefined, 'normal');
-        doc.text('Escaneie e participe do Universo Bebcom', x + cardW / 2, y + 68, { align: 'center' });
-
-        doc.setTextColor(148, 163, 184);
-        doc.setFontSize(7);
-        doc.text(`${qr.adminCode || ''} • ${qr.category || ''}`, x + cardW / 2, y + 76, { align: 'center' });
-
-        x += cardW + gap;
-
-        if ((i + 1) % cols === 0) {
-            x = margin;
-            y += cardH + gap;
-        }
-    }
-
-    doc.save('qrcodes-loja-fisica-bebcom.pdf');
-    await registerPhysicalQrPrint(items.map(qr => qr._id));
-}
-
-async function registerPhysicalQrPrint(ids) {
-    const password = prompt('Digite a senha admin para registrar impressão:');
-    if (!password) return;
-
     try {
-        await fetch(`${API_BASE_URL}/api/admin/clube/product-qrs/print?adminPassword=${encodeURIComponent(password)}`, {
+        showNotification('📄 Gerando PDF no servidor...', 'info');
+
+        const response = await fetch(`${API_BASE_URL}/api/admin/clube/product-qrs/pdf?adminPassword=${encodeURIComponent(password)}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ ids })
         });
+
+        await downloadBlobResponse(response, 'qrcodes-loja-fisica-bebcom.pdf');
+
+        showNotification('✅ PDF gerado com sucesso!', 'success');
+        await loadPhysicalProductQRs();
+
     } catch (error) {
-        console.warn('Não foi possível registrar impressão:', error);
+        console.error(error);
+        showNotification('❌ ' + error.message, 'error');
     }
 }
 
@@ -2638,13 +2548,26 @@ async function printPhysicalQrs() {
     await exportPhysicalQrsPDF();
 }
 
-window.createPhysicalProductQR = createPhysicalProductQR;
-window.loadPhysicalProductQRs = loadPhysicalProductQRs;
+async function downloadSinglePhysicalQrPDF(id) {
+    const password = prompt('Digite a senha admin:');
+    if (!password) return;
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/admin/clube/product-qrs/${id}/pdf?adminPassword=${encodeURIComponent(password)}`);
+        await downloadBlobResponse(response, 'qr-bebcom.pdf');
+        showNotification('✅ PDF unitário gerado!', 'success');
+        await loadPhysicalProductQRs();
+
+    } catch (error) {
+        console.error(error);
+        showNotification('❌ ' + error.message, 'error');
+    }
+}
+
 window.exportPhysicalQrsPDF = exportPhysicalQrsPDF;
 window.printPhysicalQrs = printPhysicalQrs;
-window.editPhysicalQrAdminCode = editPhysicalQrAdminCode;
-window.disablePhysicalQR = disablePhysicalQR;
-
+window.downloadSinglePhysicalQrPDF = downloadSinglePhysicalQrPDF;
+       
 function resetFilters() {
     const period = document.getElementById('periodFilter');
     const type = document.getElementById('typeFilter');
