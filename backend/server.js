@@ -1501,20 +1501,34 @@ async function findMatchingExpeditions(db, qr) {
 async function advanceExpeditionProgress(db, user, qr) {
     const phone = user.phone;
     const productKey = normalizeKey(qr.productKey || qr.product || qr.category);
-    const expeditions = await findMatchingExpeditions(db, qr);
+    const productName = qr.product || 'Produto participante';
 
+    const expeditions = await findMatchingExpeditions(db, qr);
     const results = [];
 
     for (const expedition of expeditions) {
         const steps = Array.isArray(expedition.steps) ? expedition.steps : [];
+        const productKeys = Array.isArray(expedition.productKeys) ? expedition.productKeys : [];
 
-        if (!steps.length) continue;
+        const isProductAllowed =
+            productKeys.includes(productKey) ||
+            steps.some(step => normalizeKey(step.productKey || step.product || step.title) === productKey);
 
-        const stepIndex = steps.findIndex(step => {
+        if (!isProductAllowed) continue;
+
+        const targetXp = Number(expedition.targetXp || expedition.xp || 100);
+
+        const matchedStep = steps.find(step => {
             return normalizeKey(step.productKey || step.product || step.title) === productKey;
         });
 
-        if (stepIndex === -1) continue;
+        const xpFromCampaign = Number(
+            matchedStep?.xpPerScan ??
+            matchedStep?.xp ??
+            expedition.productXpMap?.[productKey] ??
+            qr.xp ??
+            10
+        );
 
         let progress = await db.collection('clube_progress').findOne({
             phone,
@@ -1526,10 +1540,13 @@ async function advanceExpeditionProgress(db, user, qr) {
                 phone,
                 expeditionId: expedition._id,
                 expeditionTitle: expedition.title,
-                currentStep: 0,
+                progressMode: 'xp_accumulation',
+                progressXp: 0,
+                targetXp,
+                scanCount: 0,
                 completed: false,
-                discoveredProducts: [],
-                completedSteps: [],
+                productCounts: {},
+                productXp: {},
                 createdAt: new Date(),
                 updatedAt: new Date()
             };
@@ -1541,94 +1558,102 @@ async function advanceExpeditionProgress(db, user, qr) {
             results.push({
                 expedition,
                 status: 'already_completed',
-                message: 'Expedição já concluída'
+                message: 'Campanha já concluída',
+                progressXp: Number(progress.progressXp || targetXp),
+                targetXp,
+                percent: 100,
+                xpGained: 0
             });
             continue;
         }
 
-        const alreadyDiscovered = progress.discoveredProducts?.includes(productKey);
+        const previousXp = Number(progress.progressXp || 0);
+        const newProgressXp = Math.min(previousXp + xpFromCampaign, targetXp);
+        const completedNow = newProgressXp >= targetXp;
 
-        if (alreadyDiscovered) {
-            results.push({
-                expedition,
-                status: 'already_discovered',
-                message: 'Produto já descoberto nesta expedição'
-            });
-            continue;
-        }
+        const productCounts = { ...(progress.productCounts || {}) };
+        const productXp = { ...(progress.productXp || {}) };
 
-        const completedSteps = Array.from(new Set([
-            ...(progress.completedSteps || []),
-            stepIndex
-        ])).sort((a, b) => a - b);
-
-        const discoveredProducts = Array.from(new Set([
-            ...(progress.discoveredProducts || []),
-            productKey
-        ]));
-
-        const isCompleted = completedSteps.length >= steps.length;
+        productCounts[productKey] = Number(productCounts[productKey] || 0) + 1;
+        productXp[productKey] = Number(productXp[productKey] || 0) + xpFromCampaign;
 
         await db.collection('clube_progress').updateOne(
             { phone, expeditionId: expedition._id },
             {
                 $set: {
-                    currentStep: completedSteps.length,
-                    completed: isCompleted,
-                    discoveredProducts,
-                    completedSteps,
+                    progressMode: 'xp_accumulation',
+                    progressXp: newProgressXp,
+                    targetXp,
+                    completed: completedNow,
+                    productCounts,
+                    productXp,
                     updatedAt: new Date(),
-                    completedAt: isCompleted ? new Date() : null
+                    completedAt: completedNow ? new Date() : null
+                },
+                $inc: {
+                    scanCount: 1
                 }
             }
         );
 
-        const event = {
+        const percent = Math.round((newProgressXp / targetXp) * 100);
+
+        await db.collection('clube_events').insertOne({
             phone,
-            type: isCompleted ? 'EXPEDITION_COMPLETED' : 'PRODUCT_DISCOVERED',
+            type: completedNow ? 'EXPEDITION_COMPLETED' : 'CAMPAIGN_XP_GAINED',
             expeditionId: expedition._id,
             expeditionTitle: expedition.title,
-            product: qr.product || 'Produto participante',
+            product: productName,
             productKey,
-            stepIndex,
+            xpGained: xpFromCampaign,
             progress: {
-                completedSteps: completedSteps.length,
-                totalSteps: steps.length,
-                percent: Math.round((completedSteps.length / steps.length) * 100)
+                previousXp,
+                progressXp: newProgressXp,
+                targetXp,
+                percent
             },
-            message: isCompleted
-                ? `Expedição concluída: ${expedition.title}`
-                : `Produto descoberto: ${qr.product || productKey}`,
+            message: completedNow
+                ? `Campanha concluída: ${expedition.title}`
+                : `${productName} somou ${xpFromCampaign} XP na campanha ${expedition.title}`,
             createdAt: new Date()
-        };
-
-        await db.collection('clube_events').insertOne(event);
+        });
 
         let reward = null;
 
-        if (isCompleted && expedition.reward) {
-    if (expedition.maxRedeems) {
-        const totalRedeems = await db.collection('clube_redeems').countDocuments({
-            expeditionId: expedition._id
-        });
+        if (completedNow && expedition.reward) {
+            if (expedition.maxRedeems) {
+                const totalRedeems = await db.collection('clube_redeems').countDocuments({
+                    expeditionId: expedition._id
+                });
 
-        if (totalRedeems >= Number(expedition.maxRedeems)) {
-            await db.collection('clube_expeditions').updateOne(
-                { _id: expedition._id },
-                {
-                    $set: {
-                        active: false,
-                        status: 'max_redeems',
-                        closedReason: 'Limite de resgates atingido',
-                        closedAt: new Date(),
-                        updatedAt: new Date()
-                    }
+                if (totalRedeems >= Number(expedition.maxRedeems)) {
+                    await db.collection('clube_expeditions').updateOne(
+                        { _id: expedition._id },
+                        {
+                            $set: {
+                                active: false,
+                                status: 'max_redeems',
+                                closedReason: 'Limite de resgates atingido',
+                                closedAt: new Date(),
+                                updatedAt: new Date()
+                            }
+                        }
+                    );
+
+                    results.push({
+                        expedition,
+                        status: 'closed_limit_reached',
+                        message: 'Limite de resgates atingido',
+                        progressXp: newProgressXp,
+                        targetXp,
+                        percent,
+                        xpGained: xpFromCampaign
+                    });
+
+                    continue;
                 }
-            );
+            }
 
-            continue;
-        }
-    }
             const redeemCode = `RESGATE-${crypto.randomBytes(4).toString('hex').toUpperCase()}`;
 
             reward = {
@@ -1648,25 +1673,25 @@ async function advanceExpeditionProgress(db, user, qr) {
             await db.collection('clube_redeems').insertOne(reward);
 
             if (expedition.maxRedeems) {
-    const totalRedeemsAfter = await db.collection('clube_redeems').countDocuments({
-        expeditionId: expedition._id
-    });
+                const totalRedeemsAfter = await db.collection('clube_redeems').countDocuments({
+                    expeditionId: expedition._id
+                });
 
-    if (totalRedeemsAfter >= Number(expedition.maxRedeems)) {
-        await db.collection('clube_expeditions').updateOne(
-            { _id: expedition._id },
-            {
-                $set: {
-                    active: false,
-                    status: 'max_redeems',
-                    closedReason: 'Limite de resgates atingido',
-                    closedAt: new Date(),
-                    updatedAt: new Date()
+                if (totalRedeemsAfter >= Number(expedition.maxRedeems)) {
+                    await db.collection('clube_expeditions').updateOne(
+                        { _id: expedition._id },
+                        {
+                            $set: {
+                                active: false,
+                                status: 'max_redeems',
+                                closedReason: 'Limite de resgates atingido',
+                                closedAt: new Date(),
+                                updatedAt: new Date()
+                            }
+                        }
+                    );
                 }
             }
-        );
-    }
-}
 
             await db.collection('clube_users').updateOne(
                 { phone },
@@ -1681,10 +1706,14 @@ async function advanceExpeditionProgress(db, user, qr) {
 
         results.push({
             expedition,
-            status: isCompleted ? 'completed' : 'advanced',
-            completedSteps: completedSteps.length,
-            totalSteps: steps.length,
-            percent: Math.round((completedSteps.length / steps.length) * 100),
+            status: completedNow ? 'completed' : 'advanced',
+            progressMode: 'xp_accumulation',
+            progressXp: newProgressXp,
+            targetXp,
+            percent,
+            xpGained: xpFromCampaign,
+            productCounts,
+            productXp,
             reward
         });
     }
@@ -1763,10 +1792,21 @@ app.post('/api/clube/escanear', async (req, res) => {
 
         const expeditionResults = await advanceExpeditionProgress(db, { ...user, phone: normalizedPhone }, qr);
 
-        const progressed = expeditionResults.some(r => r.status === 'advanced' || r.status === 'completed');
-        const alreadyKnown = expeditionResults.length && expeditionResults.every(r => ['already_discovered', 'already_completed'].includes(r.status));
+const progressed = expeditionResults.some(r => {
+    return r.status === 'advanced' || r.status === 'completed';
+});
+        
+const alreadyKnown = expeditionResults.length && expeditionResults.every(r => {
+    return ['already_completed'].includes(r.status);
+});
 
-        const xpGained = qr.reusable ? (progressed ? xpBase : 0) : xpBase;
+const campaignXpGained = expeditionResults.reduce((sum, result) => {
+    return sum + Number(result.xpGained || 0);
+}, 0);
+
+const xpGained = qr.reusable
+    ? campaignXpGained
+    : (campaignXpGained || xpBase);
         const newXp = Number(user.xp || 0) + xpGained;
         const newLevel = calculateLevel(newXp);
         const newRank = getRankByXp(newXp);
@@ -1805,18 +1845,20 @@ app.post('/api/clube/escanear', async (req, res) => {
             }
         );
 
-        const completedExpedition = expeditionResults.find(r => r.status === 'completed');
-        const advancedExpedition = expeditionResults.find(r => r.status === 'advanced');
+const completedExpedition = expeditionResults.find(r => r.status === 'completed');
+const advancedExpedition = expeditionResults.find(r => r.status === 'advanced');
 
-        let narrativeMessage = `Você descobriu ${qr.product || 'um produto participante'} no Universo Bebcom.`;
+let narrativeMessage = `Você escaneou ${qr.product || 'um produto participante'} no Universo Bebcom.`;
 
-        if (completedExpedition) {
-            narrativeMessage = `Expedição concluída: ${completedExpedition.expedition.title}. Sua recompensa está pronta para retirada na loja física.`;
-        } else if (advancedExpedition) {
-            narrativeMessage = `Seu avatar avançou na expedição ${advancedExpedition.expedition.title}. Progresso: ${advancedExpedition.percent}%.`;
-        } else if (alreadyKnown) {
-            narrativeMessage = `${qr.product || 'Produto'} já foi registrado nas campanhas disponíveis para você.`;
-        }
+if (completedExpedition) {
+    narrativeMessage = `Campanha concluída: ${completedExpedition.expedition.title}. Sua recompensa está pronta para retirada na loja física.`;
+} else if (advancedExpedition) {
+    narrativeMessage = `${qr.product || 'Produto'} somou ${advancedExpedition.xpGained} XP na campanha ${advancedExpedition.expedition.title}. Progresso: ${advancedExpedition.progressXp}/${advancedExpedition.targetXp} XP (${advancedExpedition.percent}%).`;
+} else if (alreadyKnown) {
+    narrativeMessage = `${qr.product || 'Produto'} já pertence a uma campanha concluída por você.`;
+} else if (!expeditionResults.length) {
+    narrativeMessage = `${qr.product || 'Produto'} foi reconhecido, mas não participa de nenhuma campanha ativa no momento.`;
+}
 
         res.json({
             success: true,
@@ -1989,62 +2031,78 @@ app.post('/api/admin/clube/expedicoes/criar', adminLimiter, authenticateAdmin, a
             });
         }
 
-        const normalizedSteps = steps.map((step, index) => {
-            const stepTitle = typeof step === 'string' ? step : step.title;
-            const productKey = typeof step === 'string'
-                ? normalizeKey(step)
-                : normalizeKey(step.productKey || step.title);
+        
+const targetXp = Number(req.body.targetXp || xp || 100);
 
-            return {
-                index,
-                title: stepTitle,
-                productKey,
-                required: true
-            };
-        });
+const normalizedSteps = steps.map((step, index) => {
+    const stepTitle = typeof step === 'string' ? step : step.title;
+    const productKey = typeof step === 'string'
+        ? normalizeKey(step)
+        : normalizeKey(step.productKey || step.title);
 
-        const now = new Date();
+    const xpPerScan = typeof step === 'string'
+        ? 10
+        : Number(step.xpPerScan || step.xp || 10);
 
-        const campaignStartsAt = startsAt ? new Date(startsAt) : now;
-        const campaignEndsAt = permanent || !endsAt ? null : new Date(endsAt);
+    return {
+        index,
+        title: stepTitle,
+        productKey,
+        xpPerScan,
+        required: false
+    };
+});
 
-        const expedition = {
-            title,
-            description: description || '',
-            category,
-            categoryKey: normalizeKey(category),
+const productXpMap = {};
+normalizedSteps.forEach(step => {
+    productXpMap[step.productKey] = Number(step.xpPerScan || 10);
+});
 
-            // Dados novos de campanha
-            planet: planet || category,
-            planetKey: normalizeKey(planet || category),
-            rarity,
-            sponsor,
-            bannerUrl,
-            color,
-            permanent: Boolean(permanent),
-            startsAt: campaignStartsAt,
-            endsAt: campaignEndsAt,
-            maxRedeems: maxRedeems ? Number(maxRedeems) : null,
-            completionMessage: completionMessage || 'Sua recompensa está pronta para retirada na Base Bebcom.',
+const now = new Date();
 
-            productKeys: normalizedSteps.map(step => step.productKey),
-            steps: normalizedSteps,
-            xp: Number(xp) || 100,
+const campaignStartsAt = startsAt ? new Date(startsAt) : now;
+const campaignEndsAt = permanent || !endsAt ? null : new Date(endsAt);
 
-            reward: {
-                title: reward.title || 'Recompensa Bebcom',
-                description: reward.description || 'Retire sua recompensa na loja física.',
-                type: 'physical_store_redeem'
-            },
+const expedition = {
+    title,
+    description: description || '',
+    category,
+    categoryKey: normalizeKey(category),
 
-            status: 'active',
-            closedReason: null,
-            closedAt: null,
+    planet: planet || category,
+    planetKey: normalizeKey(planet || category),
+    rarity,
+    sponsor,
+    bannerUrl,
+    color,
+    permanent: Boolean(permanent),
+    startsAt: campaignStartsAt,
+    endsAt: campaignEndsAt,
+    maxRedeems: maxRedeems ? Number(maxRedeems) : null,
+    completionMessage: completionMessage || 'Sua recompensa está pronta para retirada na Base Bebcom.',
 
-            active: true,
-            createdAt: new Date(),
-            updatedAt: new Date()
-        };
+    progressMode: 'xp_accumulation',
+    targetXp,
+    productKeys: normalizedSteps.map(step => step.productKey),
+    productXpMap,
+    steps: normalizedSteps,
+
+    xp: targetXp,
+
+    reward: {
+        title: reward.title || 'Recompensa Bebcom',
+        description: reward.description || 'Retire sua recompensa na loja física.',
+        type: 'physical_store_redeem'
+    },
+
+    status: 'active',
+    closedReason: null,
+    closedAt: null,
+
+    active: true,
+    createdAt: new Date(),
+    updatedAt: new Date()
+};
 
         const result = await app.locals.db
             .collection('clube_expeditions')
