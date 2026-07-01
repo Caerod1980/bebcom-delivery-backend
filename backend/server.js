@@ -914,6 +914,253 @@ app.get('/api/payment-status/:orderId', async (req, res) => {
 });
 
 // =====================================================
+// 🏪 CLUBE BEBCOM — QR CODES SEGUROS DA LOJA FÍSICA
+// Cole após authenticateAdmin() ou antes das rotas do Clube Bebcom
+// =====================================================
+
+function createSecureQrToken(size = 12) {
+    return crypto
+        .randomBytes(size)
+        .toString('base64url')
+        .toUpperCase()
+        .replace(/[^A-Z0-9]/g, '')
+        .slice(0, 18);
+}
+
+function buildQrPublicPayload(token) {
+    return `https://bebidasecompanhia.com.br/clube/?qr=${encodeURIComponent(token)}`;
+}
+
+async function generateNextAdminQrCode(db) {
+    const counter = await db.collection('counters').findOneAndUpdate(
+        { _id: 'clube_product_qrs_admin_code' },
+        { $inc: { seq: 1 } },
+        { upsert: true, returnDocument: 'after' }
+    );
+
+    const seq = counter.value?.seq || 1;
+    return `QR-${String(seq).padStart(4, '0')}`;
+}
+
+async function generateUniqueQrToken(db) {
+    let token;
+    let exists = true;
+
+    while (exists) {
+        token = createSecureQrToken();
+        exists = await db.collection('clube_product_qrs').findOne({ token });
+    }
+
+    return token;
+}
+
+app.post('/api/admin/clube/product-qrs', adminLimiter, authenticateAdmin, async (req, res) => {
+    try {
+        if (!app.locals.db) return res.status(503).json({ success: false, error: 'Banco de dados indisponível' });
+
+        const db = app.locals.db;
+        const { product, category = 'geral', xp = 10, adminCode = null, locationName = '', notes = '' } = req.body;
+
+        if (!product || !String(product).trim()) {
+            return res.status(400).json({ success: false, error: 'Produto é obrigatório' });
+        }
+
+        let finalAdminCode = adminCode ? String(adminCode).trim().toUpperCase() : await generateNextAdminQrCode(db);
+
+        const adminCodeExists = await db.collection('clube_product_qrs').findOne({ adminCode: finalAdminCode });
+        if (adminCodeExists) {
+            return res.status(409).json({ success: false, error: 'Código administrativo já está em uso' });
+        }
+
+        const token = await generateUniqueQrToken(db);
+        const qrPayload = buildQrPublicPayload(token);
+
+        const doc = {
+            type: 'physical_product',
+            channel: 'store',
+            adminCode: finalAdminCode,
+            token,
+            qrPayload,
+            product: String(product).trim(),
+            productKey: normalizeKey(product),
+            category: String(category).trim() || 'geral',
+            categoryKey: normalizeKey(category),
+            xp: Number(xp) || 10,
+            locationName: String(locationName || '').trim(),
+            notes: String(notes || '').trim(),
+            active: true,
+            reusable: true,
+            printCount: 0,
+            lastPrintedAt: null,
+            scanCount: 0,
+            createdAt: new Date(),
+            updatedAt: new Date()
+        };
+
+        const result = await db.collection('clube_product_qrs').insertOne(doc);
+
+        res.json({
+            success: true,
+            qr: {
+                _id: result.insertedId,
+                adminCode: doc.adminCode,
+                product: doc.product,
+                category: doc.category,
+                xp: doc.xp,
+                locationName: doc.locationName,
+                active: doc.active,
+                reusable: doc.reusable,
+                qrPayload: doc.qrPayload,
+                printCount: doc.printCount,
+                createdAt: doc.createdAt
+            }
+        });
+
+    } catch (error) {
+        console.error('❌ Erro ao criar QR físico:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+app.get('/api/admin/clube/product-qrs', adminLimiter, authenticateAdmin, async (req, res) => {
+    try {
+        if (!app.locals.db) return res.status(503).json({ success: false, error: 'Banco de dados indisponível' });
+
+        const { search = '', category = '', active = 'all' } = req.query;
+        const filter = {};
+
+        if (search) {
+            filter.$or = [
+                { adminCode: { $regex: search, $options: 'i' } },
+                { product: { $regex: search, $options: 'i' } },
+                { locationName: { $regex: search, $options: 'i' } }
+            ];
+        }
+
+        if (category) filter.categoryKey = normalizeKey(category);
+        if (active !== 'all') filter.active = active === 'true';
+
+        const qrs = await app.locals.db.collection('clube_product_qrs')
+            .find(filter, { projection: { token: 0 } })
+            .sort({ createdAt: -1 })
+            .toArray();
+
+        res.json({ success: true, total: qrs.length, qrs });
+
+    } catch (error) {
+        console.error('❌ Erro ao listar QR físicos:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+app.put('/api/admin/clube/product-qrs/:id', adminLimiter, authenticateAdmin, async (req, res) => {
+    try {
+        if (!app.locals.db) return res.status(503).json({ success: false, error: 'Banco de dados indisponível' });
+
+        const db = app.locals.db;
+        const id = new ObjectId(req.params.id);
+        const current = await db.collection('clube_product_qrs').findOne({ _id: id });
+
+        if (!current) return res.status(404).json({ success: false, error: 'QR Code não encontrado' });
+
+        const { product, category, xp, adminCode, locationName, notes, active, regenerateToken = false } = req.body;
+        const update = { updatedAt: new Date() };
+
+        if (product !== undefined) {
+            update.product = String(product).trim();
+            update.productKey = normalizeKey(product);
+        }
+
+        if (category !== undefined) {
+            update.category = String(category).trim() || 'geral';
+            update.categoryKey = normalizeKey(category);
+        }
+
+        if (xp !== undefined) update.xp = Number(xp) || 10;
+        if (locationName !== undefined) update.locationName = String(locationName || '').trim();
+        if (notes !== undefined) update.notes = String(notes || '').trim();
+        if (active !== undefined) update.active = Boolean(active);
+
+        if (adminCode !== undefined && String(adminCode).trim()) {
+            const newAdminCode = String(adminCode).trim().toUpperCase();
+
+            if (newAdminCode !== current.adminCode) {
+                const exists = await db.collection('clube_product_qrs').findOne({
+                    adminCode: newAdminCode,
+                    _id: { $ne: id }
+                });
+
+                if (exists) return res.status(409).json({ success: false, error: 'Código administrativo já está em uso' });
+
+                update.adminCode = newAdminCode;
+            }
+        }
+
+        if (regenerateToken) {
+            const newToken = await generateUniqueQrToken(db);
+            update.token = newToken;
+            update.qrPayload = buildQrPublicPayload(newToken);
+            update.previousTokenInvalidatedAt = new Date();
+        }
+
+        await db.collection('clube_product_qrs').updateOne({ _id: id }, { $set: update });
+
+        const updated = await db.collection('clube_product_qrs').findOne({ _id: id }, { projection: { token: 0 } });
+
+        res.json({ success: true, qr: updated });
+
+    } catch (error) {
+        console.error('❌ Erro ao editar QR físico:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+app.post('/api/admin/clube/product-qrs/print', adminLimiter, authenticateAdmin, async (req, res) => {
+    try {
+        if (!app.locals.db) return res.status(503).json({ success: false, error: 'Banco de dados indisponível' });
+
+        const ids = Array.isArray(req.body.ids) ? req.body.ids : [];
+        const objectIds = ids.map(id => { try { return new ObjectId(id); } catch { return null; } }).filter(Boolean);
+
+        if (!objectIds.length) return res.status(400).json({ success: false, error: 'Nenhum QR informado para impressão' });
+
+        await app.locals.db.collection('clube_product_qrs').updateMany(
+            { _id: { $in: objectIds } },
+            {
+                $inc: { printCount: 1 },
+                $set: { lastPrintedAt: new Date(), updatedAt: new Date() }
+            }
+        );
+
+        res.json({ success: true, total: objectIds.length });
+
+    } catch (error) {
+        console.error('❌ Erro ao registrar impressão:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+app.delete('/api/admin/clube/product-qrs/:id', adminLimiter, authenticateAdmin, async (req, res) => {
+    try {
+        if (!app.locals.db) return res.status(503).json({ success: false, error: 'Banco de dados indisponível' });
+
+        const id = new ObjectId(req.params.id);
+
+        await app.locals.db.collection('clube_product_qrs').updateOne(
+            { _id: id },
+            { $set: { active: false, deletedAt: new Date(), updatedAt: new Date() } }
+        );
+
+        res.json({ success: true, message: 'QR desativado com sucesso' });
+
+    } catch (error) {
+        console.error('❌ Erro ao desativar QR físico:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+
+// =====================================================
 // 🎮 CLUBE BEBCOM — PASSAPORTE GAMER
 // =====================================================
 
@@ -1331,115 +1578,116 @@ async function advanceExpeditionProgress(db, user, qr) {
     return results;
 }
 
+// Ver arquivo 01-server-additions.js antes.
+// Substitua app.post('/api/clube/escanear', ...) por esta versão.
+
+function extractClubeQrToken(rawCode = '') {
+    const value = String(rawCode || '').trim();
+    try {
+        const url = new URL(value);
+        return url.searchParams.get('qr') || url.pathname.split('/').filter(Boolean).pop() || value;
+    } catch {
+        return value;
+    }
+}
+
+async function resolveClubeQr(db, rawCode) {
+    const input = String(rawCode || '').trim();
+    const token = extractClubeQrToken(input);
+
+    const physicalQr = await db.collection('clube_product_qrs').findOne({
+        $or: [{ token }, { qrPayload: input }],
+        active: true
+    });
+
+    if (physicalQr) {
+        return { ...physicalQr, code: physicalQr.qrPayload, source: 'physical_product', reusable: true, used: false };
+    }
+
+    const legacyQr = await db.collection('clube_qrcodes').findOne({ code: input });
+
+    if (legacyQr) {
+        return { ...legacyQr, source: legacyQr.source || 'legacy_code', reusable: Boolean(legacyQr.reusable) };
+    }
+
+    return null;
+}
+
 app.post('/api/clube/escanear', async (req, res) => {
     try {
-        if (!app.locals.db) {
-            return res.status(503).json({
-                success: false,
-                error: 'Banco de dados indisponível'
-            });
-        }
-
-        const { phone, code } = req.body;
-
-        const normalizedPhone = normalizePhone(phone);
-        const normalizedCode = String(code || '').trim().toUpperCase();
-
-        if (!normalizedPhone || normalizedPhone.length < 10) {
-            return res.status(400).json({
-                success: false,
-                error: 'Telefone inválido'
-            });
-        }
-
-        if (!normalizedCode) {
-            return res.status(400).json({
-                success: false,
-                error: 'Código QR inválido'
-            });
-        }
+        if (!app.locals.db) return res.status(503).json({ success: false, error: 'Banco de dados indisponível' });
 
         const db = app.locals.db;
-        const users = db.collection('clube_users');
-        const qrcodes = db.collection('clube_qrcodes');
-        const scans = db.collection('clube_scans');
+        const { phone, code } = req.body;
+        const normalizedPhone = normalizePhone(phone);
+        const rawCode = String(code || '').trim();
 
+        if (!normalizedPhone || normalizedPhone.length < 10) {
+            return res.status(400).json({ success: false, error: 'Telefone inválido' });
+        }
+
+        if (!rawCode) {
+            return res.status(400).json({ success: false, error: 'Código QR obrigatório' });
+        }
+
+        const users = db.collection('clube_users');
+        const scans = db.collection('clube_scans');
         const user = await users.findOne({ phone: normalizedPhone });
 
-        if (!user) {
-            return res.status(404).json({
-                success: false,
-                error: 'Faça login no Clube antes de escanear'
-            });
-        }
+        if (!user) return res.status(404).json({ success: false, error: 'Jogador não encontrado' });
 
-        const qr = await qrcodes.findOne({ code: normalizedCode });
+        const qr = await resolveClubeQr(db, rawCode);
 
-        if (!qr) {
-            return res.status(404).json({
-                success: false,
-                error: 'Código não encontrado'
-            });
-        }
+        if (!qr) return res.status(404).json({ success: false, error: 'Código inválido ou inexistente' });
 
-        if (qr.used) {
-            return res.status(409).json({
-                success: false,
-                error: 'Este QR Code já foi utilizado'
-            });
-        }
-
-        if (qr.expiresAt && new Date(qr.expiresAt) < new Date()) {
-            return res.status(410).json({
-                success: false,
-                error: 'Este QR Code expirou'
-            });
+        if (!qr.reusable && qr.used) {
+            return res.status(409).json({ success: false, error: 'Código já utilizado' });
         }
 
         const productKey = normalizeKey(qr.productKey || qr.product || qr.category);
-        const xpGained = Number(qr.xp || 10);
+        const xpBase = Number(qr.xp || 10);
+
+        const expeditionResults = await advanceExpeditionProgress(db, { ...user, phone: normalizedPhone }, qr);
+
+        const progressed = expeditionResults.some(r => r.status === 'advanced' || r.status === 'completed');
+        const alreadyKnown = expeditionResults.length && expeditionResults.every(r => ['already_discovered', 'already_completed'].includes(r.status));
+
+        const xpGained = qr.reusable ? (progressed ? xpBase : 0) : xpBase;
         const newXp = Number(user.xp || 0) + xpGained;
         const newLevel = calculateLevel(newXp);
         const newRank = getRankByXp(newXp);
 
-        await qrcodes.updateOne(
-            { code: normalizedCode },
-            {
-                $set: {
-                    used: true,
-                    usedBy: normalizedPhone,
-                    usedAt: new Date()
-                }
-            }
-        );
+        if (!qr.reusable) {
+            await db.collection('clube_qrcodes').updateOne(
+                { _id: qr._id },
+                { $set: { used: true, usedBy: normalizedPhone, usedAt: new Date() } }
+            );
+        } else if (qr.source === 'physical_product') {
+            await db.collection('clube_product_qrs').updateOne(
+                { _id: qr._id },
+                { $inc: { scanCount: 1 }, $set: { lastScannedAt: new Date(), updatedAt: new Date() } }
+            );
+        }
 
         await scans.insertOne({
             phone: normalizedPhone,
-            code: normalizedCode,
+            code: rawCode,
+            qrSource: qr.source,
+            adminCode: qr.adminCode || null,
             product: qr.product || 'Produto participante',
             productKey,
             category: qr.category || 'geral',
             xp: xpGained,
+            progressed,
+            alreadyKnown,
             createdAt: new Date()
         });
-
-        const expeditionResults = await advanceExpeditionProgress(db, {
-            ...user,
-            phone: normalizedPhone
-        }, qr);
 
         await users.updateOne(
             { phone: normalizedPhone },
             {
-                $set: {
-                    xp: newXp,
-                    level: newLevel,
-                    rank: newRank,
-                    updatedAt: new Date()
-                },
-                $inc: {
-                    'stats.scans': 1
-                }
+                $set: { xp: newXp, level: newLevel, rank: newRank, updatedAt: new Date() },
+                $inc: { 'stats.scans': 1 }
             }
         );
 
@@ -1452,6 +1700,8 @@ app.post('/api/clube/escanear', async (req, res) => {
             narrativeMessage = `Expedição concluída: ${completedExpedition.expedition.title}. Sua recompensa está pronta para retirada na loja física.`;
         } else if (advancedExpedition) {
             narrativeMessage = `Seu avatar avançou na expedição ${advancedExpedition.expedition.title}. Progresso: ${advancedExpedition.percent}%.`;
+        } else if (alreadyKnown) {
+            narrativeMessage = `${qr.product || 'Produto'} já foi registrado nas campanhas disponíveis para você.`;
         }
 
         res.json({
@@ -1469,12 +1719,10 @@ app.post('/api/clube/escanear', async (req, res) => {
 
     } catch (error) {
         console.error('❌ Erro ao escanear QR:', error);
-        res.status(500).json({
-            success: false,
-            error: error.message
-        });
+        res.status(500).json({ success: false, error: error.message });
     }
 });
+
 
 // ADMIN — GERAR QR CODES EM LOTE
 app.post('/api/admin/clube/qrcodes/gerar', adminLimiter, authenticateAdmin, async (req, res) => {
@@ -1895,6 +2143,8 @@ async function initializeMongoDB() {
     'clube_rewards',
     'clube_coupons',
     'clube_campaigns',
+    'clube_product_qrs',
+    'counters',
 
 // Engine Universo Bebcom
    'clube_expeditions',
