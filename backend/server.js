@@ -932,14 +932,23 @@ function buildQrPublicPayload(token) {
 }
 
 async function generateNextAdminQrCode(db) {
-    const counter = await db.collection('counters').findOneAndUpdate(
-        { _id: 'clube_product_qrs_admin_code' },
-        { $inc: { seq: 1 } },
-        { upsert: true, returnDocument: 'after' }
-    );
+    let adminCode;
+    let exists = true;
 
-    const seq = counter.value?.seq || 1;
-    return `QR-${String(seq).padStart(4, '0')}`;
+    while (exists) {
+        const counter = await db.collection('counters').findOneAndUpdate(
+            { _id: 'clube_product_qrs_admin_code' },
+            { $inc: { seq: 1 } },
+            { upsert: true, returnDocument: 'after' }
+        );
+
+        const seq = counter.value?.seq || 1;
+        adminCode = `QR-${String(seq).padStart(4, '0')}`;
+
+        exists = await db.collection('clube_product_qrs').findOne({ adminCode });
+    }
+
+    return adminCode;
 }
 
 async function generateUniqueQrToken(db) {
