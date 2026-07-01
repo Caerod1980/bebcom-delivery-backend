@@ -9,6 +9,12 @@ const {
     processUberDelivery,
     createUberDeliveryQuote
 } = require('./services/uberDirectService');
+const {
+    generateQrSvg,
+    generateQrPngBuffer,
+    generateQrPdfBuffer,
+    generateSingleQrPdfBuffer
+} = require('./services/qrManager');
 
 const app = express();
 app.set('trust proxy', 1); // Confia no primeiro proxy (Azure)
@@ -928,7 +934,7 @@ function createSecureQrToken(size = 12) {
 }
 
 function buildQrPublicPayload(token) {
-    return `https://bebidasecompanhia.com.br/clube/?qr=${encodeURIComponent(token)}`;
+    return `https://bebidasecompanhia.com.br/q/${encodeURIComponent(token)}`;
 }
 
 async function generateNextAdminQrCode(db) {
@@ -1164,6 +1170,105 @@ app.delete('/api/admin/clube/product-qrs/:id', adminLimiter, authenticateAdmin, 
 
     } catch (error) {
         console.error('❌ Erro ao desativar QR físico:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+app.get('/q/:token', async (req, res) => {
+    const token = String(req.params.token || '').trim();
+    if (!token) return res.redirect('https://bebidasecompanhia.com.br/clube/');
+    return res.redirect(`https://bebidasecompanhia.com.br/clube/?qr=${encodeURIComponent(token)}`);
+});
+
+app.get('/api/admin/clube/product-qrs/:id/png', adminLimiter, authenticateAdmin, async (req, res) => {
+    try {
+        if (!app.locals.db) return res.status(503).json({ success: false, error: 'Banco de dados indisponível' });
+
+        const qr = await app.locals.db.collection('clube_product_qrs').findOne({ _id: new ObjectId(req.params.id) });
+        if (!qr) return res.status(404).json({ success: false, error: 'QR físico não encontrado' });
+
+        const buffer = await generateQrPngBuffer(qr.qrPayload);
+        res.setHeader('Content-Type', 'image/png');
+        res.setHeader('Cache-Control', 'private, max-age=3600');
+        res.send(buffer);
+    } catch (error) {
+        console.error('❌ Erro ao gerar PNG do QR:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+app.get('/api/admin/clube/product-qrs/:id/svg', adminLimiter, authenticateAdmin, async (req, res) => {
+    try {
+        if (!app.locals.db) return res.status(503).json({ success: false, error: 'Banco de dados indisponível' });
+
+        const qr = await app.locals.db.collection('clube_product_qrs').findOne({ _id: new ObjectId(req.params.id) });
+        if (!qr) return res.status(404).json({ success: false, error: 'QR físico não encontrado' });
+
+        const svg = await generateQrSvg(qr.qrPayload);
+        res.setHeader('Content-Type', 'image/svg+xml; charset=utf-8');
+        res.setHeader('Cache-Control', 'private, max-age=3600');
+        res.send(svg);
+    } catch (error) {
+        console.error('❌ Erro ao gerar SVG do QR:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+app.get('/api/admin/clube/product-qrs/:id/pdf', adminLimiter, authenticateAdmin, async (req, res) => {
+    try {
+        if (!app.locals.db) return res.status(503).json({ success: false, error: 'Banco de dados indisponível' });
+
+        const qr = await app.locals.db.collection('clube_product_qrs').findOne(
+            { _id: new ObjectId(req.params.id) },
+            { projection: { token: 0 } }
+        );
+
+        if (!qr) return res.status(404).json({ success: false, error: 'QR físico não encontrado' });
+
+        const pdf = await generateSingleQrPdfBuffer(qr);
+
+        await app.locals.db.collection('clube_product_qrs').updateOne(
+            { _id: qr._id },
+            { $inc: { printCount: 1 }, $set: { lastPrintedAt: new Date(), updatedAt: new Date() } }
+        );
+
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', `attachment; filename="qr-${qr.adminCode || qr._id}.pdf"`);
+        res.send(pdf);
+    } catch (error) {
+        console.error('❌ Erro ao gerar PDF unitário:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+app.post('/api/admin/clube/product-qrs/pdf', adminLimiter, authenticateAdmin, async (req, res) => {
+    try {
+        if (!app.locals.db) return res.status(503).json({ success: false, error: 'Banco de dados indisponível' });
+
+        const ids = Array.isArray(req.body.ids) ? req.body.ids : [];
+        const objectIds = ids.map(id => { try { return new ObjectId(id); } catch { return null; } }).filter(Boolean);
+
+        if (!objectIds.length) return res.status(400).json({ success: false, error: 'Nenhum QR informado para PDF' });
+
+        const qrs = await app.locals.db.collection('clube_product_qrs')
+            .find({ _id: { $in: objectIds }, active: true }, { projection: { token: 0 } })
+            .sort({ product: 1 })
+            .toArray();
+
+        if (!qrs.length) return res.status(404).json({ success: false, error: 'Nenhum QR ativo encontrado' });
+
+        const pdf = await generateQrPdfBuffer(qrs);
+
+        await app.locals.db.collection('clube_product_qrs').updateMany(
+            { _id: { $in: objectIds } },
+            { $inc: { printCount: 1 }, $set: { lastPrintedAt: new Date(), updatedAt: new Date() } }
+        );
+
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', 'attachment; filename="qrcodes-loja-fisica-bebcom.pdf"');
+        res.send(pdf);
+    } catch (error) {
+        console.error('❌ Erro ao gerar PDF em lote:', error);
         res.status(500).json({ success: false, error: error.message });
     }
 });
