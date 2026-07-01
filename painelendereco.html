@@ -10,6 +10,11 @@
     
     <!-- SheetJS para exportar Excel -->
     <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
+
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+    
+    <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+
     
     <style>
         /* ESTILOS IGUAIS - MANTIDOS */
@@ -818,37 +823,69 @@
   </button>
 </div>
 
-    <div class="table-container">
-        <h2 style="margin-bottom: 20px;">📷 Gerar QR Codes de Produto</h2>
+   <div class="table-container">
+  <h2 style="margin-bottom: 20px;">🏪 QR Codes Loja Física</h2>
+  <p style="color: var(--gray); margin-bottom: 18px;">
+    Gere QR Codes fixos por produto. O QR contém apenas um token seguro; o código interno fica restrito ao painel.
+  </p>
 
-        <div class="filter-section">
-            <div class="filter-group">
-                <label>Produto:</label>
-                <input type="text" id="qrProduct" placeholder="Ex: Big Power">
-            </div>
-
-            <div class="filter-group">
-                <label>Categoria:</label>
-                <input type="text" id="qrCategory" placeholder="Ex: energéticos">
-            </div>
-
-            <div class="filter-group">
-                <label>Quantidade:</label>
-                <input type="number" id="qrQuantity" value="10">
-            </div>
-
-            <div class="filter-group">
-                <label>XP:</label>
-                <input type="number" id="qrXp" value="25">
-            </div>
-        </div>
-
-        <button class="header-btn btn-import-json" onclick="generateClubeQRCodes()">
-            🎮 Gerar QR Codes
-        </button>
-
-        <div id="qrResultBox" style="margin-top: 25px;"></div>
+  <div class="filter-section">
+    <div class="filter-group">
+      <label>Produto:</label>
+      <input type="text" id="physicalQrProduct" placeholder="Ex: Monster 473ml">
     </div>
+
+    <div class="filter-group">
+      <label>Categoria:</label>
+      <select id="physicalQrCategory">
+        <option value="energéticos">⚡ Energéticos</option>
+        <option value="cervejas">🍺 Cervejas</option>
+        <option value="refrigerantes">🥤 Refrigerantes</option>
+        <option value="salgadinhos">🥜 Salgadinhos</option>
+        <option value="drinks">🍹 Drinks</option>
+        <option value="destilados">🥃 Destilados</option>
+        <option value="sucos">🍊 Sucos</option>
+        <option value="doces">🍬 Doces</option>
+        <option value="mercearia">🛒 Mercearia</option>
+        <option value="carvão">🔥 Carvão</option>
+        <option value="gelos">🧊 Gelos</option>
+      </select>
+    </div>
+
+    <div class="filter-group">
+      <label>XP:</label>
+      <input type="number" id="physicalQrXp" value="25">
+    </div>
+  </div>
+
+  <div class="filter-section">
+    <div class="filter-group">
+      <label>Código admin:</label>
+      <input type="text" id="physicalQrAdminCode" placeholder="Opcional. Ex: QR-0100">
+    </div>
+
+    <div class="filter-group">
+      <label>Local:</label>
+      <input type="text" id="physicalQrLocation" placeholder="Ex: Drive Thru / Geladeira 1">
+    </div>
+
+    <div class="filter-group" style="flex:1;">
+      <label>Observações:</label>
+      <input type="text" id="physicalQrNotes" placeholder="Uso interno">
+    </div>
+  </div>
+
+  <div class="filter-section">
+    <button class="header-btn btn-stats" onclick="createPhysicalProductQR()">🏪 Gerar QR físico</button>
+    <button class="header-btn btn-refresh" onclick="loadPhysicalProductQRs()">🔄 Atualizar lista</button>
+    <button class="header-btn btn-excel" onclick="exportPhysicalQrsPDF()">📄 Exportar PDF</button>
+    <button class="header-btn btn-csv" onclick="printPhysicalQrs()">🖨️ Imprimir</button>
+  </div>
+
+  <div id="physicalQrListBox" style="margin-top: 25px;">
+    <p style="color: var(--gray);">Nenhum QR físico carregado ainda.</p>
+  </div>
+</div>
 
     <div class="table-container">
         <h2 style="margin-bottom: 20px;">🌌 Expedições Criadas</h2>
@@ -2328,6 +2365,286 @@ function renderClubeExpeditions(expeditions) {
 }
 
 window.deleteClubeExpedition = deleteClubeExpedition;
+
+let physicalProductQRs = [];
+
+async function createPhysicalProductQR() {
+    const password = prompt('Digite a senha admin:');
+    if (!password) return;
+
+    const payload = {
+        password,
+        product: document.getElementById('physicalQrProduct').value.trim(),
+        category: document.getElementById('physicalQrCategory').value,
+        xp: Number(document.getElementById('physicalQrXp').value || 25),
+        adminCode: document.getElementById('physicalQrAdminCode').value.trim(),
+        locationName: document.getElementById('physicalQrLocation').value.trim(),
+        notes: document.getElementById('physicalQrNotes').value.trim()
+    };
+
+    if (!payload.product) {
+        showNotification('❌ Informe o produto.', 'error');
+        return;
+    }
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/admin/clube/product-qrs`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+
+        const data = await response.json();
+        if (!data.success) throw new Error(data.error || 'Erro ao gerar QR físico');
+
+        showNotification('✅ QR físico criado com sucesso!', 'success');
+
+        document.getElementById('physicalQrProduct').value = '';
+        document.getElementById('physicalQrAdminCode').value = '';
+        document.getElementById('physicalQrLocation').value = '';
+        document.getElementById('physicalQrNotes').value = '';
+
+        await loadPhysicalProductQRs();
+
+    } catch (error) {
+        console.error(error);
+        showNotification('❌ ' + error.message, 'error');
+    }
+}
+
+async function loadPhysicalProductQRs() {
+    const password = prompt('Digite a senha admin:');
+    if (!password) return;
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/admin/clube/product-qrs?adminPassword=${encodeURIComponent(password)}`);
+        const data = await response.json();
+        if (!data.success) throw new Error(data.error || 'Erro ao listar QR físicos');
+
+        physicalProductQRs = data.qrs || [];
+        renderPhysicalProductQRs(physicalProductQRs);
+
+        const countTarget = document.getElementById('clubeQrCount');
+        if (countTarget) countTarget.innerText = physicalProductQRs.length;
+
+    } catch (error) {
+        console.error(error);
+        showNotification('❌ ' + error.message, 'error');
+    }
+}
+
+function renderPhysicalProductQRs(qrs) {
+    const box = document.getElementById('physicalQrListBox');
+    if (!box) return;
+
+    if (!qrs.length) {
+        box.innerHTML = '<p style="color: var(--gray);">Nenhum QR físico cadastrado.</p>';
+        return;
+    }
+
+    box.innerHTML = `
+        <div class="table-container" style="padding:0;">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Selecionar</th>
+                        <th>Código admin</th>
+                        <th>Produto</th>
+                        <th>Categoria</th>
+                        <th>Local</th>
+                        <th>XP</th>
+                        <th>Impressões</th>
+                        <th>Status</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${qrs.map(qr => `
+                        <tr>
+                            <td><input type="checkbox" class="physical-qr-check" value="${qr._id}" checked></td>
+                            <td><strong>${qr.adminCode || '-'}</strong></td>
+                            <td>${qr.product || '-'}</td>
+                            <td>${qr.category || '-'}</td>
+                            <td>${qr.locationName || '-'}</td>
+                            <td>${qr.xp || 0}</td>
+                            <td>${qr.printCount || 0}</td>
+                            <td><span class="badge ${qr.active ? 'badge-paid' : 'badge-pending'}">${qr.active ? 'Ativo' : 'Inativo'}</span></td>
+                            <td>
+                                <button class="header-btn btn-refresh" style="padding:8px 10px;" onclick="editPhysicalQrAdminCode('${qr._id}')">✏️ Editar</button>
+                                <button class="header-btn btn-import-json" style="padding:8px 10px;" onclick="disablePhysicalQR('${qr._id}')">🚫 Desativar</button>
+                            </td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        </div>
+    `;
+}
+
+function getSelectedPhysicalQRs() {
+    const selectedIds = Array.from(document.querySelectorAll('.physical-qr-check:checked')).map(input => input.value);
+    return physicalProductQRs.filter(qr => selectedIds.includes(String(qr._id)));
+}
+
+async function editPhysicalQrAdminCode(id) {
+    const qr = physicalProductQRs.find(item => String(item._id) === String(id));
+    if (!qr) return;
+
+    const password = prompt('Digite a senha admin:');
+    if (!password) return;
+
+    const newAdminCode = prompt('Novo código administrativo:', qr.adminCode || '');
+    if (!newAdminCode) return;
+
+    const regenerate = confirm('Deseja regenerar o QR Code também? Se confirmar, o QR impresso anteriormente deixa de funcionar.');
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/admin/clube/product-qrs/${id}?adminPassword=${encodeURIComponent(password)}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ adminCode: newAdminCode, regenerateToken: regenerate })
+        });
+
+        const data = await response.json();
+        if (!data.success) throw new Error(data.error || 'Erro ao editar QR');
+
+        showNotification('✅ QR atualizado com sucesso!', 'success');
+        await loadPhysicalProductQRs();
+
+    } catch (error) {
+        console.error(error);
+        showNotification('❌ ' + error.message, 'error');
+    }
+}
+
+async function disablePhysicalQR(id) {
+    const password = prompt('Digite a senha admin:');
+    if (!password) return;
+    if (!confirm('Desativar este QR? Ele deixará de funcionar no Clube Bebcom.')) return;
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/admin/clube/product-qrs/${id}?adminPassword=${encodeURIComponent(password)}`, {
+            method: 'DELETE'
+        });
+
+        const data = await response.json();
+        if (!data.success) throw new Error(data.error || 'Erro ao desativar QR');
+
+        showNotification('✅ QR desativado.', 'success');
+        await loadPhysicalProductQRs();
+
+    } catch (error) {
+        console.error(error);
+        showNotification('❌ ' + error.message, 'error');
+    }
+}
+
+async function buildQrDataUrl(text) {
+    return await QRCode.toDataURL(text, {
+        errorCorrectionLevel: 'M',
+        margin: 1,
+        width: 480,
+        color: { dark: '#111111', light: '#FFFFFF' }
+    });
+}
+
+async function exportPhysicalQrsPDF() {
+    const items = getSelectedPhysicalQRs();
+
+    if (!items.length) {
+        showNotification('❌ Selecione pelo menos um QR.', 'error');
+        return;
+    }
+
+    if (!window.jspdf || !window.QRCode) {
+        showNotification('❌ Bibliotecas PDF/QR não carregadas.', 'error');
+        return;
+    }
+
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+
+    const pageW = 210, margin = 10, gap = 6, cols = 2;
+    const cardW = (pageW - margin * 2 - gap) / cols;
+    const cardH = 86;
+
+    let x = margin, y = 12;
+
+    for (let i = 0; i < items.length; i++) {
+        const qr = items[i];
+
+        if (y + cardH > 287) {
+            doc.addPage();
+            x = margin;
+            y = 12;
+        }
+
+        const qrImg = await buildQrDataUrl(qr.qrPayload);
+
+        doc.setFillColor(12, 12, 12);
+        doc.roundedRect(x, y, cardW, cardH, 4, 4, 'F');
+
+        doc.setDrawColor(220, 38, 38);
+        doc.setLineWidth(0.4);
+        doc.roundedRect(x, y, cardW, cardH, 4, 4, 'S');
+
+        doc.setTextColor(245, 158, 11);
+        doc.setFontSize(9);
+        doc.setFont(undefined, 'bold');
+        doc.text('CLUBE BEBCOM', x + cardW / 2, y + 8, { align: 'center' });
+
+        doc.setTextColor(255, 255, 255);
+        doc.setFontSize(13);
+        doc.text(String(qr.product || 'Produto').substring(0, 24), x + cardW / 2, y + 17, { align: 'center' });
+
+        doc.addImage(qrImg, 'PNG', x + cardW / 2 - 20, y + 22, 40, 40);
+
+        doc.setTextColor(245, 245, 245);
+        doc.setFontSize(8);
+        doc.setFont(undefined, 'normal');
+        doc.text('Escaneie e participe do Universo Bebcom', x + cardW / 2, y + 68, { align: 'center' });
+
+        doc.setTextColor(148, 163, 184);
+        doc.setFontSize(7);
+        doc.text(`${qr.adminCode || ''} • ${qr.category || ''}`, x + cardW / 2, y + 76, { align: 'center' });
+
+        x += cardW + gap;
+
+        if ((i + 1) % cols === 0) {
+            x = margin;
+            y += cardH + gap;
+        }
+    }
+
+    doc.save('qrcodes-loja-fisica-bebcom.pdf');
+    await registerPhysicalQrPrint(items.map(qr => qr._id));
+}
+
+async function registerPhysicalQrPrint(ids) {
+    const password = prompt('Digite a senha admin para registrar impressão:');
+    if (!password) return;
+
+    try {
+        await fetch(`${API_BASE_URL}/api/admin/clube/product-qrs/print?adminPassword=${encodeURIComponent(password)}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ids })
+        });
+    } catch (error) {
+        console.warn('Não foi possível registrar impressão:', error);
+    }
+}
+
+async function printPhysicalQrs() {
+    await exportPhysicalQrsPDF();
+}
+
+window.createPhysicalProductQR = createPhysicalProductQR;
+window.loadPhysicalProductQRs = loadPhysicalProductQRs;
+window.exportPhysicalQrsPDF = exportPhysicalQrsPDF;
+window.printPhysicalQrs = printPhysicalQrs;
+window.editPhysicalQrAdminCode = editPhysicalQrAdminCode;
+window.disablePhysicalQR = disablePhysicalQR;
     
     </script>
 </body>
