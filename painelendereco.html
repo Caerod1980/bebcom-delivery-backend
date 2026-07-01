@@ -2645,6 +2645,22 @@ window.exportPhysicalQrsPDF = exportPhysicalQrsPDF;
 window.printPhysicalQrs = printPhysicalQrs;
 window.editPhysicalQrAdminCode = editPhysicalQrAdminCode;
 window.disablePhysicalQR = disablePhysicalQR;
+
+function resetFilters() {
+    const period = document.getElementById('periodFilter');
+    const type = document.getElementById('typeFilter');
+    const status = document.getElementById('statusFilter');
+    const search = document.getElementById('searchFilter');
+
+    if (period) period.value = 'week';
+    if (type) type.value = 'all';
+    if (status) status.value = 'all';
+    if (search) search.value = '';
+
+    if (typeof applyFilters === 'function') {
+        applyFilters();
+    }
+}
     
     </script>
 </body>
