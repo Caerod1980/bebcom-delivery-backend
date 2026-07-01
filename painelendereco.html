@@ -735,8 +735,8 @@
     </div>
 
     <div class="filter-group">
-      <label>XP:</label>
-      <input type="number" id="expeditionXp" value="150">
+      <label>Meta XP:</label>
+         <input type="number" id="expeditionXp" value="100">
     </div>
   </div>
 
@@ -767,7 +767,7 @@
   <div class="filter-section">
     <div class="filter-group" style="width: 100%;">
       <label>Produtos:</label>
-      <input type="text" id="expeditionSteps" placeholder="Ex: Heineken, Amendoim, Gelo, Carvão">
+      <input type="text" id="expeditionSteps" placeholder="Ex: Monster:10, Red Bull:10, Doritos:20">
     </div>
   </div>
 
@@ -2167,71 +2167,96 @@ function copyGeneratedQRCodes() {
         .catch(() => alert(text));
 }
 
-       async function createClubeExpedition() {
-  const password = prompt('Digite a senha admin:');
-  if (!password) return;
+      async function createClubeExpedition() {
+    const password = prompt('Digite a senha admin:');
+    if (!password) return;
 
-  const steps = document.getElementById('expeditionSteps').value
-    .split(',')
-    .map(item => item.trim())
-    .filter(Boolean);
+    const rawSteps = document.getElementById('expeditionSteps').value
+        .split(',')
+        .map(item => item.trim())
+        .filter(Boolean);
 
-  const planet = document.getElementById('expeditionPlanet').value;
-  const permanent = document.getElementById('expeditionPermanent').checked;
+    const steps = rawSteps.map(item => {
+        const [nameRaw, xpRaw] = item.split(':').map(v => String(v || '').trim());
 
-  const payload = {
-    password,
-    title: document.getElementById('expeditionTitle').value.trim(),
-    description: document.getElementById('expeditionDescription').value.trim(),
-    category: planet,
-    planet,
-    rarity: document.getElementById('expeditionRarity').value,
-    sponsor: document.getElementById('expeditionSponsor').value.trim(),
-    bannerUrl: document.getElementById('expeditionBannerUrl').value.trim(),
-    color: document.getElementById('expeditionColor').value || '#f59e0b',
-    steps,
-    xp: Number(document.getElementById('expeditionXp').value || 100),
-    startsAt: document.getElementById('expeditionStartsAt').value || null,
-    endsAt: permanent ? null : (document.getElementById('expeditionEndsAt').value || null),
-    permanent,
-    maxRedeems: document.getElementById('expeditionMaxRedeems').value || null,
-    completionMessage: document.getElementById('expeditionCompletionMessage').value.trim(),
-    reward: {
-      title: document.getElementById('expeditionRewardTitle').value.trim() || 'Recompensa Bebcom',
-      description: document.getElementById('expeditionRewardDescription').value.trim() || 'Retire sua recompensa na loja física.'
-    }
-  };
-
-  if (!payload.title) {
-    showNotification('❌ Informe o título da campanha.', 'error');
-    return;
-  }
-
-  if (!steps.length) {
-    showNotification('❌ Informe pelo menos um produto participante.', 'error');
-    return;
-  }
-
-  try {
-    const response = await fetch(`${API_BASE_URL}/api/admin/clube/expedicoes/criar`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
+        return {
+            title: nameRaw,
+            xpPerScan: Number(xpRaw || 10) || 10
+        };
     });
 
-    const data = await response.json();
+    const targetXp = Number(document.getElementById('expeditionXp').value || 100);
 
-    if (!data.success) {
-      throw new Error(data.error || 'Erro ao criar campanha');
+    const payload = {
+        password,
+        title: document.getElementById('expeditionTitle').value.trim(),
+        description: document.getElementById('expeditionDescription').value.trim(),
+        category: document.getElementById('expeditionPlanet').value,
+        planet: document.getElementById('expeditionPlanet').value,
+        rarity: document.getElementById('expeditionRarity').value,
+        sponsor: document.getElementById('expeditionSponsor').value.trim(),
+        bannerUrl: document.getElementById('expeditionBannerUrl').value.trim(),
+        color: document.getElementById('expeditionColor').value,
+        steps,
+        targetXp,
+        xp: targetXp,
+        startsAt: document.getElementById('expeditionStartsAt').value || null,
+        endsAt: document.getElementById('expeditionEndsAt').value || null,
+        permanent: document.getElementById('expeditionPermanent').checked,
+        maxRedeems: document.getElementById('expeditionMaxRedeems').value || null,
+        reward: {
+            title: document.getElementById('expeditionRewardTitle').value.trim(),
+            description: document.getElementById('expeditionRewardDescription').value.trim()
+        },
+        completionMessage: document.getElementById('expeditionCompletionMessage').value.trim()
+    };
+
+    if (!payload.title) {
+        showNotification('❌ Informe o título da campanha.', 'error');
+        return;
     }
 
-    showNotification('✅ Campanha criada com sucesso!', 'success');
-    await loadClubeExpeditions();
+    if (!steps.length) {
+        showNotification('❌ Informe ao menos um produto participante.', 'error');
+        return;
+    }
 
-  } catch (error) {
-    console.error(error);
-    showNotification('❌ ' + error.message, 'error');
-  }
+    if (!targetXp || targetXp <= 0) {
+        showNotification('❌ Informe uma meta de XP válida.', 'error');
+        return;
+    }
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/admin/clube/expedicoes/criar`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+
+        const data = await response.json();
+
+        if (!data.success) {
+            throw new Error(data.error || 'Erro ao criar campanha');
+        }
+
+        showNotification('✅ Campanha criada com meta de XP!', 'success');
+
+        document.getElementById('expeditionTitle').value = '';
+        document.getElementById('expeditionDescription').value = '';
+        document.getElementById('expeditionSteps').value = '';
+        document.getElementById('expeditionSponsor').value = '';
+        document.getElementById('expeditionBannerUrl').value = '';
+        document.getElementById('expeditionRewardTitle').value = '';
+        document.getElementById('expeditionRewardDescription').value = '';
+        document.getElementById('expeditionCompletionMessage').value = '';
+        document.getElementById('expeditionMaxRedeems').value = '';
+
+        await loadClubeExpeditions();
+
+    } catch (error) {
+        console.error(error);
+        showNotification('❌ ' + error.message, 'error');
+    }
 }
 
 async function loadClubeExpeditions() {
@@ -2275,7 +2300,7 @@ function renderClubeExpeditions(expeditions) {
           <th>Planeta</th>
           <th>Raridade</th>
           <th>Vigência</th>
-          <th>Produtos</th>
+          <th>Meta / Produtos</th>
           <th>Recompensa</th>
           <th>Status</th>
           <th>Ações</th>
@@ -2314,7 +2339,12 @@ function renderClubeExpeditions(expeditions) {
                 →
                 ${exp.permanent ? 'Permanente' : (endsAt ? endsAt.toLocaleDateString('pt-BR') : 'Sem fim')}
               </td>
-              <td>${(exp.steps || []).map(s => s.title).join(', ')}</td>
+              <td>
+  <strong>${exp.targetXp || exp.xp || 100} XP de meta</strong><br>
+  <small style="color: var(--gray);">
+    ${(exp.steps || []).map(s => `${s.title} (${s.xpPerScan || 10} XP)`).join(', ')}
+  </small>
+</td>
               <td>${exp.reward?.title || 'Recompensa Bebcom'}</td>
               <td><span class="badge ${badge}">${status}</span></td>
               <td>
