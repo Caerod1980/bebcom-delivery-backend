@@ -1317,24 +1317,34 @@ app.post('/api/clube/login', async (req, res) => {
         let user = await users.findOne({ phone: normalizedPhone });
 
         if (!user) {
-            user = {
-                name: name || 'Jogador Bebcom',
-                phone: normalizedPhone,
-                xp: 0,
-                level: 1,
-                avatar: {
-                    name: 'Explorador Bebcom',
-                    skin: 'default',
-                    items: []
-                },
-                stats: {
-                    scans: 0,
-                    missionsCompleted: 0,
-                    rewardsUnlocked: 0
-                },
-                createdAt: new Date(),
-                updatedAt: new Date()
-            };
+           user = {
+    name: name || 'Jogador Bebcom',
+    phone: normalizedPhone,
+    xp: 0,
+    level: 1,
+    rank: 'Explorador',
+    avatar: {
+        id: 'explorer_neon',
+        name: 'Explorador Neon',
+        skin: 'explorer_neon',
+        items: []
+    },
+    character: buildPersistentCharacter({
+        name: name || 'Jogador Bebcom',
+        phone: normalizedPhone,
+        xp: 0,
+        level: 1,
+        rank: 'Explorador',
+        avatar: { id: 'explorer_neon' }
+    }),
+    stats: {
+        scans: 0,
+        missionsCompleted: 0,
+        rewardsUnlocked: 0
+    },
+    createdAt: new Date(),
+    updatedAt: new Date()
+};
 
             await users.insertOne(user);
         } else if (name && name !== user.name) {
@@ -1350,6 +1360,16 @@ app.post('/api/clube/login', async (req, res) => {
 
             user.name = name;
         }
+        if (!user.character) {
+    const character = buildPersistentCharacter(user);
+
+    await users.updateOne(
+        { phone: normalizedPhone },
+        { $set: { character, updatedAt: new Date() } }
+    );
+
+    user.character = character;
+}
 
         res.json({
             success: true,
@@ -1377,7 +1397,7 @@ app.get('/api/clube/perfil/:phone', async (req, res) => {
 
         const phone = normalizePhone(req.params.phone);
 
-        const user = await app.locals.db.collection('clube_users').findOne({ phone });
+        let user = await app.locals.db.collection('clube_users').findOne({ phone });
 
         if (!user) {
             return res.status(404).json({
@@ -1385,6 +1405,17 @@ app.get('/api/clube/perfil/:phone', async (req, res) => {
                 error: 'Jogador não encontrado'
             });
         }
+
+        if (!user.character) {
+    const character = buildPersistentCharacter(user);
+
+    await app.locals.db.collection('clube_users').updateOne(
+        { phone },
+        { $set: { character, updatedAt: new Date() } }
+    );
+
+    user.character = character;
+}
 
         const scans = await app.locals.db.collection('clube_scans')
             .find({ phone })
@@ -1496,6 +1527,104 @@ async function findMatchingExpeditions(db, qr) {
         .find(filter)
         .sort({ createdAt: -1 })
         .toArray();
+}
+
+function getCharacterStageByLevel(level = 1) {
+    const lvl = Number(level || 1);
+
+    if (lvl >= 50) return { id: 'cosmic_legend', label: 'Lenda Cósmica', tier: 6, unlockedGear: ['visor_cosmic', 'armor_legend', 'aura_galaxy', 'drone_elite', 'ship_core'] };
+    if (lvl >= 30) return { id: 'commander', label: 'Comandante', tier: 5, unlockedGear: ['visor_elite', 'armor_commander', 'aura_power', 'drone_basic'] };
+    if (lvl >= 20) return { id: 'guardian', label: 'Guardião', tier: 4, unlockedGear: ['helmet_guardian', 'armor_guardian', 'backpack_energy'] };
+    if (lvl >= 10) return { id: 'cadet_plus', label: 'Cadete Avançado', tier: 3, unlockedGear: ['helmet_light', 'chest_light'] };
+    if (lvl >= 5) return { id: 'cadet', label: 'Cadete', tier: 2, unlockedGear: ['gloves_basic', 'boots_basic'] };
+
+    return { id: 'explorer', label: 'Explorador', tier: 1, unlockedGear: [] };
+}
+
+function getNextEvolutionLevel(level = 1) {
+    const lvl = Number(level || 1);
+    if (lvl < 5) return 5;
+    if (lvl < 10) return 10;
+    if (lvl < 20) return 20;
+    if (lvl < 30) return 30;
+    if (lvl < 50) return 50;
+    return null;
+}
+
+function getCharacterArchetype(archetypeId = 'explorer_neon') {
+    const archetypes = {
+        explorer_neon: { id: 'explorer_neon', name: 'Explorador Neon', origin: 'Base Bebcom', role: 'Explorador de Missões', color: '#dc2626', accent: '#f59e0b', planetAffinity: 'geral' },
+        energy_guardian: { id: 'energy_guardian', name: 'Guardião da Energia', origin: 'Planeta Energia', role: 'Especialista em campanhas energéticas', color: '#06b6d4', accent: '#fbbf24', planetAffinity: 'energéticos' },
+        fire_forge: { id: 'fire_forge', name: 'Forjado no Fogo', origin: 'Planeta Fogo', role: 'Mestre das missões de churrasco', color: '#f97316', accent: '#ef4444', planetAffinity: 'carvão' },
+        cosmic_runner: { id: 'cosmic_runner', name: 'Corredor Cósmico', origin: 'Rotas da Velocidade', role: 'Caçador de códigos e eventos rápidos', color: '#8b5cf6', accent: '#22d3ee', planetAffinity: 'drinks' },
+        base_titan: { id: 'base_titan', name: 'Titã da Base', origin: 'Base Bebcom', role: 'Guardião das conquistas longas', color: '#10b981', accent: '#fbbf24', planetAffinity: 'geral' },
+        neon_captain: { id: 'neon_captain', name: 'Capitão Neon', origin: 'Comando Orbital', role: 'Líder de temporadas e eventos', color: '#2563eb', accent: '#ec4899', planetAffinity: 'geral' }
+    };
+
+    return archetypes[archetypeId] || archetypes.explorer_neon;
+}
+
+function buildPersistentCharacter(user = {}, preferredArchetypeId = null) {
+    const xp = Number(user.xp || 0);
+    const level = Number(user.level || calculateLevel(xp));
+    const rank = user.rank || getRankByXp(xp);
+    const previous = user.character || {};
+    const archetype = getCharacterArchetype(preferredArchetypeId || previous?.archetype?.id || user.avatar?.id || 'explorer_neon');
+    const stage = getCharacterStageByLevel(level);
+
+    return {
+        id: previous.id || crypto.randomBytes(8).toString('hex'),
+        type: 'bebcom_character',
+        universe: 'bebcom',
+        version: 1,
+        archetype,
+        identity: {
+            displayName: user.name || 'Jogador Bebcom',
+            title: stage.label,
+            rank,
+            origin: archetype.origin,
+            className: archetype.name
+        },
+        progression: {
+            xp,
+            level,
+            rank,
+            stageId: stage.id,
+            stageLabel: stage.label,
+            tier: stage.tier,
+            nextEvolutionAt: getNextEvolutionLevel(level)
+        },
+        appearance: {
+            base: archetype.id,
+            body: previous.appearance?.body || 'bebcom_hero_v1',
+            palette: {
+                primary: archetype.color,
+                accent: archetype.accent,
+                glow: archetype.color
+            },
+            face: previous.appearance?.face || 'visor_default',
+            suit: stage.tier >= 3 ? 'suit_advanced' : 'suit_basic',
+            helmet: stage.unlockedGear.includes('helmet_guardian') ? 'helmet_guardian' : stage.unlockedGear.includes('helmet_light') ? 'helmet_light' : 'none',
+            armor: stage.unlockedGear.includes('armor_legend') ? 'armor_legend' : stage.unlockedGear.includes('armor_commander') ? 'armor_commander' : stage.unlockedGear.includes('armor_guardian') ? 'armor_guardian' : stage.unlockedGear.includes('chest_light') ? 'chest_light' : 'none',
+            aura: stage.unlockedGear.includes('aura_galaxy') ? 'aura_galaxy' : stage.unlockedGear.includes('aura_power') ? 'aura_power' : 'none',
+            companion: stage.unlockedGear.includes('drone_elite') ? 'drone_elite' : stage.unlockedGear.includes('drone_basic') ? 'drone_basic' : 'none'
+        },
+        equipment: {
+            unlocked: Array.from(new Set([...(previous.equipment?.unlocked || []), ...stage.unlockedGear])),
+            equipped: {
+                helmet: stage.unlockedGear.includes('helmet_guardian') ? 'helmet_guardian' : stage.unlockedGear.includes('helmet_light') ? 'helmet_light' : null,
+                armor: stage.unlockedGear.includes('armor_legend') ? 'armor_legend' : stage.unlockedGear.includes('armor_commander') ? 'armor_commander' : stage.unlockedGear.includes('armor_guardian') ? 'armor_guardian' : stage.unlockedGear.includes('chest_light') ? 'chest_light' : null,
+                aura: stage.unlockedGear.includes('aura_galaxy') ? 'aura_galaxy' : stage.unlockedGear.includes('aura_power') ? 'aura_power' : null,
+                companion: stage.unlockedGear.includes('drone_elite') ? 'drone_elite' : stage.unlockedGear.includes('drone_basic') ? 'drone_basic' : null
+            }
+        },
+        animations: { idle: 'float', scan: 'pulse', levelUp: 'evolve', reward: 'celebrate' },
+        stats: {
+            createdAt: previous.stats?.createdAt || new Date(),
+            lastEvolutionAt: previous.progression?.stageId !== stage.id ? new Date() : previous.stats?.lastEvolutionAt || null,
+            updatedAt: new Date()
+        }
+    };
 }
 
 async function advanceExpeditionProgress(db, user, qr) {
@@ -1818,6 +1947,18 @@ const xpGained = qr.reusable
         const newXp = Number(user.xp || 0) + xpGained;
         const newLevel = calculateLevel(newXp);
         const newRank = getRankByXp(newXp);
+        const previousCharacterStage = user.character?.progression?.stageId || null;
+
+const nextCharacter = buildPersistentCharacter({
+    ...user,
+    xp: newXp,
+    level: newLevel,
+    rank: newRank
+});
+
+const characterEvolved =
+    previousCharacterStage &&
+    previousCharacterStage !== nextCharacter.progression.stageId;
 
         if (!qr.reusable) {
             await db.collection('clube_qrcodes').updateOne(
@@ -1848,7 +1989,13 @@ const xpGained = qr.reusable
         await users.updateOne(
             { phone: normalizedPhone },
             {
-                $set: { xp: newXp, level: newLevel, rank: newRank, updatedAt: new Date() },
+                $set: {
+    xp: newXp,
+    level: newLevel,
+    rank: newRank,
+    character: nextCharacter,
+    updatedAt: new Date()
+},
                 $inc: { 'stats.scans': 1 }
             }
         );
@@ -1878,6 +2025,14 @@ if (completedExpedition) {
             product: qr.product || 'Produto participante',
             productKey,
             expeditionResults,
+            character: nextCharacter,
+characterEvolved,
+characterEvolution: characterEvolved ? {
+    from: previousCharacterStage,
+    to: nextCharacter.progression.stageId,
+    title: nextCharacter.progression.stageLabel,
+    unlocked: nextCharacter.equipment.unlocked
+} : null,
             reward: completedExpedition?.reward || null
         });
 
@@ -1993,6 +2148,46 @@ app.post('/api/admin/clube/missoes/criar', adminLimiter, authenticateAdmin, asyn
             success: false,
             error: error.message
         });
+    }
+});
+
+app.post('/api/clube/personagem/selecionar', async (req, res) => {
+    try {
+        if (!app.locals.db) return res.status(503).json({ success: false, error: 'Banco de dados indisponível' });
+
+        const { phone, archetypeId } = req.body;
+        const normalizedPhone = normalizePhone(phone);
+
+        if (!normalizedPhone || normalizedPhone.length < 10) {
+            return res.status(400).json({ success: false, error: 'Telefone inválido' });
+        }
+
+        const user = await app.locals.db.collection('clube_users').findOne({ phone: normalizedPhone });
+        if (!user) return res.status(404).json({ success: false, error: 'Jogador não encontrado' });
+
+        const character = buildPersistentCharacter(user, archetypeId);
+
+        await app.locals.db.collection('clube_users').updateOne(
+            { phone: normalizedPhone },
+            {
+                $set: {
+                    character,
+                    avatar: {
+                        id: character.archetype.id,
+                        name: character.archetype.name,
+                        skin: character.archetype.id,
+                        items: character.equipment.unlocked || []
+                    },
+                    updatedAt: new Date()
+                }
+            }
+        );
+
+        res.json({ success: true, character });
+
+    } catch (error) {
+        console.error('❌ Erro ao selecionar personagem:', error);
+        res.status(500).json({ success: false, error: error.message });
     }
 });
 
