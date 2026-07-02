@@ -894,6 +894,31 @@
         </div>
     </div>
 
+    <div class="table-container">
+  <h2 style="margin-bottom: 20px;">🏆 Ganhadores / Resgates</h2>
+
+  <div class="filter-section">
+    <div class="filter-group">
+      <label>Status:</label>
+      <select id="redeemStatusFilter">
+        <option value="all">Todos</option>
+        <option value="available">Aguardando retirada</option>
+        <option value="redeemed">Entregues</option>
+      </select>
+    </div>
+
+    <div class="filter-group" style="flex:1;">
+      <label>Buscar:</label>
+      <input type="text" id="redeemSearchFilter" placeholder="Nome, WhatsApp, prêmio ou código">
+    </div>
+
+    <button class="header-btn btn-refresh" onclick="loadClubeRedeems()">🔄 Atualizar Resgates</button>
+  </div>
+
+  <div id="redeemsListBox" style="margin-top: 25px;">
+    <p style="color: var(--gray);">Nenhum resgate carregado ainda.</p>
+  </div>
+</div>
 </div>  
 
         <div class="stats-footer">
@@ -2070,9 +2095,8 @@ ${addr.complement ? `Complemento: ${addr.complement}` : ''}
         window.createClubeExpedition = createClubeExpedition;
         window.loadClubeExpeditions = loadClubeExpeditions;
         window.generateClubeQRCodes = generateClubeQRCodes;
-        window.copyGeneratedQRCodes = copyGeneratedQRCodes;
-
-   
+        window.copyGeneratedQRCodes = copyGeneratedQRCodes
+           
 async function generateClubeQRCodes() {
     const password = prompt('Digite a senha admin:');
 
@@ -2597,6 +2621,9 @@ async function downloadSinglePhysicalQrPDF(id) {
 window.exportPhysicalQrsPDF = exportPhysicalQrsPDF;
 window.printPhysicalQrs = printPhysicalQrs;
 window.downloadSinglePhysicalQrPDF = downloadSinglePhysicalQrPDF;
+window.loadClubeRedeems = loadClubeRedeems;
+window.renderClubeRedeems = renderClubeRedeems;
+window.markRedeemDelivered = markRedeemDelivered;
        
 function resetFilters() {
     const period = document.getElementById('periodFilter');
@@ -2613,6 +2640,124 @@ function resetFilters() {
         applyFilters();
     }
 }
+
+async function loadClubeRedeems() {
+    const password = prompt('Digite a senha admin:');
+    if (!password) return;
+
+    const status = document.getElementById('redeemStatusFilter')?.value || 'all';
+    const search = document.getElementById('redeemSearchFilter')?.value || '';
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/admin/clube/redeems?adminPassword=${encodeURIComponent(password)}&status=${encodeURIComponent(status)}&search=${encodeURIComponent(search)}`);
+        const data = await response.json();
+
+        if (!data.success) {
+            throw new Error(data.error || 'Erro ao carregar resgates');
+        }
+
+        renderClubeRedeems(data.redeems || [], data.stats || {});
+
+    } catch (error) {
+        console.error(error);
+        showNotification('❌ ' + error.message, 'error');
+    }
+}
+
+function renderClubeRedeems(redeems, stats = {}) {
+    const box = document.getElementById('redeemsListBox');
+    if (!box) return;
+
+    if (!redeems.length) {
+        box.innerHTML = '<p style="color: var(--gray);">Nenhum resgate encontrado.</p>';
+        return;
+    }
+
+    box.innerHTML = `
+        <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:14px;">
+            <span class="badge badge-paid">Disponíveis: ${stats.available || 0}</span>
+            <span class="badge badge-pending">Entregues: ${stats.redeemed || 0}</span>
+            <span class="badge badge-delivery">Total: ${stats.total || redeems.length}</span>
+        </div>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Cliente</th>
+                    <th>WhatsApp</th>
+                    <th>Campanha</th>
+                    <th>Prêmio</th>
+                    <th>Código</th>
+                    <th>Data</th>
+                    <th>Status</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${redeems.map(redeem => {
+                    const available = (redeem.status || 'available') === 'available';
+                    const date = redeem.createdAt ? new Date(redeem.createdAt).toLocaleString('pt-BR') : '-';
+                    const redeemedAt = redeem.redeemedAt ? new Date(redeem.redeemedAt).toLocaleString('pt-BR') : '';
+
+                    return `
+                        <tr>
+                            <td><strong>${redeem.userName || 'Jogador Bebcom'}</strong></td>
+                            <td>${redeem.phone || '-'}</td>
+                            <td>${redeem.expeditionTitle || '-'}</td>
+                            <td>${redeem.title || 'Recompensa Bebcom'}</td>
+                            <td><strong>${redeem.code || '-'}</strong></td>
+                            <td>${date}</td>
+                            <td>
+                                <span class="badge ${available ? 'badge-paid' : 'badge-pending'}">
+                                    ${available ? 'Aguardando retirada' : 'Entregue'}
+                                </span>
+                                ${redeemedAt ? `<br><small style="color:var(--gray);">${redeemedAt}</small>` : ''}
+                            </td>
+                            <td>
+                                ${available ? `
+                                    <button class="header-btn btn-excel" style="padding:8px 10px;" onclick="markRedeemDelivered('${redeem._id}')">
+                                        ✅ Entregue
+                                    </button>
+                                ` : `
+                                    <span style="color:var(--gray);">Finalizado</span>
+                                `}
+                            </td>
+                        </tr>
+                    `;
+                }).join('')}
+            </tbody>
+        </table>
+    `;
+}
+
+async function markRedeemDelivered(id) {
+    if (!confirm('Confirmar entrega deste prêmio ao cliente?')) return;
+
+    const password = prompt('Digite a senha admin:');
+    if (!password) return;
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/admin/clube/redeems/${id}/entregar?adminPassword=${encodeURIComponent(password)}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ deliveredBy: 'Admin Bebcom' })
+        });
+
+        const data = await response.json();
+
+        if (!data.success) {
+            throw new Error(data.error || 'Erro ao marcar como entregue');
+        }
+
+        showNotification('✅ Prêmio marcado como entregue!', 'success');
+        await loadClubeRedeems();
+
+    } catch (error) {
+        console.error(error);
+        showNotification('❌ ' + error.message, 'error');
+    }
+}
+
     
     </script>
 </body>
