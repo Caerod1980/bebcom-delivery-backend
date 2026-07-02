@@ -1,4 +1,4 @@
-// backend/server.js - VERSÃO ESTÁVEL PARA PRODUÇÃO
+// backend/server.js - VERSÃO PRODUÇÃO
 const express = require('express');
 const cors = require('cors');
 const crypto = require('crypto');
