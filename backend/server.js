@@ -1392,7 +1392,7 @@ app.get('/api/clube/perfil/:phone', async (req, res) => {
             .limit(20)
             .toArray();
 
-        const rewards = await app.locals.db.collection('clube_coupons')
+        const rewards = await app.locals.db.collection('clube_redeems')
             .find({ phone })
             .sort({ createdAt: -1 })
             .toArray();
