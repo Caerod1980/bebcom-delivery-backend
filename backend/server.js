@@ -1657,18 +1657,26 @@ async function advanceExpeditionProgress(db, user, qr) {
             const redeemCode = `RESGATE-${crypto.randomBytes(4).toString('hex').toUpperCase()}`;
 
             reward = {
-                phone,
-                code: redeemCode,
-                expeditionId: expedition._id,
-                expeditionTitle: expedition.title,
-                title: expedition.reward.title || 'Recompensa Bebcom',
-                description: expedition.reward.description || 'Retire sua recompensa na loja física.',
-                type: 'physical_store_redeem',
-                status: 'available',
-                redeemLocation: 'Bebidas & Companhia',
-                createdAt: new Date(),
-                redeemedAt: null
-            };
+    phone,
+    userName: user.name || 'Jogador Bebcom',
+    code: redeemCode,
+    expeditionId: expedition._id,
+    expeditionTitle: expedition.title,
+    title: expedition.reward.title || 'Recompensa Bebcom',
+    description: expedition.reward.description || 'Retire sua recompensa na Base Bebcom.',
+    rarity: expedition.rarity || 'comum',
+    sponsor: expedition.sponsor || 'Bebcom',
+    artifactType: 'physical_reward',
+    type: 'physical_store_redeem',
+    status: 'available',
+    redeemLocation: 'Bebidas & Companhia',
+    baseName: 'Base Bebcom',
+    mapsUrl: 'https://www.google.com/maps/search/?api=1&query=R.+Jos%C3%A9+Henrique+Ferraz,+18-10,+Centro,+Bauru+-+SP',
+    createdAt: new Date(),
+    redeemedAt: null,
+    redeemedBy: null,
+    updatedAt: new Date()
+};
 
             await db.collection('clube_redeems').insertOne(reward);
 
@@ -2269,6 +2277,110 @@ const expeditions = await app.locals.db
         });
     }
 });
+
+app.get('/api/admin/clube/redeems', adminLimiter, authenticateAdmin, async (req, res) => {
+    try {
+        if (!app.locals.db) {
+            return res.status(503).json({ success: false, error: 'Banco de dados indisponível' });
+        }
+
+        const { status = 'all', search = '', expeditionId = '' } = req.query;
+
+        const filter = {};
+
+        if (status !== 'all') {
+            filter.status = status;
+        }
+
+        if (expeditionId) {
+            try {
+                filter.expeditionId = new ObjectId(expeditionId);
+            } catch {
+                filter.expeditionId = expeditionId;
+            }
+        }
+
+        if (search) {
+            filter.$or = [
+                { phone: { $regex: search, $options: 'i' } },
+                { userName: { $regex: search, $options: 'i' } },
+                { title: { $regex: search, $options: 'i' } },
+                { expeditionTitle: { $regex: search, $options: 'i' } },
+                { code: { $regex: search, $options: 'i' } }
+            ];
+        }
+
+        const redeems = await app.locals.db.collection('clube_redeems')
+            .find(filter)
+            .sort({ createdAt: -1 })
+            .limit(500)
+            .toArray();
+
+        const stats = {
+            total: await app.locals.db.collection('clube_redeems').countDocuments({}),
+            available: await app.locals.db.collection('clube_redeems').countDocuments({ status: 'available' }),
+            redeemed: await app.locals.db.collection('clube_redeems').countDocuments({ status: { $ne: 'available' } })
+        };
+
+        res.json({ success: true, redeems, stats });
+
+    } catch (error) {
+        console.error('❌ Erro ao listar resgates:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+
+// ADMIN — MARCAR PRÊMIO COMO ENTREGUE
+app.post('/api/admin/clube/redeems/:id/entregar', adminLimiter, authenticateAdmin, async (req, res) => {
+    try {
+        if (!app.locals.db) {
+            return res.status(503).json({ success: false, error: 'Banco de dados indisponível' });
+        }
+
+        const redeemId = new ObjectId(req.params.id);
+
+        const redeem = await app.locals.db.collection('clube_redeems').findOne({ _id: redeemId });
+
+        if (!redeem) {
+            return res.status(404).json({ success: false, error: 'Resgate não encontrado' });
+        }
+
+        if ((redeem.status || 'available') !== 'available') {
+            return res.status(409).json({ success: false, error: 'Este prêmio já foi entregue ou não está disponível' });
+        }
+
+        await app.locals.db.collection('clube_redeems').updateOne(
+            { _id: redeemId },
+            {
+                $set: {
+                    status: 'redeemed',
+                    redeemedAt: new Date(),
+                    redeemedBy: req.body.deliveredBy || 'Admin Bebcom',
+                    updatedAt: new Date()
+                }
+            }
+        );
+
+        await app.locals.db.collection('clube_events').insertOne({
+            phone: redeem.phone,
+            type: 'REWARD_REDEEMED',
+            redeemId,
+            expeditionId: redeem.expeditionId,
+            title: redeem.title,
+            code: redeem.code,
+            message: `Prêmio entregue: ${redeem.title}`,
+            createdAt: new Date()
+        });
+
+        res.json({ success: true, message: 'Prêmio marcado como entregue' });
+
+    } catch (error) {
+        console.error('❌ Erro ao entregar prêmio:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
 
 
 // ========== INICIALIZAÇÃO DO MONGODB ==========
