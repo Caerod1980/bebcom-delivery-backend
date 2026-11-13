@@ -2521,7 +2521,7 @@ function renderPhysicalProductQRs(qrs) {
                             <td><span class="badge ${qr.active ? 'badge-paid' : 'badge-pending'}">${qr.active ? 'Ativo' : 'Inativo'}</span></td>
                             <td>
                                 <button class="header-btn btn-refresh" style="padding:8px 10px;" onclick="editPhysicalQrAdminCode('${qr._id}')">✏️ Editar</button>
-                                <button class="header-btn btn-import-json" style="padding:8px 10px;" onclick="disablePhysicalQR('${qr._id}')">🚫 Desativar</button>
+                                <button class="header-btn btn-import-json" style="padding:8px 10px;" ${qr.active ? `onclick="disablePhysicalQR('${qr._id}')"` : 'disabled title="QR já desativado"'}>🚫 Desativar</button>
                                 <button class="header-btn btn-excel" style="padding:8px 10px;" onclick="downloadSinglePhysicalQrPDF('${qr._id}')">📄 PDF</button>
                             </td>
                         </tr>
@@ -2531,6 +2531,100 @@ function renderPhysicalProductQRs(qrs) {
         </div>
     `;
 }
+
+// Ações administrativas dos QR Codes físicos.
+// A edição mantém o token e o QR já impresso (regenerateToken: false).
+async function editPhysicalQrAdminCode(id) {
+    const qr = physicalProductQRs.find(item => String(item._id) === String(id));
+    if (!qr) {
+        showNotification('❌ QR não encontrado. Atualize a lista.', 'error');
+        return;
+    }
+
+    const fields = [
+        ['product', 'Produto'],
+        ['category', 'Categoria'],
+        ['xp', 'XP'],
+        ['adminCode', 'Código administrativo'],
+        ['locationName', 'Local'],
+        ['notes', 'Observações']
+    ];
+    const changes = {};
+    for (const [key, label] of fields) {
+        const answer = prompt(`Editar ${label}:`, String(qr[key] ?? ''));
+        if (answer === null) return; // Cancelamento: nenhuma alteração é enviada.
+        changes[key] = answer.trim();
+    }
+
+    if (!changes.product) {
+        showNotification('❌ O nome do produto é obrigatório.', 'error');
+        return;
+    }
+    if (!changes.category) {
+        showNotification('❌ A categoria é obrigatória.', 'error');
+        return;
+    }
+    if (!/^\d+$/.test(changes.xp) || Number(changes.xp) <= 0) {
+        showNotification('❌ Informe um XP inteiro maior que zero.', 'error');
+        return;
+    }
+    changes.xp = Number(changes.xp);
+    // Um código administrativo em branco não substitui o código existente.
+    if (!changes.adminCode) delete changes.adminCode;
+    changes.regenerateToken = false;
+
+    const password = prompt('Digite a senha admin para salvar as alterações:');
+    if (!password) return;
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/admin/clube/product-qrs/${encodeURIComponent(id)}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ...changes, password })
+        });
+        const data = await response.json();
+        if (!response.ok || !data.success) throw new Error(data.error || `Erro HTTP ${response.status}`);
+        showNotification('✅ QR atualizado sem alterar o token!', 'success');
+        await loadPhysicalProductQRs();
+    } catch (error) {
+        console.error('Erro ao editar QR físico:', error);
+        showNotification('❌ ' + error.message, 'error');
+    }
+}
+
+async function disablePhysicalQR(id) {
+    const qr = physicalProductQRs.find(item => String(item._id) === String(id));
+    if (!qr) {
+        showNotification('❌ QR não encontrado. Atualize a lista.', 'error');
+        return;
+    }
+    if (!qr.active) {
+        showNotification('ℹ️ Este QR já está desativado.', 'info');
+        return;
+    }
+    if (!confirm(`Desativar o QR de "${qr.product || qr.adminCode || id}"?\nO código impresso deixará de ser válido para novas leituras.`)) return;
+
+    const password = prompt('Digite a senha admin para desativar o QR:');
+    if (!password) return;
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/admin/clube/product-qrs/${encodeURIComponent(id)}`, {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ password })
+        });
+        const data = await response.json();
+        if (!response.ok || !data.success) throw new Error(data.error || `Erro HTTP ${response.status}`);
+        showNotification('✅ QR desativado com sucesso!', 'success');
+        await loadPhysicalProductQRs();
+    } catch (error) {
+        console.error('Erro ao desativar QR físico:', error);
+        showNotification('❌ ' + error.message, 'error');
+    }
+}
+
+window.editPhysicalQrAdminCode = editPhysicalQrAdminCode;
+window.disablePhysicalQR = disablePhysicalQR;
 
 function getSelectedPhysicalQRIds() {
     return Array.from(document.querySelectorAll('.physical-qr-check:checked'))
