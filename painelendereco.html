@@ -672,6 +672,27 @@
         <!-- Clube Bebcom Tab -->
 <div id="clube-tab" class="tab-content">
 
+    <!-- RESUMO DE PARTICIPANTES DO CLUBE BEBCOM -->
+    <section class="table-container" id="clubeParticipantesSection">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:18px">
+        <div><h2>👥 Participantes do Clube Bebcom</h2>
+          <p style="color:var(--gray);margin-top:6px">Cadastros concluídos e data de entrada</p></div>
+        <button class="header-btn btn-refresh" onclick="loadClubeParticipantes()">🔄 Atualizar participantes</button>
+      </div>
+      <div class="stats-grid">
+        <div class="stat-card"><div class="stat-title">Total de participantes</div><div class="stat-value" id="cpTotal">—</div></div>
+        <div class="stat-card"><div class="stat-title">Novos hoje</div><div class="stat-value" id="cpHoje">—</div></div>
+        <div class="stat-card"><div class="stat-title">Últimos 7 dias</div><div class="stat-value" id="cpSemana">—</div></div>
+        <div class="stat-card"><div class="stat-title">Últimos 30 dias</div><div class="stat-value" id="cpMes">—</div></div>
+      </div>
+      <div style="overflow-x:auto"><table><thead><tr><th>Participante</th><th>Telefone</th><th>Data de entrada</th></tr></thead>
+        <tbody id="cpLista"><tr><td colspan="3" style="color:var(--gray)">Clique em Atualizar participantes para consultar.</td></tr></tbody></table></div>
+      <div class="pagination"><button id="cpAnterior" onclick="loadClubeParticipantes(cpPagina-1)">← Anterior</button>
+        <span id="cpPaginaInfo" style="padding:8px;color:var(--gray)">—</span>
+        <button id="cpProxima" onclick="loadClubeParticipantes(cpPagina+1)">Próxima →</button></div>
+    </section>
+
+
     <div class="stats-grid">
         <div class="stat-card">
             <div class="stat-title">🌌 Expedições</div>
@@ -2854,5 +2875,49 @@ async function markRedeemDelivered(id) {
 
     
     </script>
+<script>
+
+// ===== CONSULTA SEGURA DE PARTICIPANTES (SOMENTE LEITURA) =====
+let cpPagina = 1;
+let cpSenha = '';
+function cpTexto(value) {
+    return String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+async function loadClubeParticipantes(page = 1) {
+    if (page < 1) return;
+    if (!cpSenha) {
+        const senha = prompt('Digite a senha administrativa para consultar participantes:');
+        if (!senha) return;
+        cpSenha = senha;
+    }
+    const lista = document.getElementById('cpLista');
+    lista.innerHTML = '<tr><td colspan="3">Consultando participantes...</td></tr>';
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/admin/clube/participantes?page=${page}`, {
+            headers: { 'x-admin-password': cpSenha }, cache: 'no-store'
+        });
+        const data = await response.json();
+        if (!response.ok || !data.success) {
+            if (response.status === 401) cpSenha = '';
+            throw new Error(data.error || 'Erro na consulta');
+        }
+        cpPagina = data.page;
+        document.getElementById('cpTotal').textContent = data.stats.total;
+        document.getElementById('cpHoje').textContent = data.stats.hoje;
+        document.getElementById('cpSemana').textContent = data.stats.seteDias;
+        document.getElementById('cpMes').textContent = data.stats.trintaDias;
+        lista.innerHTML = data.participantes.length ? data.participantes.map(p => {
+            const dataEntrada = p.dataEntrada ? new Date(p.dataEntrada).toLocaleString('pt-BR', {timeZone:'America/Sao_Paulo',day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}) : 'Data não registrada';
+            return `<tr><td>${cpTexto(p.nome)}</td><td>${cpTexto(p.telefone)}</td><td>${cpTexto(dataEntrada)}</td></tr>`;
+        }).join('') : '<tr><td colspan="3">Nenhum cadastro encontrado.</td></tr>';
+        document.getElementById('cpPaginaInfo').textContent = `Página ${data.page} de ${Math.max(1, data.totalPages)}`;
+        document.getElementById('cpAnterior').disabled = data.page <= 1;
+        document.getElementById('cpProxima').disabled = data.page >= data.totalPages;
+    } catch (error) {
+        lista.innerHTML = `<tr><td colspan="3" style="color:#fca5a5">${cpTexto(error.message)}</td></tr>`;
+    }
+}
+
+</script>
 </body>
 </html>
