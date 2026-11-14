@@ -1292,6 +1292,44 @@ function calculateLevel(xp = 0) {
     return 1;
 }
 
+
+// ========== PAINEL ADMINISTRATIVO: PARTICIPANTES CLUBE BEBCOM ==========
+// Consulta somente leitura; exige senha administrativa real.
+app.get('/api/admin/clube/participantes', async (req, res) => {
+    if (req.get('x-admin-password') !== ADMIN_PASSWORD) {
+        return res.status(401).json({ success: false, error: 'Senha administrativa inválida' });
+    }
+    if (!app.locals.db) {
+        return res.status(503).json({ success: false, error: 'Banco de dados indisponível' });
+    }
+    try {
+        const users = app.locals.db.collection('clube_users');
+        const page = Math.max(1, Math.min(100000, Number.parseInt(req.query.page, 10) || 1));
+        const limit = 25;
+        const now = new Date();
+        const today = new Date(now.toLocaleDateString('en-CA', {timeZone: 'America/Sao_Paulo'}) + 'T00:00:00-03:00');
+        const week = new Date(today.getTime() - 6 * 86400000);
+        const month = new Date(today.getTime() - 29 * 86400000);
+        const [total, hoje, seteDias, trintaDias, participantes] = await Promise.all([
+            users.countDocuments({}),
+            users.countDocuments({ createdAt: { $gte: today } }),
+            users.countDocuments({ createdAt: { $gte: week } }),
+            users.countDocuments({ createdAt: { $gte: month } }),
+            users.find({}, { projection: { name: 1, phone: 1, createdAt: 1 } })
+                .sort({ createdAt: -1, _id: -1 }).skip((page - 1) * limit).limit(limit).toArray()
+        ]);
+        res.set('Cache-Control', 'no-store');
+        res.json({ success: true, stats: { total, hoje, seteDias, trintaDias },
+            page, totalPages: Math.ceil(total / limit), participantes: participantes.map(u => ({
+                id: String(u._id), nome: u.name || 'Jogador Bebcom',
+                telefone: u.phone || '', dataEntrada: u.createdAt || null
+            })) });
+    } catch (error) {
+        console.error('Erro no painel de participantes:', error);
+        res.status(500).json({ success: false, error: 'Não foi possível consultar os participantes' });
+    }
+});
+
 // LOGIN / CADASTRO SIMPLES
 app.post('/api/clube/login', async (req, res) => {
     try {
